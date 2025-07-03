@@ -3,7 +3,7 @@
 // --- MOCK DATABASE ---
 // This object simulates our entire database. In a real application,
 // this data would be fetched from a server (like Firebase).
-const mockData = {
+export const mockData = {
     user: { name: "Heidi Aquino", email: "manager@nexustime.com", plan: "Pro" },
     workspaces: { 
         'ws-acme': { name: 'Acme Corp', plan: 'Pro' },
@@ -12,15 +12,15 @@ const mockData = {
     },
     employees: { 
         'ws-acme': [
-            { id: '101785', name: 'Javier Pizaña', status: 'Active', hireDate: '2025-06-30', cardNumber: '', department: 'IT Department', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
-            { id: '101786', name: 'Alice Johnson', status: 'Active', hireDate: '2024-05-15', cardNumber: 'C456', department: 'Marketing', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
-            { id: '101787', name: 'Bob Williams', status: 'Active', hireDate: '2023-03-01', cardNumber: 'C789', department: 'Sales', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' },
+            { id: '101785', firstName: 'Javier', middleName: '', lastName: 'Pizaña', name: 'Javier Pizaña', status: 'Active', hireDate: '2025-06-30', cardNumber: '', department: 'IT Department', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
+            { id: '101786', firstName: 'Alice', middleName: '', lastName: 'Johnson', name: 'Alice Johnson', status: 'Active', hireDate: '2024-05-15', cardNumber: 'C456', department: 'Marketing', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
+            { id: '101787', firstName: 'Bob', middleName: '', lastName: 'Williams', name: 'Bob Williams', status: 'Active', hireDate: '2023-03-01', cardNumber: 'C789', department: 'Sales', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' },
         ],
         'ws-stark': [
-             { id: 'S001', name: 'Tony Stark', status: 'Active', hireDate: '2008-05-02', cardNumber: 'S1', department: 'R&D', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' }
+             { id: 'S001', firstName: 'Tony', middleName: '', lastName: 'Stark', name: 'Tony Stark', status: 'Active', hireDate: '2008-05-02', cardNumber: 'S1', department: 'R&D', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' }
         ],
         'ws-wayne': [
-            { id: 'W001', name: 'Bruce Wayne', status: 'Active', hireDate: '1939-05-27', cardNumber: 'W1', department: 'Executive', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' }
+            { id: 'W001', firstName: 'Bruce', middleName: '', lastName: 'Wayne', name: 'Bruce Wayne', status: 'Active', hireDate: '1939-05-27', cardNumber: 'W1', department: 'Executive', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' }
         ]
     },
     projects: { 
@@ -52,12 +52,12 @@ const mockData = {
 
 // --- STATE MANAGEMENT using localStorage ---
 // These functions help us remember the user's state across different pages.
-const stateManager = {
+export const stateManager = {
     isLoggedIn: () => localStorage.getItem('isLoggedIn') === 'true',
     setCurrentWorkspace: (id) => localStorage.setItem('currentWorkspaceId', id),
     getCurrentWorkspace: () => localStorage.getItem('currentWorkspaceId'),
-    setActiveEmployee: (id) => localStorage.setItem('activeEmployeeFilter', id),
-    getActiveEmployee: () => localStorage.getItem('activeEmployeeFilter'),
+    setActiveEmployee: (id) => localStorage.setItem('activeEmployeeId', id),
+    getActiveEmployee: () => localStorage.getItem('activeEmployeeId'),
     login: (workspaceId) => {
         localStorage.setItem('isLoggedIn', 'true');
         stateManager.setCurrentWorkspace(workspaceId);
@@ -67,22 +67,28 @@ const stateManager = {
     logout: () => {
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('currentWorkspaceId');
-        localStorage.removeItem('activeEmployeeFilter');
+        localStorage.removeItem('activeEmployeeId');
         window.location.href = 'index.html';
     },
-    checkAuth: () => {
-        if (!stateManager.isLoggedIn()) {
+    checkAuth: (redirect = true) => {
+        const loggedIn = stateManager.isLoggedIn();
+        if (!loggedIn && redirect) {
             window.location.href = 'app.html'; // Redirect to login
         }
-        if (!stateManager.getCurrentWorkspace()) {
+        return loggedIn;
+    },
+    checkWorkspace: (redirect = true) => {
+        const ws = stateManager.getCurrentWorkspace();
+        if (!ws && redirect) {
              window.location.href = 'workspaces.html'; // Redirect to workspace selection
         }
+        return ws;
     }
 };
 
 
 // --- UTILITY FUNCTIONS ---
-function getWeek(offset = 0) {
+export function getWeek(offset = 0) {
     const now = new Date('2025-06-16T12:00:00Z'); // Static date for consistent view
     now.setDate(now.getDate() + (offset * 7));
     const dayOfWeek = now.getDay();
@@ -93,19 +99,19 @@ function getWeek(offset = 0) {
     return { week, start: week[0] };
 }
 
-function formatDate(date, includeYear = false) {
+export function formatDate(date, includeYear = false) {
     if(!date) return '';
     const options = { month: 'short', day: 'numeric' };
     if (includeYear) options.year = 'numeric';
     return date.toLocaleDateString('en-US', options);
 }
 
-function punchTypeToLabel(type) {
+export function punchTypeToLabel(type) {
     const labels = { 'in': 'Clock In', 'out': 'Clock Out', 'lunch-start': 'Start Lunch', 'lunch-end': 'End Lunch' };
     return labels[type] || 'N/A';
 }
 
-function processDayPunches(employeeName, day) {
+export function processDayPunches(employeeName, day) {
     const currentWorkspaceId = stateManager.getCurrentWorkspace();
     const dateString = day ? day.toISOString().split('T')[0] : null;
     const entry = employeeName && dateString ? mockData.timesheets[currentWorkspaceId]?.[employeeName]?.[dateString] : null;
@@ -123,7 +129,7 @@ function processDayPunches(employeeName, day) {
     return { pairs, totalHours };
 }
 
-function calculateTotalHoursFromPairs(pairs) {
+export function calculateTotalHoursFromPairs(pairs) {
     let totalMinutes = 0;
     pairs.forEach(pair => {
         if (pair.in && pair.out) {

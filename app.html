@@ -5,351 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NexusTime App</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #111827; color: #E5E7EB; }
         .cta-button { transition: all 0.3s ease; background-color: #34D399; color: #111827; }
-        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(52, 211, 153, 0.4); }
         .secondary-button { background-color: transparent; border: 1px solid #34D399; color: #34D399; transition: all 0.3s ease; }
-        .secondary-button:hover { background-color: #34D399; color: #111827; }
-        .card { background-color: #1F2937; border: 1px solid #374151; transition: all 0.3s ease; }
-        .card:hover { border-color: #34D399; transform: translateY(-4px); }
-        .company-card { cursor: pointer; }
+        .danger-button { background-color: transparent; border: 1px solid #F87171; color: #F87171; transition: all 0.3s ease; }
+        .card { background-color: #1F2937; border: 1px solid #374151; }
         .header { background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(10px); }
         .page { display: none; }
         .page.active { display: block; }
         .form-input, .form-select { background-color: #1F2937; border: 1px solid #374151; color: #E5E7EB; border-radius: 0.5rem; }
         .form-input:focus, .form-select:focus { outline: none; border-color: #34D399; box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.5); }
         .form-select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%2334D399'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
-        .status-pill { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
-        .status-approved { background-color: #10B981; color: white; }
-        .status-pending { background-color: #F59E0B; color: white; }
-        .status-submitted { background-color: #3B82F6; color: white; }
+        .modal-overlay { background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); }
+        .timesheet-table th, .timesheet-table td { text-align: center; padding: 0.75rem 0.5rem; border: 1px solid #374151; white-space: nowrap; }
+        .timesheet-table .row-header { text-align: left; padding-left: 1rem; font-weight: 600; background-color: #374151; }
+        .day-header { background-color: #374151; }
+        .day-header.editable:hover { background-color: #4B5563; cursor: pointer; }
+        .locked-day { background-color: #4B5563; color: #9CA3AF; }
+        input[type="checkbox"]:disabled + span { color: #6B7280; }
+        .tab-button { border-bottom: 2px solid transparent; }
+        .tab-button.active { color: #34D399; border-bottom-color: #34D399; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
     <!-- Header -->
-    <header class="header sticky top-0 z-50">
+    <header class="header sticky top-0 z-30">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
             <a href="index.html">
                 <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
             </a>
             <nav id="app-nav" class="hidden items-center space-x-6">
-                 <a href="#dashboard" data-page="dashboard" class="nav-link text-gray-400 hover:text-emerald-400">Dashboard</a>
-                 <a href="#company-selection" data-page="company-selection" class="nav-link text-gray-400 hover:text-emerald-400">Switch Company</a>
+                 <a href="dashboard.html" class="nav-link text-gray-400 hover:text-emerald-400">Dashboard</a>
+                 <a href="timesheet.html" class="nav-link text-gray-400 hover:text-emerald-400">Timesheets</a>
+                 <a href="manage.html" class="nav-link text-gray-400 hover:text-emerald-400">Manage</a>
+                 <a href="settings.html" class="nav-link text-gray-400 hover:text-emerald-400">Settings</a>
+                 <a href="workspaces.html" class="nav-link text-gray-400 hover:text-emerald-400">Switch Workspace</a>
                  <button id="logout-button" class="secondary-button px-4 py-2 rounded-lg text-sm font-medium">Log Out</button>
             </nav>
         </div>
     </header>
 
     <main>
-        <!-- App pages are managed by JS -->
         <div id="login" class="page">
-             <section class="py-20">
-                <div class="max-w-md mx-auto card p-8 rounded-xl mt-10">
-                    <div class="text-center mb-8">
-                        <h3 class="text-3xl font-bold text-white">Welcome Back</h3>
-                        <p class="text-gray-400 mt-2">Log in to manage your companies.</p>
-                    </div>
-                    <form id="login-form">
-                        <div class="mb-4">
-                            <label for="login-email" class="block text-gray-300 mb-2">Email</label>
-                            <input type="email" id="login-email" class="w-full p-3 form-input" value="manager@nexustime.com" required>
-                        </div>
-                        <div class="mb-6">
-                            <label for="login-password" class="block text-gray-300 mb-2">Password</label>
-                            <input type="password" id="login-password" class="w-full p-3 form-input" value="password123" required>
-                        </div>
-                        <div class="text-center">
-                            <button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Log In</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
+            <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10"><div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Welcome Back</h3><p class="text-gray-400 mt-2">Log in to manage your workspaces.</p></div><form id="login-form"><div class="mb-4"><label for="login-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="login-email" class="w-full p-3 form-input" required></div><div class="mb-6"><label for="login-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="login-password" class="w-full p-3 form-input" required></div><p id="login-error" class="text-red-400 text-sm mb-4 text-center hidden"></p><div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Log In</button></div><p class="text-center mt-4 text-sm text-gray-400">Don't have an account? <a href="#signup" data-page="signup" class="nav-link text-emerald-400 hover:underline">Sign up</a></p></form></div></section>
         </div>
-
         <div id="signup" class="page">
-             <section class="py-20">
-                <div class="max-w-md mx-auto card p-8 rounded-xl mt-10">
-                    <div class="text-center mb-8">
-                        <h3 class="text-3xl font-bold text-white">Create Your Account</h3>
-                        <p class="text-gray-400 mt-2">Start your free trial today.</p>
-                    </div>
-                    <form>
-                         <div class="mb-4">
-                            <label for="company-name" class="block text-gray-300 mb-2">Company Name</label>
-                            <input type="text" id="company-name" class="w-full p-3 form-input" placeholder="Your Company Inc.">
-                        </div>
-                        <div class="mb-4">
-                            <label for="signup-email" class="block text-gray-300 mb-2">Email</label>
-                            <input type="email" id="signup-email" class="w-full p-3 form-input" placeholder="you@company.com">
-                        </div>
-                        <div class="mb-6">
-                            <label for="signup-password" class="block text-gray-300 mb-2">Password</label>
-                            <input type="password" id="signup-password" class="w-full p-3 form-input" placeholder="••••••••">
-                        </div>
-                        <div class="text-center">
-                            <button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Sign Up</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-        </div>
-
-        <div id="company-selection" class="page">
-            <section class="py-20">
-                <div class="container mx-auto px-6">
-                    <div class="text-center mb-12">
-                        <h2 class="text-4xl font-bold text-white">Select a Company</h2>
-                        <p class="text-gray-400 mt-2">Choose which company dashboard you want to manage.</p>
-                    </div>
-                    <div id="company-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-4xl mx-auto"></div>
-                </div>
-            </section>
-        </div>
-
-        <div id="dashboard" class="page">
-            <section class="py-12">
-                <div class="container mx-auto px-6">
-                    <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
-                         <h2 id="dashboard-title" class="text-3xl font-bold text-white"></h2>
-                         <button data-page="new-timesheet" class="nav-link cta-button px-6 py-2 rounded-lg font-semibold self-start md:self-center">New Timesheet</button>
-                    </div>
-                    <div id="dashboard-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"></div>
-                    <div class="card p-0 overflow-hidden">
-                        <div class="p-6">
-                            <h3 class="text-xl font-semibold text-white">Employee Timesheets</h3>
-                            <p id="timesheet-period" class="text-gray-400 mt-1"></p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-gray-800">
-                                    <tr>
-                                        <th class="p-4 font-semibold">Employee</th>
-                                        <th class="p-4 font-semibold">Project</th>
-                                        <th class="p-4 font-semibold">Total Hours</th>
-                                        <th class="p-4 font-semibold">Status</th>
-                                        <th class="p-4 font-semibold text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="timesheet-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div id="new-timesheet" class="page">
-             <section class="py-20">
-                <div class="max-w-2xl mx-auto card p-8 rounded-xl">
-                    <div class="text-center mb-8">
-                        <h3 class="text-3xl font-bold text-white">Log New Timesheet</h3>
-                        <p id="new-timesheet-company" class="text-gray-400 mt-2"></p>
-                    </div>
-                    <form id="new-timesheet-form">
-                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label for="ts-employee" class="block text-gray-300 mb-2">Employee</label>
-                                <select id="ts-employee" class="w-full p-3 form-select" required></select>
-                            </div>
-                            <div>
-                                <label for="ts-project" class="block text-gray-300 mb-2">Project</label>
-                                <select id="ts-project" class="w-full p-3 form-select" required></select>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                             <div>
-                                <label for="ts-date" class="block text-gray-300 mb-2">Date</label>
-                                <input type="date" id="ts-date" class="w-full p-3 form-input" required>
-                            </div>
-                            <div>
-                                <label for="ts-hours" class="block text-gray-300 mb-2">Hours Worked</label>
-                                <input type="number" step="0.25" id="ts-hours" class="w-full p-3 form-input" placeholder="e.g., 8.5" required>
-                            </div>
-                        </div>
-                        <div class="mb-6">
-                            <label for="ts-notes" class="block text-gray-300 mb-2">Notes</label>
-                            <textarea id="ts-notes" rows="3" class="w-full p-3 form-input" placeholder="Optional notes about the work..."></textarea>
-                        </div>
-                        <div class="flex justify-end gap-4">
-                            <button type="button" data-page="dashboard" class="nav-link secondary-button px-8 py-3 rounded-lg font-semibold">Cancel</button>
-                            <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Submit Timesheet</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
+             <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10"><div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Create Your Account</h3><p class="text-gray-400 mt-2">Start your free trial today.</p></div><form id="signup-form" class="space-y-4"><div class="mb-4"><label for="signup-name" class="block text-gray-300 mb-2">Your Full Name</label><input type="text" id="signup-name" class="w-full p-3 form-input" required></div><div><label for="signup-company-name" class="block text-gray-300 mb-2">Company Name</label><input type="text" id="signup-company-name" class="w-full p-3 form-input" required></div><div><label for="signup-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="signup-email" class="w-full p-3 form-input" required></div><div><label for="signup-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="signup-password" class="w-full p-3 form-input" placeholder="At least 6 characters" required></div><p id="signup-error" class="text-red-400 text-sm text-center hidden"></p><div class="pt-2"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Sign Up</button></div><p class="text-center pt-2 text-sm text-gray-400">Already have an account? <a href="#login" data-page="login" class="nav-link text-emerald-400 hover:underline">Log in</a></p></form></div></section>
         </div>
     </main>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const mockData = {
-                companies: {
-                    'acme-corp': { name: 'Acme Corp', plan: 'Business' },
-                    'stark-industries': { name: 'Stark Industries', plan: 'Business' },
-                    'wayne-enterprises': { name: 'Wayne Enterprises', plan: 'Enterprise' }
-                },
-                employees: {
-                    'acme-corp': ['Alice Johnson', 'Bob Williams', 'Charlie Brown'],
-                    'stark-industries': ['Tony Stark', 'Pepper Potts', 'Happy Hogan'],
-                    'wayne-enterprises': ['Bruce Wayne', 'Lucius Fox', 'Alfred Pennyworth']
-                },
-                projects: {
-                    'acme-corp': ['Project Phoenix', 'Marketing Campaign', 'Website Redesign'],
-                    'stark-industries': ['Arc Reactor Miniaturization', 'Iron Man Suit Mk 50'],
-                    'wayne-enterprises': ['Gotham City Redevelopment', 'Advanced Grappling Hook']
-                },
-                timesheets: {
-                    'acme-corp': [
-                        { id: 1, employee: 'Alice Johnson', project: 'Project Phoenix', hours: 40.0, status: 'Approved' },
-                        { id: 2, employee: 'Bob Williams', project: 'Marketing Campaign', hours: 37.5, status: 'Pending' },
-                        { id: 3, employee: 'Charlie Brown', project: 'Website Redesign', hours: 42.0, status: 'Submitted' },
-                    ],
-                    'stark-industries': [
-                        { id: 4, employee: 'Pepper Potts', project: 'Arc Reactor Miniaturization', hours: 45.0, status: 'Approved' },
-                        { id: 5, employee: 'Happy Hogan', project: 'Iron Man Suit Mk 50', hours: 20.0, status: 'Pending' },
-                    ],
-                    'wayne-enterprises': [
-                        { id: 6, employee: 'Lucius Fox', project: 'Advanced Grappling Hook', hours: 50.0, status: 'Submitted' },
-                    ]
-                }
-            };
 
-            let isLoggedIn = false;
-            let currentCompanyId = null;
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { stateManager } from './common.js';
 
-            const pages = document.querySelectorAll('.page');
-            const navLinks = document.querySelectorAll('.nav-link');
-            const appNav = document.getElementById('app-nav');
-            const loginForm = document.getElementById('login-form');
-            const logoutButton = document.getElementById('logout-button');
-            const companyListContainer = document.getElementById('company-list');
-            const dashboardTitle = document.getElementById('dashboard-title');
-            const dashboardWidgets = document.getElementById('dashboard-widgets');
-            const timesheetTableBody = document.getElementById('timesheet-table-body');
-            const newTimesheetForm = document.getElementById('new-timesheet-form');
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const pages = document.querySelectorAll('.page');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const loginError = document.getElementById('login-error');
+        const signupError = document.getElementById('signup-error');
+        const appNav = document.getElementById('app-nav');
 
-            const showPage = (pageId) => {
-                pages.forEach(page => page.classList.remove('active'));
-                const targetPage = document.getElementById(pageId);
-                if (targetPage) {
-                    targetPage.classList.add('active');
-                    window.scrollTo(0, 0);
-                    if(pageId === 'company-selection' && isLoggedIn) renderCompanySelection();
-                    if(pageId === 'dashboard' && isLoggedIn && currentCompanyId) renderDashboard();
-                    if(pageId === 'new-timesheet' && isLoggedIn && currentCompanyId) renderNewTimesheetForm();
-                }
-            };
-            
-            const updateNav = () => {
-                appNav.style.display = isLoggedIn ? 'flex' : 'none';
-            };
-
-            loginForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                isLoggedIn = true;
-                updateNav();
-                showPage('company-selection');
-                history.pushState({ page: 'company-selection' }, '', '#company-selection');
-            });
-
-            logoutButton.addEventListener('click', () => {
-                isLoggedIn = false;
-                currentCompanyId = null;
-                window.location.href = 'index.html';
-            });
-
-            newTimesheetForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newTimesheet = {
-                    id: Date.now(),
-                    employee: document.getElementById('ts-employee').value,
-                    project: document.getElementById('ts-project').value,
-                    hours: parseFloat(document.getElementById('ts-hours').value),
-                    status: 'Submitted'
-                };
-                mockData.timesheets[currentCompanyId].push(newTimesheet);
-                showPage('dashboard');
-                history.pushState({ page: 'dashboard', company: currentCompanyId }, '', `#dashboard`);
-            });
-
-            const renderCompanySelection = () => {
-                companyListContainer.innerHTML = '';
-                Object.entries(mockData.companies).forEach(([id, company]) => {
-                    const card = document.createElement('div');
-                    card.className = 'card company-card p-8 text-center';
-                    card.innerHTML = `<h3 class="text-2xl font-bold text-white">${company.name}</h3><p class="text-gray-400 mt-2">${company.plan} Plan</p>`;
-                    card.addEventListener('click', () => selectCompany(id));
-                    companyListContainer.appendChild(card);
-                });
-                const addCard = document.createElement('div');
-                addCard.className = 'card company-card p-8 text-center flex flex-col items-center justify-center border-2 border-dashed border-gray-600 hover:border-emerald-400';
-                addCard.innerHTML = `<div class="text-emerald-400 mb-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg></div><h3 class="text-xl font-bold text-white">Add New Company</h3><p class="text-gray-400 mt-1">Based on your plan</p>`;
-                addCard.addEventListener('click', () => { window.location.href = 'pricing.html'; });
-                companyListContainer.appendChild(addCard);
-            };
-
-            const selectCompany = (companyId) => {
-                currentCompanyId = companyId;
-                showPage('dashboard');
-                history.pushState({ page: 'dashboard', company: companyId }, '', `#dashboard`);
-            };
-
-            const renderDashboard = () => {
-                if (!currentCompanyId) { showPage('company-selection'); return; }
-                const company = mockData.companies[currentCompanyId];
-                const timesheets = mockData.timesheets[currentCompanyId] || [];
-                dashboardTitle.textContent = `${company.name} Dashboard`;
-                const pendingCount = timesheets.filter(t => t.status === 'Pending' || t.status === 'Submitted').length;
-                const approvedCount = timesheets.filter(t => t.status === 'Approved').length;
-                const totalHours = timesheets.reduce((sum, t) => sum + t.hours, 0);
-                dashboardWidgets.innerHTML = `<div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Pending Approval</h3><p class="text-4xl font-bold text-white mt-2">${pendingCount}</p></div><div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Approved This Period</h3><p class="text-4xl font-bold text-white mt-2">${approvedCount}</p></div><div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Hours Logged</h3><p class="text-4xl font-bold text-white mt-2">${totalHours.toFixed(1)}</p></div>`;
-                document.getElementById('timesheet-period').textContent = 'Current Period';
-                timesheetTableBody.innerHTML = '';
-                timesheets.forEach(ts => {
-                    const row = document.createElement('tr');
-                    row.className = 'border-b border-gray-700';
-                    row.innerHTML = `<td class="p-4">${ts.employee}</td><td class="p-4">${ts.project}</td><td class="p-4">${ts.hours.toFixed(1)}</td><td class="p-4"><span class="status-pill status-${ts.status.toLowerCase()}">${ts.status}</span></td><td class="p-4 text-right"><button class="secondary-button px-3 py-1 text-sm">${ts.status === 'Approved' ? 'View' : 'Review'}</button></td>`;
-                    timesheetTableBody.appendChild(row);
-                });
-            };
-
-            const renderNewTimesheetForm = () => {
-                if (!currentCompanyId) { showPage('company-selection'); return; }
-                document.getElementById('new-timesheet-company').textContent = `For ${mockData.companies[currentCompanyId].name}`;
-                const employeeSelect = document.getElementById('ts-employee');
-                employeeSelect.innerHTML = mockData.employees[currentCompanyId].map(e => `<option>${e}</option>`).join('');
-                const projectSelect = document.getElementById('ts-project');
-                projectSelect.innerHTML = mockData.projects[currentCompanyId].map(p => `<option>${p}</option>`).join('');
-                document.getElementById('ts-date').valueAsDate = new Date();
-            };
-
-            navLinks.forEach(link => {
-                link.addEventListener('click', (event) => {
-                    if(event.currentTarget.tagName === 'A' || event.currentTarget.dataset.page) {
-                        event.preventDefault();
-                        const pageId = link.getAttribute('data-page');
-                        if (pageId) {
-                            showPage(pageId);
-                            history.pushState({ page: pageId }, '', `#${pageId}`);
-                        }
-                    }
-                });
-            });
-
-            window.addEventListener('popstate', (event) => {
-                const pageId = event.state ? event.state.page : (window.location.hash.substring(1) || 'login');
-                showPage(pageId);
-                isLoggedIn = ['company-selection', 'dashboard', 'new-timesheet'].includes(pageId);
-                updateNav();
-            });
-
-            const initialPageId = window.location.hash.substring(1) || 'login';
-            showPage(initialPageId);
-            isLoggedIn = ['company-selection', 'dashboard', 'new-timesheet'].includes(initialPageId);
-            updateNav();
+        const showPage = (pageId) => {
+            pages.forEach(page => page.classList.remove('active'));
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) targetPage.classList.add('active');
+        };
+        
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const pageId = e.currentTarget.dataset.page;
+                if(pageId) { e.preventDefault(); history.pushState({ page: pageId }, '', `#${pageId}`); showPage(pageId); }
+            })
         });
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                window.location.href = 'workspaces.html';
+            } else {
+                if (appNav) appNav.style.display = 'none';
+                const pageId = window.location.hash.substring(1) || 'login';
+                showPage(pageId);
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm['login-email'].value;
+            const password = loginForm['login-password'].value;
+            loginError.textContent = '';
+            loginError.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                localStorage.setItem('isLoggedIn', 'true');
+                // onAuthStateChanged will redirect
+            } catch (error) {
+                loginError.textContent = error.message;
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = signupForm['signup-name'].value;
+            const companyName = signupForm['signup-company-name'].value;
+            const email = signupForm['signup-email'].value;
+            const password = signupForm['signup-password'].value;
+            signupError.textContent = '';
+            signupError.classList.add('hidden');
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await setDoc(doc(db, "users", user.uid), { name, email, createdAt: serverTimestamp() });
+                const workspaceRef = await addDoc(collection(db, "workspaces"), { name: companyName, ownerId: user.uid, plan: "Free", createdAt: serverTimestamp() });
+                await addDoc(collection(db, `workspaces/${workspaceRef.id}/employees`), { userId: user.uid, name, status: 'Active', hireDate: new Date().toISOString().split('T')[0] });
+                localStorage.setItem('isLoggedIn', 'true');
+                // onAuthStateChanged will redirect
+            } catch (error) {
+                signupError.textContent = error.message;
+                signupError.classList.remove('hidden');
+            }
+        });
+
+        const initialPage = window.location.hash.substring(1) || 'login';
+        showPage(initialPage);
     </script>
 </body>
 </html>

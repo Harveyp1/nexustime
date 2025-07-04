@@ -12,9 +12,9 @@ export const mockData = {
     },
     employees: { 
         'ws-acme': [
-            { id: '101785', firstName: 'Javier', middleName: '', lastName: 'Pizaña', name: 'Javier Pizaña', status: 'Active', hireDate: '2025-06-30', cardNumber: '', department: 'IT Department', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
-            { id: '101786', firstName: 'Alice', middleName: '', lastName: 'Johnson', name: 'Alice Johnson', status: 'Active', hireDate: '2024-05-15', cardNumber: 'C456', department: 'Marketing', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
-            { id: '101787', firstName: 'Bob', middleName: '', lastName: 'Williams', name: 'Bob Williams', status: 'Active', hireDate: '2023-03-01', cardNumber: 'C789', department: 'Sales', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' },
+            { id: '101785', firstName: 'Javier', middleName: '', lastName: 'Pizaña', name: 'Javier Pizaña', status: 'Active', hireDate: '2025-06-30', cardNumber: 'C123', department: 'IT Department', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
+            { id: '101786', firstName: 'Alice', middleName: 'M', lastName: 'Johnson', name: 'Alice Johnson', status: 'Active', hireDate: '2024-05-15', cardNumber: 'C456', department: 'Marketing', supervisor: 'Heidi Aquino', payType: 'Hourly', employeeType: 'Full-time' },
+            { id: '101787', firstName: 'Bob', middleName: '', lastName: 'Williams', name: 'Bob Williams', status: 'Inactive', hireDate: '2023-03-01', cardNumber: 'C789', department: 'Sales', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' },
         ],
         'ws-stark': [
              { id: 'S001', firstName: 'Tony', middleName: '', lastName: 'Stark', name: 'Tony Stark', status: 'Active', hireDate: '2008-05-02', cardNumber: 'S1', department: 'R&D', supervisor: 'Heidi Aquino', payType: 'Salary', employeeType: 'Full-time' }
@@ -58,17 +58,14 @@ export const stateManager = {
     getCurrentWorkspace: () => localStorage.getItem('currentWorkspaceId'),
     setActiveEmployee: (id) => localStorage.setItem('activeEmployeeId', id),
     getActiveEmployee: () => localStorage.getItem('activeEmployeeId'),
-    login: (workspaceId) => {
+    login: () => {
         localStorage.setItem('isLoggedIn', 'true');
-        stateManager.setCurrentWorkspace(workspaceId);
-        const defaultEmployee = mockData.employees[workspaceId]?.[0]?.id;
-        if(defaultEmployee) stateManager.setActiveEmployee(defaultEmployee);
     },
     logout: () => {
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('currentWorkspaceId');
         localStorage.removeItem('activeEmployeeId');
-        window.location.href = 'index.html';
+        window.location.href = 'app.html';
     },
     checkAuth: (redirect = true) => {
         const loggedIn = stateManager.isLoggedIn();

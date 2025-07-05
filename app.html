@@ -12,7 +12,7 @@
 <body class="bg-gray-950 text-white font-inter min-h-screen flex items-center justify-center">
   <main class="w-full max-w-md bg-gray-900 p-8 rounded-xl shadow-xl">
     <div class="text-center mb-6">
-      <img src="/logo.png" alt="NexusTime Logo" class="h-12 mx-auto mb-2" onerror="this.onerror=null; this.src='https://placehold.co/200x60/111827/34D399?text=NexusTime';">
+      <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-12 mx-auto mb-2">
       <h1 class="text-2xl font-bold">Sign In to NexusTime</h1>
     </div>
     <form id="login-form" class="space-y-4">
@@ -38,6 +38,20 @@
     </p>
   </main>
 
-  <script src="/scripts/auth.js" type="module"></script>
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      // Fake login - hardcoded user
+      if (email === 'admin@example.com' && password === 'password123') {
+        alert('Login successful! Redirecting...');
+        window.location.href = '/dashboard.html';
+      } else {
+        alert('Invalid email or password.');
+      }
+    });
+  </script>
 </body>
 </html>

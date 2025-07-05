@@ -1,1 +1,75 @@
-<!-- manage content placeholder -->
+<!-- Manage Employees Page Using Unified Theme -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage - NexusTime</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body class="bg-gray-950 text-white font-inter min-h-screen">
+  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
+    <img src="/logo.png" alt="Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
+    <nav class="hidden md:flex space-x-6 text-gray-400">
+      <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+      <a href="/timesheet.html" class="hover:text-emerald-400">Timesheets</a>
+      <a href="/manage.html" class="text-emerald-400">Manage</a>
+      <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
+      <a href="/workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+      <a href="/index.html" class="secondary-button px-4 py-2 rounded-lg">Log Out</a>
+    </nav>
+  </header>
+
+  <main class="p-6 space-y-8">
+    <div class="text-center mb-10">
+      <h1 class="text-3xl font-bold">Employee Directory</h1>
+      <p class="text-gray-400">Manage all users within your workspace.</p>
+    </div>
+
+    <!-- Employee List -->
+    <section class="bg-gray-900 p-6 rounded-xl shadow-xl">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Team Members</h3>
+        <button class="bg-emerald-500 px-4 py-2 text-sm rounded hover:bg-emerald-400">+ Add Employee</button>
+      </div>
+      <table class="min-w-full text-sm">
+        <thead class="text-gray-400">
+          <tr>
+            <th class="text-left py-2">Name</th>
+            <th class="text-left py-2">Role</th>
+            <th class="text-left py-2">Status</th>
+            <th class="text-left py-2">Email</th>
+            <th class="text-left py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="text-white">
+          <tr class="border-t border-gray-800">
+            <td class="py-2">Alice Johnson</td>
+            <td class="py-2">Developer</td>
+            <td class="py-2 text-emerald-400">Active</td>
+            <td class="py-2">alice@example.com</td>
+            <td class="py-2 space-x-2">
+              <button class="px-2 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600">Edit</button>
+              <button class="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-500">Remove</button>
+            </td>
+          </tr>
+          <tr class="border-t border-gray-800">
+            <td class="py-2">Bob Smith</td>
+            <td class="py-2">Manager</td>
+            <td class="py-2 text-yellow-400">Pending</td>
+            <td class="py-2">bob@example.com</td>
+            <td class="py-2 space-x-2">
+              <button class="px-2 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600">Edit</button>
+              <button class="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-500">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/scripts/common.js" type="module"></script>
+</body>
+</html>

@@ -1,1 +1,79 @@
-<!-- timesheet content placeholder -->
+<!-- Timesheet Page Redesign Using Unified Theme -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timesheets - NexusTime</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body class="bg-gray-950 text-white font-inter min-h-screen">
+  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
+    <img src="/logo.png" alt="Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
+    <nav class="hidden md:flex space-x-6 text-gray-400">
+      <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+      <a href="/timesheet.html" class="text-emerald-400">Timesheets</a>
+      <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
+      <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
+      <a href="/workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+      <a href="/index.html" class="secondary-button px-4 py-2 rounded-lg">Log Out</a>
+    </nav>
+  </header>
+
+  <main class="p-6 space-y-8">
+    <div class="text-center mb-10">
+      <h1 class="text-3xl font-bold">Timesheet Overview</h1>
+      <p class="text-gray-400">Review, edit, and submit your weekly time entries.</p>
+    </div>
+
+    <!-- Timesheet Table -->
+    <section class="bg-gray-900 p-6 rounded-xl shadow-xl">
+      <h3 class="text-lg font-semibold mb-4">This Week's Entries</h3>
+      <table class="min-w-full text-sm">
+        <thead class="text-gray-400">
+          <tr>
+            <th class="text-left py-2">Date</th>
+            <th class="text-left py-2">Project</th>
+            <th class="text-left py-2">Hours</th>
+            <th class="text-left py-2">Notes</th>
+            <th class="text-left py-2">Status</th>
+          </tr>
+        </thead>
+        <tbody class="text-white">
+          <tr class="border-t border-gray-800">
+            <td class="py-2">Mon, Jul 1</td>
+            <td class="py-2">Website Redesign</td>
+            <td class="py-2">4</td>
+            <td class="py-2">Landing page</td>
+            <td class="py-2 text-yellow-400">Pending</td>
+          </tr>
+          <tr class="border-t border-gray-800">
+            <td class="py-2">Tue, Jul 2</td>
+            <td class="py-2">Website Redesign</td>
+            <td class="py-2">4.5</td>
+            <td class="py-2">Form updates</td>
+            <td class="py-2 text-green-400">Submitted</td>
+          </tr>
+          <tr class="border-t border-gray-800">
+            <td class="py-2">Wed, Jul 3</td>
+            <td class="py-2">Internal Meeting</td>
+            <td class="py-2">2</td>
+            <td class="py-2">Weekly sync</td>
+            <td class="py-2 text-yellow-400">Pending</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Submission Controls -->
+    <div class="flex justify-end space-x-4">
+      <button class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">Save Draft</button>
+      <button class="bg-emerald-500 px-4 py-2 rounded hover:bg-emerald-400">Submit Timesheet</button>
+    </div>
+  </main>
+
+  <script src="/scripts/common.js" type="module"></script>
+</body>
+</html>

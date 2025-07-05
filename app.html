@@ -1,65 +1,48 @@
-<!-- Final Login Page Using Unified Theme (Saved as app.html) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/style.css">
 </head>
-<body class="bg-gray-950 text-white font-inter min-h-screen flex items-center justify-center">
-  <main class="w-full max-w-md bg-gray-900 p-8 rounded-xl shadow-xl">
+<body class="bg-gray-950 text-white font-sans flex items-center justify-center h-screen">
+  <div class="bg-gray-900 p-8 rounded-xl shadow-lg w-full max-w-md">
     <div class="text-center mb-6">
-      <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-12 mx-auto mb-2">
-      <h1 class="text-2xl font-bold">Sign In to NexusTime</h1>
+      <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="w-20 h-20 mx-auto">
+      <h1 class="text-2xl font-bold mt-4 text-emerald-400">Welcome Back</h1>
+      <p class="text-sm text-gray-400">Login to your account</p>
     </div>
-    <form id="login-form" class="space-y-4">
+    <form id="loginForm" class="space-y-4">
       <div>
-        <label for="email" class="block text-sm text-gray-300">Email</label>
-        <input id="email" type="email" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="you@example.com" required>
+        <label for="email" class="block text-sm mb-1">Email</label>
+        <input type="email" id="email" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
       </div>
       <div>
-        <label for="password" class="block text-sm text-gray-300">Password</label>
-        <input id="password" type="password" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="••••••••" required>
+        <label for="password" class="block text-sm mb-1">Password</label>
+        <input type="password" id="password" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
       </div>
-      <div class="flex justify-between items-center text-sm text-gray-400">
-        <label class="inline-flex items-center">
-          <input type="checkbox" class="form-checkbox bg-gray-700 rounded mr-2">
-          Remember me
-        </label>
-        <a href="/forgot-password.html" class="hover:text-emerald-400">Forgot password?</a>
+      <div class="flex items-center justify-between">
+        <a href="#" class="text-sm text-emerald-400 hover:underline">Forgot Password?</a>
+        <a href="/signup.html" class="text-sm text-gray-400 hover:underline">Sign Up</a>
       </div>
-      <button type="submit" class="w-full bg-emerald-500 py-2 rounded hover:bg-emerald-400 font-semibold">Sign In</button>
+      <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-2 px-4 rounded">Login</button>
     </form>
-    <p class="text-center text-sm text-gray-400 mt-6">
-      Don’t have an account? <a href="/signup.html" class="text-emerald-400 hover:underline">Sign up</a>
-    </p>
-  </main>
+  </div>
 
   <script>
-    document.getElementById('login-form').addEventListener('submit', async function(e) {
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
 
-      // Fake login - hardcoded user
-      if (email === 'admin@example.com' && password === 'password123') {
-        const loader = document.createElement('div');
-        loader.className = 'mt-4 text-center text-sm text-emerald-400';
-        loader.textContent = 'Logging in...';
-        document.querySelector('form').after(loader);
+      // Simulate login and workspace setup
+      const dummyWorkspaces = [
+        { name: "Acme Inc", plan: "Free", logoUrl: "" }
+      ];
+      localStorage.setItem('userWorkspaces', JSON.stringify(dummyWorkspaces));
+      localStorage.setItem('userPlan', "Free");
 
-        setTimeout(() => {
-          window.location.href = '/dashboard.html';
-        }, 1000);
-      } else {
-        const error = document.createElement('div');
-        error.className = 'mt-4 text-center text-sm text-red-500';
-        error.textContent = 'Invalid email or password.';
-        document.querySelector('form').after(error);
-      }
+      // Redirect to switch workspace
+      window.location.href = "/switch-workspace.html";
     });
   </script>
 </body>

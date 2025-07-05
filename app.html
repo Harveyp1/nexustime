@@ -1,48 +1,43 @@
-<!-- Revised NexusTime App Architecture - Modular and Clean -->
+<!-- Login Page (from app.html) with Unified Theme -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NexusTime App</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/style.css">
 </head>
-<body class="bg-gray-900 text-white font-inter">
-  <!-- Header with Nav -->
-  <header id="main-header" class="sticky top-0 z-30 bg-opacity-80 backdrop-blur px-6 py-4">
-    <div class="flex justify-between items-center">
-      <img id="logo" src="logo.png" alt="NexusTime Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
-      <nav id="main-nav" class="hidden md:flex space-x-6 text-gray-400">
-        <a href="#dashboard" data-page="dashboard" class="hover:text-emerald-400">Dashboard</a>
-        <a href="#timesheet" data-page="timesheet" class="hover:text-emerald-400">Timesheets</a>
-        <a href="#manage" data-page="manage" class="hover:text-emerald-400">Manage</a>
-        <a href="#settings" data-page="settings" class="hover:text-emerald-400">Settings</a>
-        <a href="#company-selection" data-page="company-selection" class="hover:text-emerald-400">Switch Workspace</a>
-        <button id="logout-button" class="secondary-button px-4 py-2 rounded-lg">Log Out</button>
-      </nav>
+<body class="bg-gray-950 text-white font-inter min-h-screen flex items-center justify-center">
+  <main class="w-full max-w-md bg-gray-900 p-8 rounded-xl shadow-xl">
+    <div class="text-center mb-6">
+      <img src="/logo.png" alt="NexusTime Logo" class="h-12 mx-auto mb-2" onerror="this.onerror=null; this.src='https://placehold.co/200x60/111827/34D399?text=NexusTime';">
+      <h1 class="text-2xl font-bold">Sign In to NexusTime</h1>
     </div>
-  </header>
-
-  <!-- Page Containers -->
-  <main id="main-content">
-    <section id="login" class="page hidden"></section>
-    <section id="signup" class="page hidden"></section>
-    <section id="company-selection" class="page hidden"></section>
-    <section id="dashboard" class="page hidden"></section>
-    <section id="manage" class="page hidden"></section>
-    <section id="settings" class="page hidden"></section>
-    <section id="timesheet" class="page hidden"></section>
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label for="email" class="block text-sm text-gray-300">Email</label>
+        <input id="email" type="email" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="you@example.com" required>
+      </div>
+      <div>
+        <label for="password" class="block text-sm text-gray-300">Password</label>
+        <input id="password" type="password" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="••••••••" required>
+      </div>
+      <div class="flex justify-between items-center text-sm text-gray-400">
+        <label class="inline-flex items-center">
+          <input type="checkbox" class="form-checkbox bg-gray-700 rounded mr-2">
+          Remember me
+        </label>
+        <a href="#" class="hover:text-emerald-400">Forgot password?</a>
+      </div>
+      <button type="submit" class="w-full bg-emerald-500 py-2 rounded hover:bg-emerald-400 font-semibold">Sign In</button>
+    </form>
+    <p class="text-center text-sm text-gray-400 mt-6">
+      Don’t have an account? <a href="#" class="text-emerald-400 hover:underline">Sign up</a>
+    </p>
   </main>
 
-  <!-- Modal Root -->
-  <div id="modal-container"></div>
-
-  <!-- Script Modules -->
-  <script type="module" src="/scripts/common.js"></script>
-  <script type="module" src="/scripts/auth.js"></script>
-  <script type="module" src="/scripts/main.js"></script>
+  <script src="/scripts/auth.js" type="module"></script>
 </body>
 </html>

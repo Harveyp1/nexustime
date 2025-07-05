@@ -1,56 +1,58 @@
-<!-- Signup Page Using Unified Theme -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign Up - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/style.css">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+      authDomain: "nexustime-e8b91.firebaseapp.com",
+      projectId: "nexustime-e8b91",
+      storageBucket: "nexustime-e8b91.appspot.com",
+      messagingSenderId: "516976739338",
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+      measurementId: "G-QRSD6TYH86"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
-<body class="bg-gray-950 text-white font-inter min-h-screen flex items-center justify-center">
-  <main class="w-full max-w-md bg-gray-900 p-8 rounded-xl shadow-xl">
-    <div class="text-center mb-6">
-      <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-12 mx-auto mb-2">
-      <h1 class="text-2xl font-bold">Create Your Account</h1>
+<body class="bg-gray-950 text-white font-inter">
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md bg-gray-900 p-8 rounded-2xl shadow-xl">
+      <h2 class="text-3xl font-bold text-center text-emerald-400 mb-6">Create Your Account</h2>
+      <form id="signupForm" class="space-y-5">
+        <div>
+          <label for="email" class="block text-sm mb-1">Email</label>
+          <input type="email" id="email" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required />
+        </div>
+        <div>
+          <label for="password" class="block text-sm mb-1">Password</label>
+          <input type="password" id="password" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required />
+        </div>
+        <button type="submit" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white font-semibold text-center">Sign Up</button>
+      </form>
+      <div class="mt-6 text-center">
+        <a href="/app.html" class="text-sm text-emerald-400 hover:underline">Already have an account? Login</a>
+      </div>
     </div>
-    <form id="signup-form" class="space-y-4">
-      <div>
-        <label for="name" class="block text-sm text-gray-300">Full Name</label>
-        <input id="name" type="text" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="John Doe" required>
-      </div>
-      <div>
-        <label for="email" class="block text-sm text-gray-300">Email</label>
-        <input id="email" type="email" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="you@example.com" required>
-      </div>
-      <div>
-        <label for="password" class="block text-sm text-gray-300">Password</label>
-        <input id="password" type="password" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="••••••••" required>
-      </div>
-      <button type="submit" class="w-full bg-emerald-500 py-2 rounded hover:bg-emerald-400 font-semibold">Sign Up</button>
-    </form>
-    <p class="text-center text-sm text-gray-400 mt-6">
-      Already have an account? <a href="/app.html" class="text-emerald-400 hover:underline">Log in</a>
-    </p>
-  </main>
+  </div>
 
   <script>
-    document.getElementById('signup-form').addEventListener('submit', function(e) {
+    document.getElementById("signupForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      // Fake signup handler
-      const message = document.createElement('div');
-      message.className = 'mt-4 text-center text-sm text-emerald-400';
-      message.textContent = `Welcome, ${name}! Redirecting to dashboard...`;
-      document.querySelector('form').after(message);
-
-      setTimeout(() => {
-        window.location.href = '/dashboard.html';
-      }, 1000);
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await firebase.auth().createUserWithEmailAndPassword(email, password);
+        window.location.href = "/onboarding.html";
+      } catch (error) {
+        alert("Sign up failed: " + error.message);
+      }
     });
   </script>
 </body>

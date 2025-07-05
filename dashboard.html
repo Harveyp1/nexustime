@@ -34,7 +34,7 @@
     </ul>
   </nav>
 
-  <div class="p-6" id="dashboardContent">Loading...</div>
+  <div class="p-6 space-y-10" id="dashboardContent">Loading...</div>
 
   <script>
     async function loadDashboard() {
@@ -55,11 +55,35 @@
 
       const employeeSnap = await workspaceRef.collection("employees").get();
       const timesheetSnap = await workspaceRef.collection("timesheets").get();
+      const timeoffSnap = await workspaceRef.collection("timeoffRequests").orderBy("createdAt", "desc").limit(5).get();
 
       const employeeCount = employeeSnap.size;
       const totalHours = timesheetSnap.docs.reduce((sum, doc) => sum + (doc.data().hours || 0), 0);
       const pending = timesheetSnap.docs.filter(doc => doc.data().status === "pending").length;
       const approved = timesheetSnap.docs.filter(doc => doc.data().status === "approved").length;
+
+      const recentActivities = timesheetSnap.docs
+        .sort((a, b) => (b.data().updatedAt?.seconds || 0) - (a.data().updatedAt?.seconds || 0))
+        .slice(0, 5)
+        .map(doc => doc.data());
+
+      const activityHTML = recentActivities.map(item => `
+        <div class="bg-gray-900 p-4 rounded-lg">
+          <p><strong>${item.employeeName || 'Employee'}</strong> logged ${item.hours} hrs</p>
+          <p class="text-gray-400 text-sm">Status: ${item.status || 'N/A'}</p>
+        </div>
+      `).join("");
+
+      const timeoffHTML = timeoffSnap.docs.map(doc => {
+        const data = doc.data();
+        return `
+          <div class="bg-gray-900 p-4 rounded-lg">
+            <p><strong>${data.employeeName || 'Employee'}</strong> requested time off</p>
+            <p class="text-gray-400 text-sm">${data.startDate} to ${data.endDate}</p>
+            <p class="text-gray-400 text-sm">Reason: ${data.reason || 'N/A'}</p>
+          </div>
+        `;
+      }).join("");
 
       document.getElementById("dashboardContent").innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -78,6 +102,20 @@
           <div class="bg-gray-900 p-4 rounded-lg">
             <h2 class="text-xl font-semibold">Approved Timesheets</h2>
             <p class="text-3xl mt-2">${approved}</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold mt-10 mb-4">Recent Activity</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${activityHTML || '<p class="text-gray-400">No recent activity.</p>'}
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold mt-10 mb-4">Recent Time Off Requests</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${timeoffHTML || '<p class="text-gray-400">No recent time off requests.</p>'}
           </div>
         </div>
       `;

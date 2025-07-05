@@ -37,17 +37,110 @@
     }
   </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen p-8">
-  <form id="onboardingForm">
-    <!-- form fields -->
+<body class="bg-gray-950 text-white min-h-screen p-8 flex items-center justify-center">
+  <form id="onboardingForm" class="bg-gray-900 p-8 rounded-lg shadow-md w-full max-w-xl space-y-4">
+    <h2 class="text-2xl font-semibold text-green-400 mb-4 text-center">Create a New Workspace</h2>
+
+    <input type="text" id="workspace" required placeholder="Workspace Name" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-md">
+
+    <select id="industry" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-md">
+      <option value="">Select Industry</option>
+      <option>Software</option>
+      <option>Healthcare</option>
+      <option>Retail</option>
+      <option>Education</option>
+      <option>Construction</option>
+      <option>Finance</option>
+      <option>Legal</option>
+      <option>Hospitality</option>
+      <option>Transportation</option>
+      <option>Manufacturing</option>
+      <option>Marketing</option>
+      <option>Non-Profit</option>
+      <option>Real Estate</option>
+      <option>Telecommunications</option>
+      <option>Government</option>
+    </select>
+
+    <select id="companySize" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-md">
+      <option value="">Select Company Size</option>
+      <option>1–10 employees</option>
+      <option>11–50 employees</option>
+      <option>51–200 employees</option>
+      <option>201–500 employees</option>
+      <option>500+ employees</option>
+    </select>
+
+    <select id="timezone" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-md">
+      <option value="">Select Time Zone</option>
+      <option value="America/New_York">(GMT-05:00) Eastern Time (US & Canada)</option>
+      <option value="America/Chicago">(GMT-06:00) Central Time (US & Canada)</option>
+      <option value="America/Denver">(GMT-07:00) Mountain Time (US & Canada)</option>
+      <option value="America/Los_Angeles">(GMT-08:00) Pacific Time (US & Canada)</option>
+      <option value="Europe/London">(GMT+00:00) London</option>
+      <option value="Europe/Berlin">(GMT+01:00) Berlin</option>
+      <option value="Asia/Kolkata">(GMT+05:30) India Standard Time</option>
+      <option value="Asia/Tokyo">(GMT+09:00) Tokyo</option>
+      <option value="Australia/Sydney">(GMT+10:00) Sydney</option>
+    </select>
+
+    <div id="planSelection">
+      <input type="hidden" id="selectedPlanHidden">
+      <div class="grid grid-cols-2 gap-4">
+        <div onclick="selectPlan('Pro')" class="cursor-pointer border rounded-lg p-4 hover:bg-gray-800" id="plan-Pro">
+          <strong>Pro</strong> $29/mo or $290/yr (17% off) per user
+        </div>
+        <div onclick="selectPlan('Starter')" class="cursor-pointer border rounded-lg p-4 hover:bg-gray-800" id="plan-Starter">
+          <strong>Starter</strong> $9/mo or $90/yr (17% off) per user
+        </div>
+        <div onclick="selectPlan('Free')" class="cursor-pointer border rounded-lg p-4 hover:bg-gray-800" id="plan-Free">
+          <strong>Free</strong> $0/month per user
+        </div>
+        <div onclick="selectPlan('Enterprise')" class="cursor-pointer border rounded-lg p-4 hover:bg-gray-800" id="plan-Enterprise">
+          <strong>Enterprise</strong> Custom pricing per user
+        </div>
+      </div>
+    </div>
+
+    <label class="block text-sm text-gray-400 mt-2">Optional logo (64x64 PNG only)</label>
+    <input type="file" id="logo" accept="image/png" class="w-full text-sm text-gray-400">
+
+    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded-md">Create Workspace</button>
   </form>
 
   <div id="toast">Workspace created successfully!</div>
 
   <script>
+    async function checkUserPlan() {
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+      const db = firebase.firestore();
+      const userDoc = await db.collection("users").doc(user.uid).get();
+      if (userDoc.exists && userDoc.data().plan) {
+        const userPlan = userDoc.data().plan;
+        document.getElementById("selectedPlanHidden").value = userPlan;
+        document.getElementById("planSelection").style.display = "none";
+      }
+    }
+
+    function selectPlan(plan) {
+      document.getElementById("selectedPlanHidden").value = plan;
+      ["Pro", "Starter", "Free", "Enterprise"].forEach(p => {
+        const el = document.getElementById(`plan-${p}`);
+        if (el) {
+          if (p === plan) {
+            el.classList.add("border-green-500");
+          } else {
+            el.classList.remove("border-green-500");
+          }
+        }
+      });
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("onboardingForm");
       if (!form) return;
+      checkUserPlan();
 
       const showToast = (message) => {
         const toast = document.getElementById("toast");
@@ -86,7 +179,10 @@
         };
 
         try {
-          await db.collection("workspaces").add(data);
+          const workspaceRef = await db.collection("workspaces").add(data);
+          await db.collection("users").doc(user.uid).update({
+            activeWorkspaceId: workspaceRef.id
+          });
           showToast("Workspace created successfully!");
           setTimeout(() => {
             window.location.href = "/switch-workspace.html";

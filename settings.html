@@ -1,59 +1,99 @@
-<!-- Settings Page Using Unified Theme -->
+<!-- Settings Page with Updated Menu and Full Content -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Settings - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-950 text-white font-inter min-h-screen">
-  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-    <img src="/logo.png" alt="Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
-    <nav class="hidden md:flex space-x-6 text-gray-400">
-      <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-      <a href="/timesheet.html" class="hover:text-emerald-400">Timesheets</a>
-      <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
-      <a href="/settings.html" class="text-emerald-400">Settings</a>
-      <a href="/workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
-      <a href="/index.html" class="secondary-button px-4 py-2 rounded-lg">Log Out</a>
-    </nav>
-  </header>
-
-  <main class="p-6 space-y-8">
-    <div class="text-center mb-10">
-      <h1 class="text-3xl font-bold">Account Settings</h1>
-      <p class="text-gray-400">Update your personal info, password, and preferences.</p>
+<body class="bg-gray-950 text-white font-inter">
+  <nav class="bg-gray-900 text-white py-3 shadow-md">
+    <div class="container mx-auto px-6 flex justify-between items-center">
+      <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
+      <div class="flex space-x-4 text-sm">
+        <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+        <a href="/schedule.html" class="hover:text-emerald-400">Schedule</a>
+        <a href="/timesheets.html" class="hover:text-emerald-400">Timesheets</a>
+        <a href="/workspace.html" class="hover:text-emerald-400">Workspace</a>
+        <a href="/employees.html" class="hover:text-emerald-400">Employees</a>
+        <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
+        <a href="/timeoff.html" class="hover:text-emerald-400">Time Off</a>
+        <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
+        <a href="/switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+        <a href="/app.html" class="hover:text-emerald-400">Logout</a>
+      </div>
     </div>
+  </nav>
 
-    <!-- User Settings Form -->
-    <section class="bg-gray-900 p-6 rounded-xl shadow-xl space-y-6 max-w-xl mx-auto">
-      <div>
-        <label class="block text-sm text-gray-400 mb-1" for="name">Full Name</label>
-        <input id="name" type="text" class="w-full px-4 py-2 bg-gray-800 rounded text-white" value="Javier Pizana">
-      </div>
-      <div>
-        <label class="block text-sm text-gray-400 mb-1" for="email">Email</label>
-        <input id="email" type="email" class="w-full px-4 py-2 bg-gray-800 rounded text-white" value="you@example.com">
-      </div>
-      <div>
-        <label class="block text-sm text-gray-400 mb-1" for="password">New Password</label>
-        <input id="password" type="password" class="w-full px-4 py-2 bg-gray-800 rounded text-white" placeholder="••••••••">
-      </div>
-      <div>
-        <label class="inline-flex items-center">
-          <input type="checkbox" class="form-checkbox bg-gray-700 rounded mr-2">
-          <span class="text-sm text-gray-300">Receive email notifications</span>
-        </label>
-      </div>
-      <div class="text-right">
-        <button class="bg-emerald-500 px-4 py-2 rounded hover:bg-emerald-400">Save Changes</button>
-      </div>
+  <main class="flex-1 p-6">
+    <section class="bg-gray-900 p-6 rounded-xl shadow-md max-w-xl mx-auto">
+      <h2 class="text-lg font-semibold mb-4">Workspace Configuration</h2>
+
+      <form id="settings-form" class="space-y-6">
+        <div>
+          <label for="week-start" class="block text-sm text-gray-300 mb-1">Start of the Work Week</label>
+          <select id="week-start" name="week-start" class="w-full bg-gray-800 text-white p-2 rounded">
+            <option value="sunday">Sunday</option>
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+            <option value="saturday" selected>Saturday</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="timezone" class="block text-sm text-gray-300 mb-1">Time Zone</label>
+          <select id="timezone" name="timezone" class="w-full bg-gray-800 text-white p-2 rounded">
+            <option value="America/Chicago">Central (CST)</option>
+            <option value="America/New_York">Eastern (EST)</option>
+            <option value="America/Denver">Mountain (MST)</option>
+            <option value="America/Los_Angeles">Pacific (PST)</option>
+            <option value="UTC">UTC</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-300 mb-1">Overtime Rules</label>
+          <input type="number" min="0" id="ot-threshold" class="w-full bg-gray-800 text-white p-2 rounded" placeholder="Enter hours per week (e.g. 40)">
+          <p class="text-xs text-gray-500 mt-1">Overtime applies after this many hours worked in a week.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-300 mb-1">PTO (Paid Time Off) Accrual</label>
+          <input type="number" min="0" id="pto-rate" class="w-full bg-gray-800 text-white p-2 rounded" placeholder="Enter hours earned per 40 hrs worked (e.g. 1.5)">
+          <p class="text-xs text-gray-500 mt-1">How much PTO is earned per 40 hours worked.</p>
+        </div>
+
+        <div class="text-right">
+          <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-white py-2 px-4 rounded font-semibold">Save Settings</button>
+        </div>
+
+        <div id="confirmation" class="text-sm text-emerald-400 mt-4 hidden text-center">
+          ✅ Settings saved successfully.
+        </div>
+      </form>
     </section>
   </main>
 
-  <script src="/scripts/common.js" type="module"></script>
+  <script>
+    document.getElementById('settings-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const confirmation = document.getElementById('confirmation');
+      confirmation.classList.remove('hidden');
+      setTimeout(() => {
+        confirmation.classList.add('hidden');
+      }, 3000);
+
+      const weekStart = document.getElementById('week-start').value;
+      const timezone = document.getElementById('timezone').value;
+      const otThreshold = document.getElementById('ot-threshold').value;
+      const ptoRate = document.getElementById('pto-rate').value;
+      localStorage.setItem('nexustime-settings', JSON.stringify({ weekStart, timezone, otThreshold, ptoRate }));
+    });
+  </script>
 </body>
 </html>

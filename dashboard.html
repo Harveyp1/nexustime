@@ -1,118 +1,89 @@
-<!-- Finalized Redesigned Dashboard Page with Unified Theme -->
+<!-- Dashboard Page with Updated Menu and Full Content -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-950 text-white font-inter min-h-screen">
-  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-    <img src="/logo.png" alt="Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
-    <nav class="hidden md:flex space-x-6 text-gray-400">
-      <a href="/dashboard.html" class="text-emerald-400">Dashboard</a>
-      <a href="/timesheet.html" class="hover:text-emerald-400">Timesheets</a>
-      <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
-      <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
-      <a href="/workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
-      <a href="/index.html" class="secondary-button px-4 py-2 rounded-lg">Log Out</a>
-    </nav>
-  </header>
-
-  <main class="p-6 space-y-8">
-    <div class="text-center mb-10">
-      <h1 class="text-4xl font-bold text-white">Welcome Back, Admin</h1>
-      <p class="text-gray-400">Here’s a live snapshot of your organization.</p>
+<body class="bg-gray-950 text-white font-inter">
+  <nav class="bg-gray-900 text-white py-3 shadow-md">
+    <div class="container mx-auto px-6 flex justify-between items-center">
+      <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
+      <div class="flex space-x-4 text-sm">
+        <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+        <a href="/schedule.html" class="hover:text-emerald-400">Schedule</a>
+        <a href="/timesheets.html" class="hover:text-emerald-400">Timesheets</a>
+        <a href="/workspace.html" class="hover:text-emerald-400">Workspace</a>
+        <a href="/employees.html" class="hover:text-emerald-400">Employees</a>
+        <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
+        <a href="/timeoff.html" class="hover:text-emerald-400">Time Off</a>
+        <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
+        <a href="/switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+        <a href="/app.html" class="hover:text-emerald-400">Logout</a>
+      </div>
     </div>
+  </nav>
 
-    <!-- Overview Metrics -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-gray-900 p-5 rounded-xl shadow">
-        <p class="text-gray-400">Total Employees</p>
-        <h2 class="text-4xl font-bold">2</h2>
+  <main class="flex-1 p-6 space-y-6">
+    <!-- Summary -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h2 class="text-sm text-gray-400">Total Hours This Week</h2>
+        <p class="text-2xl font-bold">42.5 hrs</p>
       </div>
-      <div class="bg-gray-900 p-5 rounded-xl shadow">
-        <p class="text-gray-400">Pending Timesheets</p>
-        <h2 class="text-4xl font-bold text-yellow-400">1</h2>
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h2 class="text-sm text-gray-400">Pending Timesheets</h2>
+        <p class="text-2xl font-bold">3</p>
       </div>
-      <div class="bg-gray-900 p-5 rounded-xl shadow">
-        <p class="text-gray-400">Hours Logged This Week</p>
-        <h2 class="text-4xl font-bold text-emerald-400">15.5</h2>
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h2 class="text-sm text-gray-400">Approved Timesheets</h2>
+        <p class="text-2xl font-bold">15</p>
       </div>
-      <div class="bg-gray-900 p-5 rounded-xl shadow">
-        <p class="text-gray-400">Subscription Plan</p>
-        <h2 class="text-4xl font-bold text-blue-400">Pro</h2>
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h2 class="text-sm text-gray-400">Total Employees</h2>
+        <p class="text-2xl font-bold">8</p>
       </div>
     </section>
 
-    <!-- Charts Row -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-gray-900 p-6 rounded-xl shadow">
-        <h3 class="text-lg font-semibold mb-4">Hours by Employee</h3>
-        <canvas id="employeeChart" height="140"></canvas>
+    <!-- Productivity Score & Alerts -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h3 class="text-lg font-semibold mb-2">Team Productivity Score</h3>
+        <p class="text-sm text-gray-400 mb-4">Last 7 days: <strong class="text-emerald-400">87%</strong></p>
+        <div class="w-full h-2 bg-gray-700 rounded-full">
+          <div class="h-2 bg-emerald-400 rounded-full" style="width: 87%"></div>
+        </div>
       </div>
-      <div class="bg-gray-900 p-6 rounded-xl shadow">
-        <h3 class="text-lg font-semibold mb-4">Timesheet Submissions</h3>
-        <canvas id="submissionChart" height="140"></canvas>
+
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h3 class="text-lg font-semibold mb-2">Missed Clock-ins</h3>
+        <ul class="text-sm text-red-400 space-y-1">
+          <li>John D. missed on Mon</li>
+          <li>Anna L. missed on Wed</li>
+          <li>Marco S. missed on Fri</li>
+        </ul>
       </div>
     </section>
 
-    <!-- Recent Activity Log -->
-    <section class="bg-gray-900 p-6 rounded-xl shadow">
+    <!-- Activity Feed -->
+    <section class="bg-gray-800 p-4 rounded-xl">
       <h3 class="text-lg font-semibold mb-4">Recent Activity</h3>
       <ul class="text-sm text-gray-300 space-y-2">
-        <li>✅ Alice submitted her timesheet.</li>
-        <li>🟡 Bob updated his hours.</li>
-        <li>🆕 New user: Charlie joined the team.</li>
-        <li>📅 New timesheet cycle created.</li>
+        <li>✔️ Emily R. submitted a timesheet - 3 hrs</li>
+        <li>✔️ Josh T. clocked out - 7.5 hrs</li>
+        <li>✔️ Admin approved timesheet for Sarah G.</li>
+        <li>⚠️ Mike B. forgot to clock out</li>
       </ul>
     </section>
+
+    <!-- Suggestions & Insights -->
+    <section class="bg-gray-800 p-4 rounded-xl">
+      <h3 class="text-lg font-semibold mb-2">Smart Suggestions</h3>
+      <p class="text-sm text-emerald-400">🧠 "Team productivity dips every Friday afternoon. Consider lighter tasks during this time."</p>
+    </section>
   </main>
-
-  <script>
-    const ctx1 = document.getElementById('employeeChart').getContext('2d');
-    new Chart(ctx1, {
-      type: 'bar',
-      data: {
-        labels: ['Alice', 'Bob'],
-        datasets: [{
-          label: 'Hours Logged',
-          data: [10.5, 5],
-          backgroundColor: ['#10b981', '#3b82f6'],
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-
-    const ctx2 = document.getElementById('submissionChart').getContext('2d');
-    new Chart(ctx2, {
-      type: 'line',
-      data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-          label: 'Submissions',
-          data: [1, 0, 2, 1, 0, 0, 1],
-          borderColor: '#34D399',
-          fill: false,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  </script>
-  <script src="/scripts/common.js" type="module"></script>
 </body>
 </html>

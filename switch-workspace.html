@@ -1,102 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Switch Workspace - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+      authDomain: "nexustime-e8b91.firebaseapp.com",
+      projectId: "nexustime-e8b91",
+      storageBucket: "nexustime-e8b91.appspot.com",
+      messagingSenderId: "516976739338",
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+      measurementId: "G-QRSD6TYH86"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body class="bg-gray-950 text-white font-inter">
-  <nav class="bg-gray-900 text-white py-3 shadow-md">
-    <div class="container mx-auto px-6 flex justify-between items-center">
-      <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
-      <div class="flex space-x-4 text-sm">
-        <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-        <a href="/schedule.html" class="hover:text-emerald-400">Schedule</a>
-        <a href="/timesheets.html" class="hover:text-emerald-400">Timesheets</a>
-        <a href="/workspace.html" class="hover:text-emerald-400">Workspace</a>
-        <a href="/employees.html" class="hover:text-emerald-400">Employees</a>
-        <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
-        <a href="/timeoff.html" class="hover:text-emerald-400">Time Off</a>
-        <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
-        <a href="/switch-workspace.html" class="hover:text-emerald-400 font-semibold">Switch Workspace</a>
-        <a href="/app.html" class="hover:text-emerald-400">Logout</a>
-      </div>
-    </div>
-  </nav>
-
-  <main class="p-6 max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">Select a Workspace</h1>
-    <div id="workspaceList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    <div id="emptyState" class="text-gray-400 text-center hidden mt-10">No workspaces found. Please log in again or contact support.</div>
-  </main>
-
-  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-    <div class="bg-gray-900 p-6 rounded-xl max-w-sm w-full">
-      <h2 class="text-lg font-bold text-emerald-400 mb-4">Upgrade Required</h2>
-      <p class="text-sm text-gray-300 mb-4">Your current plan only supports one workspace. Upgrade to create more.</p>
-      <a href="/pricing.html" class="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded">View Plans</a>
-      <button onclick="toggleModal(false)" class="text-sm text-gray-400 hover:underline mt-4 block">Cancel</button>
-    </div>
+  <div class="min-h-screen flex flex-col items-center justify-center p-6">
+    <h1 class="text-2xl font-bold text-emerald-400 mb-6">Select a Workspace</h1>
+    <div id="workspaceList" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl"></div>
   </div>
 
   <script>
-    let workspaces;
-    try {
-      workspaces = JSON.parse(localStorage.getItem('userWorkspaces')) || [];
-    } catch {
-      workspaces = [];
-    }
-    const planType = localStorage.getItem('userPlan') || 'Free';
-    const list = document.getElementById('workspaceList');
-    const empty = document.getElementById('emptyState');
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) return window.location.href = "/app.html";
 
-    function selectWorkspace(name) {
-      localStorage.setItem('activeWorkspace', name);
-      window.location.href = '/dashboard.html';
-    }
+      const db = firebase.firestore();
+      const snapshot = await db.collection("workspaces")
+        .where("ownerId", "==", user.uid)
+        .get();
 
-    function toggleModal(show) {
-      document.getElementById('modal').classList.toggle('hidden', !show);
-    }
+      const list = document.getElementById("workspaceList");
+      list.innerHTML = "";
 
-    if (workspaces.length === 0) {
-      empty.classList.remove('hidden');
-    } else {
-      for (const ws of workspaces) {
-        const div = document.createElement('div');
-        div.className = 'bg-gray-800 rounded-lg p-4 shadow hover:bg-gray-700 cursor-pointer';
+      snapshot.forEach(doc => {
+        const workspace = doc.data();
+        const div = document.createElement("div");
+        div.className = "bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg cursor-pointer hover:ring hover:ring-emerald-400";
         div.innerHTML = `
-          <div class="flex items-center space-x-4 mb-3">
-            <img src="${ws.logoUrl || 'https://via.placeholder.com/40'}" alt="logo" class="w-10 h-10 rounded-full">
-            <div>
-              <h2 class="text-lg font-bold text-white">${ws.name}</h2>
-            </div>
-          </div>
-          <div class="text-sm text-gray-400 pl-1">
-            <p><strong>Users:</strong> ${ws.users}</p>
-            <p><strong>Industry:</strong> ${ws.industry}</p>
-            <p><strong>Timezone:</strong> ${ws.timezone}</p>
-            <p><strong>Created:</strong> ${ws.createdAt}</p>
-          </div>
+          <h2 class="text-xl font-bold mb-2">${workspace.name}</h2>
+          <p class="text-sm text-gray-400 mb-2">Plan: ${workspace.plan || 'Free'}</p>
+          <p class="text-sm text-gray-500">${workspace.industry || ''}</p>
         `;
-        div.onclick = () => selectWorkspace(ws.name);
+        div.addEventListener("click", () => {
+          localStorage.setItem("activeWorkspace", doc.id);
+          window.location.href = "/dashboard.html";
+        });
         list.appendChild(div);
-      }
+      });
 
-      const addCard = document.createElement('div');
-      addCard.className = 'bg-gray-700 border-2 border-dashed border-emerald-400 p-4 text-center rounded-lg hover:bg-gray-600 cursor-pointer';
-      addCard.innerHTML = `
-        <h2 class="text-lg font-bold mb-2">+ Add New Workspace</h2>
-        <p class="text-sm text-gray-400">Create a new workspace</p>
-      `;
-      addCard.onclick = () => {
-        if (planType === 'Free' && workspaces.length >= 1) toggleModal(true);
-        else alert('TODO: Show new workspace creation modal');
-      };
-      list.appendChild(addCard);
-    }
+      const addDiv = document.createElement("div");
+      addDiv.className = "bg-gray-700 p-6 rounded-xl shadow flex items-center justify-center hover:shadow-lg cursor-pointer hover:ring hover:ring-emerald-400 text-center text-emerald-400 font-bold";
+      addDiv.textContent = "+ Add New Workspace";
+      addDiv.addEventListener("click", () => {
+        if (snapshot.size >= 1 && snapshot.docs[0].data().plan === "Free") {
+          window.location.href = "/pricing.html";
+        } else {
+          window.location.href = "/onboarding.html";
+        }
+      });
+      list.appendChild(addDiv);
+    });
   </script>
 </body>
 </html>

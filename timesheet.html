@@ -3,225 +3,177 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Timesheet</title>
+  <title>Timesheet - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @media print {
-      body { background: white; color: black; }
-      header nav, #addPunchBtn, #prevWeek, #nextWeek, #employeeSelect, #savePunchBtn, #deletePunchBtn, #cancelPunchBtn, #printBtn { display: none; }
-      table { page-break-after: always; }
-    }
-  </style>
 </head>
-<body class="bg-gray-950 text-white">
-  <header class="bg-gray-900 shadow p-4 flex items-center justify-between">
-    <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10" />
-    <nav class="space-x-4">
-      <a href="dashboard.html" class="hover:underline">Dashboard</a>
-      <a href="timesheet.html" class="hover:underline font-bold">Timesheet</a>
-      <a href="schedule.html" class="hover:underline">Schedule</a>
-      <a href="settings.html" class="hover:underline">Settings</a>
-      <a href="switch-workspace.html" class="hover:underline">Switch Workspace</a>
-      <button id="printBtn" class="bg-blue-500 px-3 py-1 rounded text-sm">Print Timesheet</button>
+<body class="bg-gray-950 text-white font-inter">
+  <!-- Header -->
+  <header class="bg-gray-900 p-4 flex items-center justify-between">
+    <img src="https://github.com/Harveyp1/nexustime/raw/main/nexustimelogo.png" alt="Logo" class="h-10" />
+    <nav class="space-x-4 text-sm">
+      <a href="dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+      <a href="schedule.html" class="hover:text-emerald-400">Schedule</a>
+      <a href="timesheet.html" class="hover:text-emerald-400 font-bold">Timesheet</a>
+      <a href="timeoff.html" class="hover:text-emerald-400">Time Off</a>
+      <a href="settings.html" class="hover:text-emerald-400">Settings</a>
+      <a href="switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
     </nav>
   </header>
 
-  <main class="p-6">
-    <!-- Employee Header -->
-    <section class="mb-6">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div><strong>Name:</strong> <span id="empName">Jane Doe</span></div>
-        <div><strong>ID:</strong> <span id="empID">E12345</span></div>
-        <div><strong>Status:</strong> <span id="empStatus">Active</span></div>
-        <div><strong>Hire Date:</strong> <span id="empHire">2022-01-01</span></div>
-        <div><strong>Card #:</strong> <span id="empCard">000123</span></div>
-        <div><strong>Department:</strong> <span id="empDept">Sales</span></div>
-        <div><strong>Supervisor:</strong> <span id="empSup">John Smith</span></div>
-        <div><strong>Pay Type:</strong> <span id="empPay">Hourly</span></div>
-        <div><strong>Type:</strong> <span id="empType">Full-Time</span></div>
+  <main class="p-6 space-y-6">
+    <!-- Employee Context Header -->
+    <section class="bg-gray-800 rounded-lg p-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <p id="empName" class="text-2xl font-semibold text-emerald-400">Employee Name</p>
+        <p>ID: <span id="empID">--</span> | Status: <span id="empStatus">--</span></p>
+      </div>
+      <div>
+        <p>Hire Date: <span id="empHire">--</span></p>
+        <p>Card #: <span id="empCard">--</span></p>
+      </div>
+      <div>
+        <p>Department: <span id="empDept">--</span></p>
+        <p>Supervisor: <span id="empSup">--</span></p>
+      </div>
+      <div>
+        <p>Pay Type: <span id="empPay">--</span></p>
+        <p>Employee Type: <span id="empType">--</span></p>
       </div>
     </section>
 
-    <!-- Controls -->
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <button id="prevWeek" class="bg-gray-700 px-4 py-1 rounded">Previous</button>
-        <span id="weekRange" class="mx-2">July 1 - July 7, 2025</span>
-        <button id="nextWeek" class="bg-gray-700 px-4 py-1 rounded">Next</button>
+    <!-- Week Navigation & Controls -->
+    <div class="bg-gray-800 rounded-lg p-4 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+      <div class="flex items-center space-x-4">
+        <button id="prevWeekBtn" class="text-emerald-400 p-2 border border-emerald-400 rounded-full hover:bg-emerald-400 hover:text-gray-900">&#8592;</button>
+        <div id="weekRange" class="font-medium text-center">-- to --</div>
+        <button id="nextWeekBtn" class="text-emerald-400 p-2 border border-emerald-400 rounded-full hover:bg-emerald-400 hover:text-gray-900">&#8594;</button>
       </div>
       <div class="flex items-center space-x-4">
-        <select id="employeeSelect" class="bg-gray-800 border border-gray-600 px-4 py-2 rounded text-white">
-          <option value="E12345">Jane Doe</option>
-          <option value="E54321">Mark Lee</option>
+        <select id="employeeSelect" class="bg-gray-700 text-white p-2 rounded">
         </select>
-        <button id="addPunchBtn" class="bg-green-600 px-4 py-2 rounded">Add Punch</button>
+        <button id="addPunchBtn" class="bg-emerald-500 px-4 py-2 rounded hover:bg-emerald-600">Add Punch</button>
+        <button id="printBtn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600">Print</button>
       </div>
     </div>
 
-    <!-- Timesheet Table -->
-    <div class="overflow-x-auto">
-      <table class="min-w-full bg-gray-800 text-white rounded-lg overflow-hidden">
-        <thead class="bg-gray-700">
+    <!-- Timesheet Grid -->
+    <div class="bg-gray-800 rounded-lg p-4 overflow-x-auto">
+      <table class="w-full text-left table-auto">
+        <thead class="bg-gray-700 text-gray-400">
           <tr>
-            <th class="py-2 px-4">Date</th>
-            <th class="py-2 px-4">Day</th>
-            <th class="py-2 px-4">Time</th>
-            <th class="py-2 px-4">Type</th>
-            <th class="py-2 px-4">Actions</th>
+            <th class="px-4 py-2">Date</th>
+            <th class="px-4 py-2">In</th>
+            <th class="px-4 py-2">Out</th>
+            <th class="px-4 py-2">In</th>
+            <th class="px-4 py-2">Out</th>
+            <th class="px-4 py-2 text-right">Total</th>
           </tr>
         </thead>
-        <tbody id="timesheetBody"></tbody>
+        <tbody id="timesheetBody" class="divide-y divide-gray-700">
+        </tbody>
       </table>
     </div>
 
-    <!-- Verification Section -->
-    <div class="flex items-center justify-between mt-6">
-      <label class="flex items-center">
-        <input type="checkbox" id="empVerify" class="mr-2"> Employee Verified
-      </label>
-      <label class="flex items-center">
-        <input type="checkbox" id="supVerify" class="mr-2" disabled> Supervisor Verified
-      </label>
-    </div>
+    <!-- Verification -->
+    <section class="bg-gray-800 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <label class="flex items-center space-x-2"><input type="checkbox" id="empVerify" /> <span>Employee Verification</span></label>
+      <label class="flex items-center space-x-2"><input type="checkbox" id="supVerify" disabled /> <span>Supervisor Verification</span></label>
+    </section>
   </main>
 
   <!-- Punch Modal -->
-  <div id="punchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white text-black p-6 rounded w-full max-w-md space-y-4">
-      <h2 class="text-xl font-bold">Add/Edit Punch</h2>
-      <label class="block"><span class="block mb-1">Date:</span><input type="date" id="punchDate" class="w-full p-2 border rounded" /></label>
-      <label class="block"><span class="block mb-1">Time:</span><input type="time" id="punchTime" class="w-full p-2 border rounded" /></label>
-      <label class="block"><span class="block mb-1">Type:</span>
-        <select id="punchType" class="w-full p-2 border rounded">
-          <option value="Clock In">Clock In</option>
-          <option value="Clock Out">Clock Out</option>
-          <option value="Start Lunch">Start Lunch</option>
-          <option value="End Lunch">End Lunch</option>
-        </select>
-      </label>
+  <div id="punchModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-gray-900 rounded-lg p-6 w-80 space-y-4">
+      <h2 class="text-xl font-semibold">Manage Punch</h2>
+      <label class="block text-sm">Date</label>
+      <input type="date" id="punchDate" class="w-full p-2 bg-gray-800 rounded" />
+      <label class="block text-sm">Type</label>
+      <select id="punchType" class="w-full p-2 bg-gray-800 rounded">
+        <option>Clock In</option>
+        <option>Clock Out</option>
+        <option>Start Lunch</option>
+        <option>End Lunch</option>
+      </select>
+      <label class="block text-sm">Time</label>
+      <input type="time" id="punchTime" class="w-full p-2 bg-gray-800 rounded" />
       <div class="flex justify-end space-x-2">
-        <button id="deletePunchBtn" class="hidden bg-red-600 text-white px-4 py-2 rounded">Delete</button>
-        <button id="savePunchBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
-        <button id="cancelPunchBtn" class="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
+        <button id="cancelPunchBtn" class="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Cancel</button>
+        <button id="savePunchBtn" class="px-4 py-2 bg-emerald-500 rounded hover:bg-emerald-600">Save</button>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { db } from '/scripts/firebase-init.js';
-    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-    import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const auth = getAuth();
-      let currentId = null;
-
-      function formatDay(date) {
-        return new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
-      }
-
-      async function loadPunches(workspaceId, employeeId) {
-        const tbody = document.getElementById('timesheetBody');
-        tbody.innerHTML = '';
-        const ref = collection(db, 'workspaces', workspaceId, 'employees', employeeId, 'punches');
-        const snapshot = await getDocs(ref);
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td class="py-2 px-4">${data.date}</td>
-            <td class="py-2 px-4">${formatDay(data.date)}</td>
-            <td class="py-2 px-4">${data.time}</td>
-            <td class="py-2 px-4">${data.type}</td>
-            <td class="py-2 px-4 space-x-2">
-              <button data-id="${docSnap.id}" class="edit-btn bg-yellow-500 px-2 py-1 rounded">Edit</button>
-              <button data-id="${docSnap.id}" class="delete-btn bg-red-600 px-2 py-1 rounded">Delete</button>
-            </td>
-          `;
-          tbody.appendChild(row);
+  <script>
+    // Mock API for demonstration; replace with Firebase calls
+    const api = {
+      getEmployees: async () => [{ id: 'E101', name: 'Javier Pizaña' }],
+      getPunches: async (emp, date) => [],
+      savePunch: async (emp, punch) => {}
+    };
+    let offset = 0;
+    const fmt = d => `${d.toLocaleString('en-US',{month:'short'})} ${d.getDate()}`;
+    function getWeek(off) {
+      const now = new Date(); now.setDate(now.getDate() + off * 7);
+      const day = now.getDay(); const start = new Date(now);
+      start.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+      return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+    }
+    async function render() {
+      const empSelect = document.getElementById('employeeSelect');
+      const emps = await api.getEmployees();
+      empSelect.innerHTML = emps.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+      const emp = empSelect.value;
+      const week = getWeek(offset);
+      document.getElementById('weekRange').textContent = `${fmt(week[0])} to ${fmt(week[6])}`;
+      const header = emps.find(e => e.id === emp);
+      document.getElementById('empName').textContent = header.name;
+      document.getElementById('empID').textContent = header.id;
+      // ... populate other header fields
+      const body = document.getElementById('timesheetBody'); body.innerHTML = '';
+      for (const d of week) {
+        const dateStr = d.toISOString().slice(0,10);
+        const punches = await api.getPunches(emp, dateStr);
+        const pairs = [];
+        let cur = {};
+        punches.sort((a,b)=>a.time.localeCompare(b.time)).forEach(p=>{
+          if (!cur.in && p.type.includes('In')) cur.in = p.time;
+          else if (!cur.out && p.type.includes('Out')) { cur.out = p.time; pairs.push(cur); cur = {}; }
         });
-        attachRowListeners(workspaceId, employeeId);
+        const total = pairs.reduce((s,p)=>{
+          const [h1,m1]=p.in.split(':').map(Number);
+          const [h2,m2]=p.out.split(':').map(Number);
+          return s + ((h2*60+m2)-(h1*60+m1))/60;
+        },0).toFixed(2);
+        body.insertAdjacentHTML('beforeend',
+          `<tr class="bg-gray-800">
+            <td class="px-4 py-2">${d.getDate()}<br><span class="text-xs text-gray-400">${d.toLocaleDateString('en-US',{weekday:'short'})}</span></td>
+            <td class="px-4 py-2">${pairs[0]?.in||''}</td>
+            <td class="px-4 py-2">${pairs[0]?.out||''}</td>
+            <td class="px-4 py-2">${pairs[1]?.in||''}</td>
+            <td class="px-4 py-2">${pairs[1]?.out||''}</td>
+            <td class="px-4 py-2 text-right text-emerald-400">${total||''}</td>
+          </tr>`
+        );
       }
-
-      function attachRowListeners(wsId, empId) {
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-          btn.addEventListener('click', () => openModal(wsId, empId, btn.dataset.id));
-        });
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            if (confirm('Delete this punch?')) {
-              await deleteDoc(doc(db, 'workspaces', wsId, 'employees', empId, 'punches', btn.dataset.id));
-              loadPunches(wsId, empId);
-            }
-          });
-        });
-      }
-
-      async function openModal(wsId, empId, id = null) {
-        currentId = id;
-        const modal = document.getElementById('punchModal');
-        document.getElementById('deletePunchBtn').classList.toggle('hidden', !id);
-        if (id) {
-          const ref = doc(db, 'workspaces', wsId, 'employees', empId, 'punches', id);
-          const docSnap = await getDoc(ref);
-          const data = docSnap.data();
-          document.getElementById('punchDate').value = data.date;
-          document.getElementById('punchTime').value = data.time;
-          document.getElementById('punchType').value = data.type;
-        } else {
-          document.getElementById('punchDate').value = '';
-          document.getElementById('punchTime').value = '';
-          document.getElementById('punchType').value = 'Clock In';
-        }
-        modal.classList.remove('hidden');
-      }
-
-      function closeModal() {
-        document.getElementById('punchModal').classList.add('hidden');
-        currentId = null;
-      }
-
-      // Button handlers
-      document.getElementById('addPunchBtn').addEventListener('click', () => {
-        const ws = localStorage.getItem('activeWorkspaceId');
-        const emp = document.getElementById('employeeSelect').value;
-        openModal(ws, emp);
-      });
-      document.getElementById('cancelPunchBtn').addEventListener('click', closeModal);
-      document.getElementById('deletePunchBtn').addEventListener('click', async () => {
-        const ws = localStorage.getItem('activeWorkspaceId');
-        const emp = document.getElementById('employeeSelect').value;
-        await deleteDoc(doc(db, 'workspaces', ws, 'employees', emp, 'punches', currentId));
-        closeModal(); loadPunches(ws, emp);
-      });
-      document.getElementById('savePunchBtn').addEventListener('click', async () => {
-        const ws = localStorage.getItem('activeWorkspaceId');
-        const emp = document.getElementById('employeeSelect').value;
-        const date = document.getElementById('punchDate').value;
-        const time = document.getElementById('punchTime').value;
-        const type = document.getElementById('punchType').value;
-        if (!date || !time || !type) return alert('Complete all fields');
-        if (currentId) {
-          const refd = doc(db, 'workspaces', ws, 'employees', emp, 'punches', currentId);
-          await updateDoc(refd, { date, time, type });
-        } else {
-          await addDoc(collection(db, 'workspaces', ws, 'employees', emp, 'punches'), { date, time, type, createdAt: new Date().toISOString() });
-        }
-        closeModal(); loadPunches(ws, emp);
-      });
-
-      // Auth listener
-      onAuthStateChanged(auth, user => {
-        if (!user) return window.location.href = '/app.html';
-        const ws = localStorage.getItem('activeWorkspaceId');
-        const empSelect = document.getElementById('employeeSelect');
-        empSelect.addEventListener('change', () => loadPunches(ws, empSelect.value));
-        loadPunches(ws, empSelect.value);
-      });
-
-      // Print handler
-      document.getElementById('printBtn').addEventListener('click', () => window.print());
-    });
+    }
+    document.getElementById('prevWeekBtn').onclick = () => { offset--; render(); };
+    document.getElementById('nextWeekBtn').onclick = () => { offset++; render(); };
+    document.getElementById('employeeSelect').onchange = render;
+    document.getElementById('addPunchBtn').onclick = () => { document.getElementById('punchModal').classList.remove('hidden'); };
+    document.getElementById('cancelPunchBtn').onclick = () => { document.getElementById('punchModal').classList.add('hidden'); };
+    document.getElementById('savePunchBtn').onclick = async () => {
+      const punch = {
+        date: document.getElementById('punchDate').value,
+        type: document.getElementById('punchType').value,
+        time: document.getElementById('punchTime').value
+      };
+      const emp = document.getElementById('employeeSelect').value;
+      await api.savePunch(emp, punch);
+      document.getElementById('punchModal').classList.add('hidden');
+      render();
+    };
+    document.getElementById('printBtn').onclick = () => window.print();
+    window.onload = render;
   </script>
 </body>
 </html>

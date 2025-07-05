@@ -25,7 +25,7 @@
   <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
     <div>
       <a href="/dashboard.html">
-        <img src="/assets/nexustimelogo.png" alt="NexusTime Logo" class="h-8 w-8 inline-block mr-2">
+        <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-8 w-8 inline-block mr-2">
       </a>
     </div>
     <ul class="flex space-x-6">
@@ -39,7 +39,10 @@
   </nav>
 
   <div class="p-6 space-y-10" id="dashboardContent">Loading...</div>
-  <canvas id="hoursChart" class="mx-auto" width="600" height="300"></canvas>
+  <div class="max-w-4xl mx-auto">
+    <h2 class="text-xl font-bold text-white mb-4 text-center">Total Hours by Employee</h2>
+    <canvas id="hoursChart" width="600" height="300"></canvas>
+  </div>
 
   <script>
     async function loadDashboard() {
@@ -105,14 +108,14 @@
         data: {
           labels,
           datasets: [{
-            label: "Total Hours by Employee",
+            label: "Total Hours",
             data: dataPoints,
             backgroundColor: "#10B981"
           }]
         },
         options: {
           plugins: {
-            legend: { display: false }
+            legend: { display: true, labels: { color: 'white' } }
           },
           scales: {
             x: { ticks: { color: "white" } },

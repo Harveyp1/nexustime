@@ -1,7 +1,8 @@
+<!-- Onboarding page with plan detection and hidden selection if applicable -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Onboarding - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -21,87 +22,109 @@
     };
     firebase.initializeApp(firebaseConfig);
   </script>
+  <style>
+    .plan-card {
+      border: 1px solid #374151;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      background-color: #1f2937;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .plan-card:hover {
+      background-color: #374151;
+    }
+    .plan-card input[type="radio"] {
+      display: none;
+    }
+    .plan-card.selected {
+      outline: 2px solid #34d399;
+    }
+    .plan-card-label .price {
+      font-weight: bold;
+      font-size: 1.125rem;
+      color: white;
+    }
+    .plan-card-label .cycle {
+      font-size: 0.875rem;
+      color: #9ca3af;
+    }
+  </style>
 </head>
 <body class="bg-gray-950 text-white font-inter">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-2xl bg-gray-900 p-8 rounded-2xl shadow-xl">
       <h2 class="text-3xl font-bold text-center text-emerald-400 mb-6">Create a New Workspace</h2>
       <form id="onboardingForm" class="space-y-5">
+        <input type="hidden" id="selectedPlanHidden" name="plan" />
         <div>
           <label for="workspace" class="block text-sm mb-1">Workspace Name</label>
           <input type="text" id="workspace" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required />
         </div>
-
         <div>
           <label for="industry" class="block text-sm mb-1">Industry</label>
-          <select id="industry" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required></select>
+          <select id="industry" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required>
+            <option>Software</option><option>Construction</option><option>Retail</option><option>Healthcare</option><option>Finance</option>
+          </select>
         </div>
-
         <div>
           <label for="companySize" class="block text-sm mb-1">Company Size</label>
-          <select id="companySize" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required></select>
+          <select id="companySize" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required>
+            <option>1–10 employees</option><option>11–50 employees</option><option>51–200 employees</option>
+            <option>201–500 employees</option><option>501–1000 employees</option><option>1001+ employees</option>
+          </select>
         </div>
-
         <div>
           <label for="timezone" class="block text-sm mb-1">Time Zone</label>
-          <select id="timezone" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required></select>
+          <select id="timezone" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required>
+            <option value="America/New_York">(GMT-05:00) Eastern Time (US & Canada)</option>
+            <option value="America/Chicago">(GMT-06:00) Central Time (US & Canada)</option>
+            <option value="America/Denver">(GMT-07:00) Mountain Time (US & Canada)</option>
+            <option value="America/Los_Angeles">(GMT-08:00) Pacific Time (US & Canada)</option>
+            <option value="Europe/London">(GMT+00:00) London</option>
+          </select>
         </div>
-
-        <div>
-          <label for="plan" class="block text-sm mb-1">Plan</label>
-          <select id="plan" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl" required></select>
+        <div id="plan-section">
+          <label class="block text-sm mb-1">Choose a Plan</label>
+          <div class="grid grid-cols-2 gap-4">
+            <label class="plan-card selected">
+              <input type="radio" name="planCard" value="Pro" checked />
+              <div class="plan-card-label">
+                <span class="price">Pro</span>
+                <span class="cycle">$29/mo or $290/yr (17% off) per user</span>
+              </div>
+            </label>
+            <label class="plan-card">
+              <input type="radio" name="planCard" value="Starter" />
+              <div class="plan-card-label">
+                <span class="price">Starter</span>
+                <span class="cycle">$9/mo or $90/yr (17% off) per user</span>
+              </div>
+            </label>
+            <label class="plan-card">
+              <input type="radio" name="planCard" value="Free" />
+              <div class="plan-card-label">
+                <span class="price">Free</span>
+                <span class="cycle">$0/month per user</span>
+              </div>
+            </label>
+            <label class="plan-card">
+              <input type="radio" name="planCard" value="Enterprise" />
+              <div class="plan-card-label">
+                <span class="price">Enterprise</span>
+                <span class="cycle">Custom pricing per user</span>
+              </div>
+            </label>
+          </div>
         </div>
-
         <div>
           <label for="logo" class="block text-sm mb-1">Upload Logo (Optional - PNG 64x64)</label>
           <input type="file" id="logo" accept="image/png" class="w-full bg-gray-800 text-white rounded-xl border border-gray-700 p-2" />
           <p id="logoMsg" class="text-red-500 text-sm mt-1"></p>
         </div>
-
         <button type="submit" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white font-semibold text-center">Create Workspace</button>
       </form>
     </div>
   </div>
-
-  <script src="/scripts/company-options.js"></script>
-  <script src="/scripts/validate-logo-upload.js"></script>
-
-  <script>
-    document.getElementById("onboardingForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const user = firebase.auth().currentUser;
-      if (!user) return;
-
-      const db = firebase.firestore();
-      const storage = firebase.storage();
-      const workspaceName = document.getElementById("workspace").value;
-      const logoFile = document.getElementById("logo").files[0];
-
-      let logoUrl = "";
-      if (logoFile) {
-        const storageRef = storage.ref(`workspace-logos/${user.uid}-${Date.now()}.png`);
-        await storageRef.put(logoFile);
-        logoUrl = await storageRef.getDownloadURL();
-      }
-
-      const data = {
-        ownerId: user.uid,
-        name: workspaceName,
-        industry: document.getElementById("industry").value,
-        size: document.getElementById("companySize").value,
-        timezone: document.getElementById("timezone").value,
-        plan: document.getElementById("plan").value,
-        logoUrl: logoUrl,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      try {
-        await db.collection("workspaces").add(data);
-        window.location.href = "/switch-workspace.html";
-      } catch (error) {
-        alert("Failed to create workspace: " + error.message);
-      }
-    });
-  </script>
 </body>
 </html>

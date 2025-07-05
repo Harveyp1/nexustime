@@ -6,49 +6,43 @@
   <title>Login - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-white font-sans flex items-center justify-center h-screen">
-  <div class="bg-gray-900 p-8 rounded-xl shadow-lg w-full max-w-md">
-    <div class="text-center mb-6">
-      <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="w-20 h-20 mx-auto">
-      <h1 class="text-2xl font-bold mt-4 text-emerald-400">Welcome Back</h1>
-      <p class="text-sm text-gray-400">Login to your account</p>
+<body class="bg-gray-900 text-white">
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="bg-gray-800 p-8 rounded shadow max-w-sm w-full">
+      <div class="flex justify-center mb-6">
+        <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-12" />
+      </div>
+      <h2 class="text-xl font-bold mb-4 text-center">Login to NexusTime</h2>
+      <form id="loginForm" class="space-y-4">
+        <input type="email" id="email" placeholder="Email" required class="w-full p-2 rounded bg-gray-700 text-white" />
+        <input type="password" id="password" placeholder="Password" required class="w-full p-2 rounded bg-gray-700 text-white" />
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-4 rounded">Login</button>
+      </form>
+      <div class="text-sm mt-4 text-center">
+        <a href="signup.html" class="text-emerald-400 hover:underline">Don't have an account? Sign Up</a>
+      </div>
     </div>
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label for="email" class="block text-sm mb-1">Email</label>
-        <input type="email" id="email" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
-      </div>
-      <div>
-        <label for="password" class="block text-sm mb-1">Password</label>
-        <input type="password" id="password" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
-      </div>
-      <div class="flex items-center justify-between">
-        <a href="#" class="text-sm text-emerald-400 hover:underline">Forgot Password?</a>
-        <a href="/signup.html" class="text-sm text-gray-400 hover:underline">Sign Up</a>
-      </div>
-      <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-2 px-4 rounded">Login</button>
-    </form>
   </div>
 
-  <!-- Load mock data and login logic -->
-  <script src="/scripts/common.js"></script>
-  <script>
-    const loginForm = document.getElementById("loginForm");
+  <script type="module">
+    import { login } from '/scripts/auth.js';
 
-    loginForm?.addEventListener("submit", function (e) {
+    const form = document.getElementById('loginForm');
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-      if (mockUsers[email]) {
-        const user = mockUsers[email];
-        localStorage.setItem("userPlan", user.plan);
-        localStorage.setItem("userWorkspaces", JSON.stringify(user.workspaces));
-        localStorage.setItem("activeUser", email);
+      try {
+        const userCredential = await login(email, password);
+        const userId = userCredential.user.uid;
+        localStorage.setItem("uid", userId);
         window.location.href = "/switch-workspace.html";
-      } else {
-        alert("Invalid login: No matching user.");
+      } catch (error) {
+        console.error("Login failed:", error);
+        alert("Login failed. Please check your credentials.");
       }
     });
   </script>

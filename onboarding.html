@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to NexusTime</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white">
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="bg-gray-800 p-8 rounded shadow max-w-md w-full">
+      <h2 class="text-2xl font-bold text-center mb-6">Welcome to NexusTime 🎉</h2>
+      <form id="onboardingForm" class="space-y-4">
+        <div>
+          <label for="workspaceName" class="block mb-1 font-medium">Workspace Name</label>
+          <input id="workspaceName" type="text" required class="w-full p-2 rounded bg-gray-700 text-white" />
+        </div>
+        <div>
+          <label for="industry" class="block mb-1 font-medium">Industry</label>
+          <select id="industry" required class="w-full p-2 rounded bg-gray-700 text-white">
+            <option value="">Select Industry</option>
+            <option>Accounting</option>
+            <option>Agriculture</option>
+            <option>Architecture</option>
+            <option>Automotive</option>
+            <option>Construction</option>
+            <option>Consulting</option>
+            <option>Customer Service</option>
+            <option>Design</option>
+            <option>Education</option>
+            <option>Engineering</option>
+            <option>Entertainment</option>
+            <option>Finance</option>
+            <option>Food & Beverage</option>
+            <option>Government</option>
+            <option>Healthcare</option>
+            <option>Hospitality</option>
+            <option>Information Technology</option>
+            <option>Legal</option>
+            <option>Logistics</option>
+            <option>Manufacturing</option>
+            <option>Marketing</option>
+            <option>Media</option>
+            <option>Nonprofit</option>
+            <option>Pharmaceutical</option>
+            <option>Real Estate</option>
+            <option>Retail</option>
+            <option>Sales</option>
+            <option>Telecommunications</option>
+            <option>Transportation</option>
+            <option>Utilities</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="timezone" class="block mb-1 font-medium">Timezone</label>
+          <select id="timezone" required class="w-full p-2 rounded bg-gray-700 text-white"></select>
+        </div>
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-4 rounded">Continue</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/scripts/onboarding-inject.js"></script>
+</body>
+</html>

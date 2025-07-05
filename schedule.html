@@ -1,14 +1,20 @@
-<!-- Schedule Page with Updated Menu and Full Content -->
+<!-- Schedule Page with Workspace Check -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Schedule - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-950 text-white font-inter">
+  <script>
+    const selectedWorkspace = localStorage.getItem('activeWorkspace');
+    if (!selectedWorkspace) window.location.href = '/switch-workspace.html';
+  </script>
+
+  <!-- Menu -->
   <nav class="bg-gray-900 text-white py-3 shadow-md">
     <div class="container mx-auto px-6 flex justify-between items-center">
       <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
@@ -27,10 +33,11 @@
     </div>
   </nav>
 
+  <!-- Content -->
   <main class="flex-1 p-6">
     <section class="bg-gray-900 p-6 rounded-xl shadow-md">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold">Weekly Schedule</h2>
+        <h2 class="text-xl font-semibold">Weekly Schedule - <span id="workspaceName"></span></h2>
         <p id="weekRange" class="text-sm text-gray-400"></p>
       </div>
 
@@ -50,6 +57,8 @@
   </main>
 
   <script>
+    document.getElementById('workspaceName').textContent = selectedWorkspace;
+
     const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const labels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const settings = JSON.parse(localStorage.getItem('nexustime-settings')) || { weekStart: 'saturday' };

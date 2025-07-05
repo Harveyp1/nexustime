@@ -1,4 +1,4 @@
-<!-- Settings Page with Updated Menu and Full Content -->
+<!-- Settings Page with Workspace Check -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-950 text-white font-inter">
+  <script>
+    const selectedWorkspace = localStorage.getItem('activeWorkspace');
+    if (!selectedWorkspace) window.location.href = '/switch-workspace.html';
+  </script>
+
   <nav class="bg-gray-900 text-white py-3 shadow-md">
     <div class="container mx-auto px-6 flex justify-between items-center">
       <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
@@ -27,73 +32,35 @@
     </div>
   </nav>
 
-  <main class="flex-1 p-6">
-    <section class="bg-gray-900 p-6 rounded-xl shadow-md max-w-xl mx-auto">
-      <h2 class="text-lg font-semibold mb-4">Workspace Configuration</h2>
-
-      <form id="settings-form" class="space-y-6">
-        <div>
-          <label for="week-start" class="block text-sm text-gray-300 mb-1">Start of the Work Week</label>
-          <select id="week-start" name="week-start" class="w-full bg-gray-800 text-white p-2 rounded">
-            <option value="sunday">Sunday</option>
-            <option value="monday">Monday</option>
-            <option value="tuesday">Tuesday</option>
-            <option value="wednesday">Wednesday</option>
-            <option value="thursday">Thursday</option>
-            <option value="friday">Friday</option>
-            <option value="saturday" selected>Saturday</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="timezone" class="block text-sm text-gray-300 mb-1">Time Zone</label>
-          <select id="timezone" name="timezone" class="w-full bg-gray-800 text-white p-2 rounded">
-            <option value="America/Chicago">Central (CST)</option>
-            <option value="America/New_York">Eastern (EST)</option>
-            <option value="America/Denver">Mountain (MST)</option>
-            <option value="America/Los_Angeles">Pacific (PST)</option>
-            <option value="UTC">UTC</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm text-gray-300 mb-1">Overtime Rules</label>
-          <input type="number" min="0" id="ot-threshold" class="w-full bg-gray-800 text-white p-2 rounded" placeholder="Enter hours per week (e.g. 40)">
-          <p class="text-xs text-gray-500 mt-1">Overtime applies after this many hours worked in a week.</p>
-        </div>
-
-        <div>
-          <label class="block text-sm text-gray-300 mb-1">PTO (Paid Time Off) Accrual</label>
-          <input type="number" min="0" id="pto-rate" class="w-full bg-gray-800 text-white p-2 rounded" placeholder="Enter hours earned per 40 hrs worked (e.g. 1.5)">
-          <p class="text-xs text-gray-500 mt-1">How much PTO is earned per 40 hours worked.</p>
-        </div>
-
-        <div class="text-right">
-          <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-white py-2 px-4 rounded font-semibold">Save Settings</button>
-        </div>
-
-        <div id="confirmation" class="text-sm text-emerald-400 mt-4 hidden text-center">
-          ✅ Settings saved successfully.
-        </div>
-      </form>
-    </section>
+  <main class="p-6 max-w-4xl mx-auto">
+    <h1 class="text-xl font-bold text-emerald-400 mb-4">Workspace Settings - <span id="workspaceName"></span></h1>
+    <form class="space-y-6">
+      <div>
+        <label class="block text-sm font-medium mb-1">Week Start Day</label>
+        <select class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full">
+          <option>Sunday</option>
+          <option>Monday</option>
+          <option>Saturday</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Time Zone</label>
+        <input type="text" placeholder="e.g. America/Chicago" class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Overtime Rule</label>
+        <input type="text" placeholder="e.g. 40 hours/week" class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">PTO Policy</label>
+        <textarea rows="3" placeholder="Describe your PTO policy here..." class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full"></textarea>
+      </div>
+      <button class="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded">Save Settings</button>
+    </form>
   </main>
 
   <script>
-    document.getElementById('settings-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const confirmation = document.getElementById('confirmation');
-      confirmation.classList.remove('hidden');
-      setTimeout(() => {
-        confirmation.classList.add('hidden');
-      }, 3000);
-
-      const weekStart = document.getElementById('week-start').value;
-      const timezone = document.getElementById('timezone').value;
-      const otThreshold = document.getElementById('ot-threshold').value;
-      const ptoRate = document.getElementById('pto-rate').value;
-      localStorage.setItem('nexustime-settings', JSON.stringify({ weekStart, timezone, otThreshold, ptoRate }));
-    });
+    document.getElementById('workspaceName').textContent = selectedWorkspace;
   </script>
 </body>
 </html>

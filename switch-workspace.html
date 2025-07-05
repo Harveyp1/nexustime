@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Switch Workspace - NexusTime</title>
+  <title>Switch Workspace</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -20,52 +20,48 @@
     };
     firebase.initializeApp(firebaseConfig);
   </script>
+  <style>
+    .workspace-card {
+      @apply bg-gray-800 p-5 rounded-xl shadow hover:ring-2 hover:ring-emerald-400 cursor-pointer transition;
+    }
+    .workspace-card img {
+      @apply w-16 h-16 object-cover rounded-full;
+    }
+  </style>
 </head>
-<body class="bg-gray-950 text-white font-inter">
-  <div class="min-h-screen flex flex-col items-center justify-center p-6">
-    <h1 class="text-2xl font-bold text-emerald-400 mb-6">Select a Workspace</h1>
-    <div id="workspaceList" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl"></div>
-  </div>
+<body class="bg-gray-950 text-white min-h-screen p-8">
+  <h1 class="text-3xl font-bold text-emerald-400 mb-6">Select a Workspace</h1>
+  <div id="workspaceList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
   <script>
-    firebase.auth().onAuthStateChanged(async (user) => {
-      if (!user) return window.location.href = "/app.html";
-
+    firebase.auth().onAuthStateChanged(async user => {
+      if (!user) return;
       const db = firebase.firestore();
-      const snapshot = await db.collection("workspaces")
-        .where("ownerId", "==", user.uid)
-        .get();
+      const workspaces = await db.collection("workspaces").where("ownerId", "==", user.uid).get();
+      const container = document.getElementById("workspaceList");
 
-      const list = document.getElementById("workspaceList");
-      list.innerHTML = "";
+      if (workspaces.empty) {
+        container.innerHTML = `<p class='text-gray-400'>No workspaces found. <a href='/onboarding.html' class='text-emerald-400 underline'>Create one</a></p>`;
+        return;
+      }
 
-      snapshot.forEach(doc => {
-        const workspace = doc.data();
-        const div = document.createElement("div");
-        div.className = "bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg cursor-pointer hover:ring hover:ring-emerald-400";
-        div.innerHTML = `
-          <h2 class="text-xl font-bold mb-2">${workspace.name}</h2>
-          <p class="text-sm text-gray-400 mb-2">Plan: ${workspace.plan || 'Free'}</p>
-          <p class="text-sm text-gray-500">${workspace.industry || ''}</p>
+      workspaces.forEach(doc => {
+        const data = doc.data();
+        const card = document.createElement("div");
+        card.className = "workspace-card flex gap-4 items-center";
+        card.innerHTML = `
+          <img src="${data.logoUrl || 'https://via.placeholder.com/64'}" alt="Logo" />
+          <div>
+            <h2 class="text-xl font-semibold">${data.name}</h2>
+            <p class="text-sm text-gray-400">${data.industry} • ${data.timezone}</p>
+          </div>
         `;
-        div.addEventListener("click", () => {
-          localStorage.setItem("activeWorkspace", doc.id);
+        card.onclick = () => {
+          localStorage.setItem("activeWorkspaceId", doc.id);
           window.location.href = "/dashboard.html";
-        });
-        list.appendChild(div);
+        };
+        container.appendChild(card);
       });
-
-      const addDiv = document.createElement("div");
-      addDiv.className = "bg-gray-700 p-6 rounded-xl shadow flex items-center justify-center hover:shadow-lg cursor-pointer hover:ring hover:ring-emerald-400 text-center text-emerald-400 font-bold";
-      addDiv.textContent = "+ Add New Workspace";
-      addDiv.addEventListener("click", () => {
-        if (snapshot.size >= 1 && snapshot.docs[0].data().plan === "Free") {
-          window.location.href = "/pricing.html";
-        } else {
-          window.location.href = "/onboarding.html";
-        }
-      });
-      list.appendChild(addDiv);
     });
   </script>
 </body>

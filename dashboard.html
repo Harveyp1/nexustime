@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -21,9 +22,12 @@
   </script>
 </head>
 <body class="bg-gray-950 text-white min-h-screen">
-  <!-- Top Navigation Menu -->
   <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-    <div class="text-xl font-bold">NexusTime</div>
+    <div>
+      <a href="/dashboard.html">
+        <img src="/assets/nexustimelogo.png" alt="NexusTime Logo" class="h-8 w-8 inline-block mr-2">
+      </a>
+    </div>
     <ul class="flex space-x-6">
       <li><a href="/dashboard.html" class="hover:text-green-400">Dashboard</a></li>
       <li><a href="/schedule.html" class="hover:text-green-400">Schedule</a></li>
@@ -35,6 +39,7 @@
   </nav>
 
   <div class="p-6 space-y-10" id="dashboardContent">Loading...</div>
+  <canvas id="hoursChart" class="mx-auto" width="600" height="300"></canvas>
 
   <script>
     async function loadDashboard() {
@@ -84,6 +89,37 @@
           </div>
         `;
       }).join("");
+
+      const hoursPerEmployee = {};
+      timesheetSnap.docs.forEach(doc => {
+        const data = doc.data();
+        const name = data.employeeName || 'Unknown';
+        hoursPerEmployee[name] = (hoursPerEmployee[name] || 0) + (data.hours || 0);
+      });
+
+      const labels = Object.keys(hoursPerEmployee);
+      const dataPoints = Object.values(hoursPerEmployee);
+
+      new Chart(document.getElementById("hoursChart"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Total Hours by Employee",
+            data: dataPoints,
+            backgroundColor: "#10B981"
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { color: "white" } },
+            y: { ticks: { color: "white" } }
+          }
+        }
+      });
 
       document.getElementById("dashboardContent").innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

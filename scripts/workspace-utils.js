@@ -1,12 +1,11 @@
-// workspace-utils.js — shared helper for workspace logic
+import { db } from './firebase-init.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-function getActiveWorkspace() {
-  try {
-    const allWorkspaces = JSON.parse(localStorage.getItem("userWorkspaces")) || [];
-    const selected = localStorage.getItem("activeWorkspace");
-    return allWorkspaces.find(w => w.name === selected) || null;
-  } catch (err) {
-    console.error("Failed to load workspace data:", err);
-    return null;
-  }
+export async function getActiveWorkspace(userId) {
+  const workspaceId = localStorage.getItem("activeWorkspaceId");
+  if (!workspaceId) return null;
+
+  const ref = doc(db, `users/${userId}/workspaces/${workspaceId}`);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
 }

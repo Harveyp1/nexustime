@@ -29,7 +29,7 @@
           <input type="checkbox" class="form-checkbox bg-gray-700 rounded mr-2">
           Remember me
         </label>
-        <a href="#" class="hover:text-emerald-400">Forgot password?</a>
+        <a href="/forgot-password.html" class="hover:text-emerald-400">Forgot password?</a>
       </div>
       <button type="submit" class="w-full bg-emerald-500 py-2 rounded hover:bg-emerald-400 font-semibold">Sign In</button>
     </form>
@@ -46,10 +46,19 @@
 
       // Fake login - hardcoded user
       if (email === 'admin@example.com' && password === 'password123') {
-        alert('Login successful! Redirecting...');
-        window.location.href = '/dashboard.html';
+        const loader = document.createElement('div');
+        loader.className = 'mt-4 text-center text-sm text-emerald-400';
+        loader.textContent = 'Logging in...';
+        document.querySelector('form').after(loader);
+
+        setTimeout(() => {
+          window.location.href = '/dashboard.html';
+        }, 1000);
       } else {
-        alert('Invalid email or password.');
+        const error = document.createElement('div');
+        error.className = 'mt-4 text-center text-sm text-red-500';
+        error.textContent = 'Invalid email or password.';
+        document.querySelector('form').after(error);
       }
     });
   </script>

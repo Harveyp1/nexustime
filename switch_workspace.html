@@ -29,6 +29,7 @@
   <main class="p-6 max-w-6xl mx-auto">
     <h1 class="text-2xl font-bold mb-6">Select a Workspace</h1>
     <div id="workspaceList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="emptyState" class="text-gray-400 text-center hidden mt-10">No workspaces found. Please log in again or contact support.</div>
   </main>
 
   <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
@@ -41,9 +42,15 @@
   </div>
 
   <script>
+    let workspaces;
+    try {
+      workspaces = JSON.parse(localStorage.getItem('userWorkspaces')) || [];
+    } catch {
+      workspaces = [];
+    }
     const planType = localStorage.getItem('userPlan') || 'Free';
-    const workspaces = JSON.parse(localStorage.getItem('userWorkspaces') || '[]');
     const list = document.getElementById('workspaceList');
+    const empty = document.getElementById('emptyState');
 
     function selectWorkspace(name) {
       localStorage.setItem('activeWorkspace', name);
@@ -54,33 +61,37 @@
       document.getElementById('modal').classList.toggle('hidden', !show);
     }
 
-    for (const ws of workspaces) {
-      const div = document.createElement('div');
-      div.className = 'bg-gray-800 rounded-lg p-4 shadow hover:bg-gray-700 cursor-pointer';
-      div.innerHTML = `
-        <div class="flex items-center space-x-4">
-          <img src="${ws.logoUrl || 'https://via.placeholder.com/40'}" alt="logo" class="w-10 h-10 rounded-full">
-          <div>
-            <h2 class="text-lg font-bold text-white">${ws.name}</h2>
-            <p class="text-sm text-gray-400">Plan: ${ws.plan}</p>
+    if (workspaces.length === 0) {
+      empty.classList.remove('hidden');
+    } else {
+      for (const ws of workspaces) {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-800 rounded-lg p-4 shadow hover:bg-gray-700 cursor-pointer';
+        div.innerHTML = `
+          <div class="flex items-center space-x-4">
+            <img src="${ws.logoUrl || 'https://via.placeholder.com/40'}" alt="logo" class="w-10 h-10 rounded-full">
+            <div>
+              <h2 class="text-lg font-bold text-white">${ws.name}</h2>
+              <p class="text-sm text-gray-400">Plan: ${ws.plan}</p>
+            </div>
           </div>
-        </div>
-      `;
-      div.onclick = () => selectWorkspace(ws.name);
-      list.appendChild(div);
-    }
+        `;
+        div.onclick = () => selectWorkspace(ws.name);
+        list.appendChild(div);
+      }
 
-    const addCard = document.createElement('div');
-    addCard.className = 'bg-gray-700 border-2 border-dashed border-emerald-400 p-4 text-center rounded-lg hover:bg-gray-600 cursor-pointer';
-    addCard.innerHTML = `
-      <h2 class="text-lg font-bold mb-2">+ Add New Workspace</h2>
-      <p class="text-sm text-gray-400">Create a new workspace</p>
-    `;
-    addCard.onclick = () => {
-      if (planType === 'Free' && workspaces.length >= 1) toggleModal(true);
-      else alert('TODO: Show new workspace creation modal');
-    };
-    list.appendChild(addCard);
+      const addCard = document.createElement('div');
+      addCard.className = 'bg-gray-700 border-2 border-dashed border-emerald-400 p-4 text-center rounded-lg hover:bg-gray-600 cursor-pointer';
+      addCard.innerHTML = `
+        <h2 class="text-lg font-bold mb-2">+ Add New Workspace</h2>
+        <p class="text-sm text-gray-400">Create a new workspace</p>
+      `;
+      addCard.onclick = () => {
+        if (planType === 'Free' && workspaces.length >= 1) toggleModal(true);
+        else alert('TODO: Show new workspace creation modal');
+      };
+      list.appendChild(addCard);
+    }
   </script>
 </body>
 </html>

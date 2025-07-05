@@ -1,100 +1,91 @@
-<!-- Dashboard Page with Updated Menu and Workspace Check -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard - NexusTime</title>
+  <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-</head>
-<body class="bg-gray-950 text-white font-inter">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
-    const selectedWorkspace = localStorage.getItem('activeWorkspace');
-    if (!selectedWorkspace) window.location.href = '/switch-workspace.html';
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+      authDomain: "nexustime-e8b91.firebaseapp.com",
+      projectId: "nexustime-e8b91",
+      storageBucket: "nexustime-e8b91.appspot.com",
+      messagingSenderId: "516976739338",
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3"
+    };
+    firebase.initializeApp(firebaseConfig);
   </script>
-
-  <nav class="bg-gray-900 text-white py-3 shadow-md">
-    <div class="container mx-auto px-6 flex justify-between items-center">
-      <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
-      <div class="flex space-x-4 text-sm">
-        <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-        <a href="/schedule.html" class="hover:text-emerald-400">Schedule</a>
-        <a href="/timesheets.html" class="hover:text-emerald-400">Timesheets</a>
-        <a href="/workspace.html" class="hover:text-emerald-400">Workspace</a>
-        <a href="/employees.html" class="hover:text-emerald-400">Employees</a>
-        <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
-        <a href="/timeoff.html" class="hover:text-emerald-400">Time Off</a>
-        <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
-        <a href="/switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
-        <a href="/app.html" class="hover:text-emerald-400">Logout</a>
-      </div>
-    </div>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+  <!-- Top Navigation Menu -->
+  <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
+    <div class="text-xl font-bold">NexusTime</div>
+    <ul class="flex space-x-6">
+      <li><a href="/dashboard.html" class="hover:text-green-400">Dashboard</a></li>
+      <li><a href="/schedule.html" class="hover:text-green-400">Schedule</a></li>
+      <li><a href="/timesheet.html" class="hover:text-green-400">Timesheet</a></li>
+      <li><a href="/manage.html" class="hover:text-green-400">Manage</a></li>
+      <li><a href="/settings.html" class="hover:text-green-400">Settings</a></li>
+      <li><a href="/switch-workspace.html" class="hover:text-green-400">Switch Workspace</a></li>
+    </ul>
   </nav>
 
-  <main class="flex-1 p-6 space-y-6">
-    <h1 class="text-xl font-bold text-emerald-400">Workspace: <span id="workspaceName"></span></h1>
-
-    <!-- Summary -->
-    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h2 class="text-sm text-gray-400">Total Hours This Week</h2>
-        <p class="text-2xl font-bold">42.5 hrs</p>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h2 class="text-sm text-gray-400">Pending Timesheets</h2>
-        <p class="text-2xl font-bold">3</p>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h2 class="text-sm text-gray-400">Approved Timesheets</h2>
-        <p class="text-2xl font-bold">15</p>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h2 class="text-sm text-gray-400">Total Employees</h2>
-        <p class="text-2xl font-bold">8</p>
-      </div>
-    </section>
-
-    <!-- Productivity Score & Alerts -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h3 class="text-lg font-semibold mb-2">Team Productivity Score</h3>
-        <p class="text-sm text-gray-400 mb-4">Last 7 days: <strong class="text-emerald-400">87%</strong></p>
-        <div class="w-full h-2 bg-gray-700 rounded-full">
-          <div class="h-2 bg-emerald-400 rounded-full" style="width: 87%"></div>
-        </div>
-      </div>
-
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h3 class="text-lg font-semibold mb-2">Missed Clock-ins</h3>
-        <ul class="text-sm text-red-400 space-y-1">
-          <li>John D. missed on Mon</li>
-          <li>Anna L. missed on Wed</li>
-          <li>Marco S. missed on Fri</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- Activity Feed -->
-    <section class="bg-gray-800 p-4 rounded-xl">
-      <h3 class="text-lg font-semibold mb-4">Recent Activity</h3>
-      <ul class="text-sm text-gray-300 space-y-2">
-        <li>✔️ Emily R. submitted a timesheet - 3 hrs</li>
-        <li>✔️ Josh T. clocked out - 7.5 hrs</li>
-        <li>✔️ Admin approved timesheet for Sarah G.</li>
-        <li>⚠️ Mike B. forgot to clock out</li>
-      </ul>
-    </section>
-
-    <!-- Suggestions & Insights -->
-    <section class="bg-gray-800 p-4 rounded-xl">
-      <h3 class="text-lg font-semibold mb-2">Smart Suggestions</h3>
-      <p class="text-sm text-emerald-400">🧠 "Team productivity dips every Friday afternoon. Consider lighter tasks during this time."</p>
-    </section>
-  </main>
+  <div class="p-6" id="dashboardContent">Loading...</div>
 
   <script>
-    document.getElementById('workspaceName').textContent = selectedWorkspace;
+    async function loadDashboard() {
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+
+      const db = firebase.firestore();
+      const userDoc = await db.collection("users").doc(user.uid).get();
+      if (!userDoc.exists || !userDoc.data().activeWorkspaceId) {
+        window.location.href = "/switch-workspace.html";
+        return;
+      }
+
+      const workspaceId = userDoc.data().activeWorkspaceId;
+      const workspaceRef = db.collection("workspaces").doc(workspaceId);
+      const workspaceDoc = await workspaceRef.get();
+      const workspaceData = workspaceDoc.data();
+
+      const employeeSnap = await workspaceRef.collection("employees").get();
+      const timesheetSnap = await workspaceRef.collection("timesheets").get();
+
+      const employeeCount = employeeSnap.size;
+      const totalHours = timesheetSnap.docs.reduce((sum, doc) => sum + (doc.data().hours || 0), 0);
+      const pending = timesheetSnap.docs.filter(doc => doc.data().status === "pending").length;
+      const approved = timesheetSnap.docs.filter(doc => doc.data().status === "approved").length;
+
+      document.getElementById("dashboardContent").innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="bg-gray-900 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold">Employees</h2>
+            <p class="text-3xl mt-2">${employeeCount}</p>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold">Total Hours</h2>
+            <p class="text-3xl mt-2">${totalHours}</p>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold">Pending Timesheets</h2>
+            <p class="text-3xl mt-2">${pending}</p>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold">Approved Timesheets</h2>
+            <p class="text-3xl mt-2">${approved}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) loadDashboard();
+    });
   </script>
 </body>
 </html>

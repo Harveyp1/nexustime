@@ -1,79 +1,227 @@
-<!-- Timesheet Page Redesign Using Unified Theme -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timesheets - NexusTime</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timesheet</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/style.css">
+  <style>
+    @media print {
+      body { background: white; color: black; }
+      header nav, #addPunchBtn, #prevWeek, #nextWeek, #employeeSelect, #savePunchBtn, #deletePunchBtn, #cancelPunchBtn, #printBtn { display: none; }
+      table { page-break-after: always; }
+    }
+  </style>
 </head>
-<body class="bg-gray-950 text-white font-inter min-h-screen">
-  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-    <img src="/logo.png" alt="Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
-    <nav class="hidden md:flex space-x-6 text-gray-400">
-      <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-      <a href="/timesheet.html" class="text-emerald-400">Timesheets</a>
-      <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
-      <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
-      <a href="/workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
-      <a href="/index.html" class="secondary-button px-4 py-2 rounded-lg">Log Out</a>
+<body class="bg-gray-950 text-white">
+  <header class="bg-gray-900 shadow p-4 flex items-center justify-between">
+    <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10" />
+    <nav class="space-x-4">
+      <a href="dashboard.html" class="hover:underline">Dashboard</a>
+      <a href="timesheet.html" class="hover:underline font-bold">Timesheet</a>
+      <a href="schedule.html" class="hover:underline">Schedule</a>
+      <a href="settings.html" class="hover:underline">Settings</a>
+      <a href="switch-workspace.html" class="hover:underline">Switch Workspace</a>
+      <button id="printBtn" class="bg-blue-500 px-3 py-1 rounded text-sm">Print Timesheet</button>
     </nav>
   </header>
 
-  <main class="p-6 space-y-8">
-    <div class="text-center mb-10">
-      <h1 class="text-3xl font-bold">Timesheet Overview</h1>
-      <p class="text-gray-400">Review, edit, and submit your weekly time entries.</p>
+  <main class="p-6">
+    <!-- Employee Header -->
+    <section class="mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div><strong>Name:</strong> <span id="empName">Jane Doe</span></div>
+        <div><strong>ID:</strong> <span id="empID">E12345</span></div>
+        <div><strong>Status:</strong> <span id="empStatus">Active</span></div>
+        <div><strong>Hire Date:</strong> <span id="empHire">2022-01-01</span></div>
+        <div><strong>Card #:</strong> <span id="empCard">000123</span></div>
+        <div><strong>Department:</strong> <span id="empDept">Sales</span></div>
+        <div><strong>Supervisor:</strong> <span id="empSup">John Smith</span></div>
+        <div><strong>Pay Type:</strong> <span id="empPay">Hourly</span></div>
+        <div><strong>Type:</strong> <span id="empType">Full-Time</span></div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <button id="prevWeek" class="bg-gray-700 px-4 py-1 rounded">Previous</button>
+        <span id="weekRange" class="mx-2">July 1 - July 7, 2025</span>
+        <button id="nextWeek" class="bg-gray-700 px-4 py-1 rounded">Next</button>
+      </div>
+      <div class="flex items-center space-x-4">
+        <select id="employeeSelect" class="bg-gray-800 border border-gray-600 px-4 py-2 rounded text-white">
+          <option value="E12345">Jane Doe</option>
+          <option value="E54321">Mark Lee</option>
+        </select>
+        <button id="addPunchBtn" class="bg-green-600 px-4 py-2 rounded">Add Punch</button>
+      </div>
     </div>
 
     <!-- Timesheet Table -->
-    <section class="bg-gray-900 p-6 rounded-xl shadow-xl">
-      <h3 class="text-lg font-semibold mb-4">This Week's Entries</h3>
-      <table class="min-w-full text-sm">
-        <thead class="text-gray-400">
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-gray-800 text-white rounded-lg overflow-hidden">
+        <thead class="bg-gray-700">
           <tr>
-            <th class="text-left py-2">Date</th>
-            <th class="text-left py-2">Project</th>
-            <th class="text-left py-2">Hours</th>
-            <th class="text-left py-2">Notes</th>
-            <th class="text-left py-2">Status</th>
+            <th class="py-2 px-4">Date</th>
+            <th class="py-2 px-4">Day</th>
+            <th class="py-2 px-4">Time</th>
+            <th class="py-2 px-4">Type</th>
+            <th class="py-2 px-4">Actions</th>
           </tr>
         </thead>
-        <tbody class="text-white">
-          <tr class="border-t border-gray-800">
-            <td class="py-2">Mon, Jul 1</td>
-            <td class="py-2">Website Redesign</td>
-            <td class="py-2">4</td>
-            <td class="py-2">Landing page</td>
-            <td class="py-2 text-yellow-400">Pending</td>
-          </tr>
-          <tr class="border-t border-gray-800">
-            <td class="py-2">Tue, Jul 2</td>
-            <td class="py-2">Website Redesign</td>
-            <td class="py-2">4.5</td>
-            <td class="py-2">Form updates</td>
-            <td class="py-2 text-green-400">Submitted</td>
-          </tr>
-          <tr class="border-t border-gray-800">
-            <td class="py-2">Wed, Jul 3</td>
-            <td class="py-2">Internal Meeting</td>
-            <td class="py-2">2</td>
-            <td class="py-2">Weekly sync</td>
-            <td class="py-2 text-yellow-400">Pending</td>
-          </tr>
-        </tbody>
+        <tbody id="timesheetBody"></tbody>
       </table>
-    </section>
+    </div>
 
-    <!-- Submission Controls -->
-    <div class="flex justify-end space-x-4">
-      <button class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">Save Draft</button>
-      <button class="bg-emerald-500 px-4 py-2 rounded hover:bg-emerald-400">Submit Timesheet</button>
+    <!-- Verification Section -->
+    <div class="flex items-center justify-between mt-6">
+      <label class="flex items-center">
+        <input type="checkbox" id="empVerify" class="mr-2"> Employee Verified
+      </label>
+      <label class="flex items-center">
+        <input type="checkbox" id="supVerify" class="mr-2" disabled> Supervisor Verified
+      </label>
     </div>
   </main>
 
-  <script src="/scripts/common.js" type="module"></script>
+  <!-- Punch Modal -->
+  <div id="punchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white text-black p-6 rounded w-full max-w-md space-y-4">
+      <h2 class="text-xl font-bold">Add/Edit Punch</h2>
+      <label class="block"><span class="block mb-1">Date:</span><input type="date" id="punchDate" class="w-full p-2 border rounded" /></label>
+      <label class="block"><span class="block mb-1">Time:</span><input type="time" id="punchTime" class="w-full p-2 border rounded" /></label>
+      <label class="block"><span class="block mb-1">Type:</span>
+        <select id="punchType" class="w-full p-2 border rounded">
+          <option value="Clock In">Clock In</option>
+          <option value="Clock Out">Clock Out</option>
+          <option value="Start Lunch">Start Lunch</option>
+          <option value="End Lunch">End Lunch</option>
+        </select>
+      </label>
+      <div class="flex justify-end space-x-2">
+        <button id="deletePunchBtn" class="hidden bg-red-600 text-white px-4 py-2 rounded">Delete</button>
+        <button id="savePunchBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+        <button id="cancelPunchBtn" class="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from '/scripts/firebase-init.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+    import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const auth = getAuth();
+      let currentId = null;
+
+      function formatDay(date) {
+        return new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+      }
+
+      async function loadPunches(workspaceId, employeeId) {
+        const tbody = document.getElementById('timesheetBody');
+        tbody.innerHTML = '';
+        const ref = collection(db, 'workspaces', workspaceId, 'employees', employeeId, 'punches');
+        const snapshot = await getDocs(ref);
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="py-2 px-4">${data.date}</td>
+            <td class="py-2 px-4">${formatDay(data.date)}</td>
+            <td class="py-2 px-4">${data.time}</td>
+            <td class="py-2 px-4">${data.type}</td>
+            <td class="py-2 px-4 space-x-2">
+              <button data-id="${docSnap.id}" class="edit-btn bg-yellow-500 px-2 py-1 rounded">Edit</button>
+              <button data-id="${docSnap.id}" class="delete-btn bg-red-600 px-2 py-1 rounded">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+        attachRowListeners(workspaceId, employeeId);
+      }
+
+      function attachRowListeners(wsId, empId) {
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+          btn.addEventListener('click', () => openModal(wsId, empId, btn.dataset.id));
+        });
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            if (confirm('Delete this punch?')) {
+              await deleteDoc(doc(db, 'workspaces', wsId, 'employees', empId, 'punches', btn.dataset.id));
+              loadPunches(wsId, empId);
+            }
+          });
+        });
+      }
+
+      async function openModal(wsId, empId, id = null) {
+        currentId = id;
+        const modal = document.getElementById('punchModal');
+        document.getElementById('deletePunchBtn').classList.toggle('hidden', !id);
+        if (id) {
+          const ref = doc(db, 'workspaces', wsId, 'employees', empId, 'punches', id);
+          const docSnap = await getDoc(ref);
+          const data = docSnap.data();
+          document.getElementById('punchDate').value = data.date;
+          document.getElementById('punchTime').value = data.time;
+          document.getElementById('punchType').value = data.type;
+        } else {
+          document.getElementById('punchDate').value = '';
+          document.getElementById('punchTime').value = '';
+          document.getElementById('punchType').value = 'Clock In';
+        }
+        modal.classList.remove('hidden');
+      }
+
+      function closeModal() {
+        document.getElementById('punchModal').classList.add('hidden');
+        currentId = null;
+      }
+
+      // Button handlers
+      document.getElementById('addPunchBtn').addEventListener('click', () => {
+        const ws = localStorage.getItem('activeWorkspaceId');
+        const emp = document.getElementById('employeeSelect').value;
+        openModal(ws, emp);
+      });
+      document.getElementById('cancelPunchBtn').addEventListener('click', closeModal);
+      document.getElementById('deletePunchBtn').addEventListener('click', async () => {
+        const ws = localStorage.getItem('activeWorkspaceId');
+        const emp = document.getElementById('employeeSelect').value;
+        await deleteDoc(doc(db, 'workspaces', ws, 'employees', emp, 'punches', currentId));
+        closeModal(); loadPunches(ws, emp);
+      });
+      document.getElementById('savePunchBtn').addEventListener('click', async () => {
+        const ws = localStorage.getItem('activeWorkspaceId');
+        const emp = document.getElementById('employeeSelect').value;
+        const date = document.getElementById('punchDate').value;
+        const time = document.getElementById('punchTime').value;
+        const type = document.getElementById('punchType').value;
+        if (!date || !time || !type) return alert('Complete all fields');
+        if (currentId) {
+          const refd = doc(db, 'workspaces', ws, 'employees', emp, 'punches', currentId);
+          await updateDoc(refd, { date, time, type });
+        } else {
+          await addDoc(collection(db, 'workspaces', ws, 'employees', emp, 'punches'), { date, time, type, createdAt: new Date().toISOString() });
+        }
+        closeModal(); loadPunches(ws, emp);
+      });
+
+      // Auth listener
+      onAuthStateChanged(auth, user => {
+        if (!user) return window.location.href = '/app.html';
+        const ws = localStorage.getItem('activeWorkspaceId');
+        const empSelect = document.getElementById('employeeSelect');
+        empSelect.addEventListener('change', () => loadPunches(ws, empSelect.value));
+        loadPunches(ws, empSelect.value);
+      });
+
+      // Print handler
+      document.getElementById('printBtn').addEventListener('click', () => window.print());
+    });
+  </script>
 </body>
 </html>

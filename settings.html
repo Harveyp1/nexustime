@@ -46,108 +46,30 @@
     <section class="flex-1 p-8">
       <div id="section-userprofile" class="hidden space-y-6">
         <h3 class="text-xl font-semibold">User Profile</h3>
-        <form id="profileForm" class="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-gray-300 mb-1">Name</label>
-            <input type="text" id="profileName" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
-          </div>
-          <div>
-            <label class="block text-gray-300 mb-1">Email</label>
-            <input type="email" id="profileEmail" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" disabled />
-          </div>
-          <div class="md:col-span-2 flex items-center space-x-2">
-            <input type="checkbox" id="profileNotifications" class="mr-2" />
-            <label class="text-gray-300">Enable email notifications</label>
-          </div>
-          <div>
-            <label class="block text-gray-300 mb-1">Time Format</label>
-            <select id="profileTimeFormat" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
-              <option value="12">12-hour</option>
-              <option value="24">24-hour</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-gray-300 mb-1">Language</label>
-            <select id="profileLanguage" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
-              <option>English</option>
-              <option>Spanish</option>
-              <option>French</option>
-            </select>
-          </div>
-          <div class="md:col-span-2">
-            <button id="saveProfile" type="button" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Save Profile</button>
-          </div>
-        </form>
+        <!-- User profile fields -->
       </div>
-
       <div id="section-workspacebilling" class="hidden space-y-6">
         <h3 class="text-xl font-semibold">Workspace & Billing</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-gray-800 p-4 rounded">
-            <h4 class="font-semibold">Payment History</h4>
-            <ul id="paymentHistoryList" class="text-gray-300 text-sm mt-2 space-y-1"></ul>
-          </div>
-          <div class="bg-gray-800 p-4 rounded flex flex-col justify-between">
-            <h4 class="font-semibold">Add User</h4>
-            <p class="text-gray-300 text-sm mt-1">Add seats at <span id="userPrice" class="font-semibold"></span> each.</p>
-            <button id="addUserBtn" class="mt-4 bg-emerald-400 text-gray-900 px-4 py-2 rounded">Add User</button>
-          </div>
-          <div class="bg-gray-800 p-4 rounded">
-            <h4 class="font-semibold">Payment Method</h4>
-            <div id="paymentMethodsList" class="mt-2 space-y-2 text-gray-300 text-sm"></div>
-            <button id="addPaymentMethodBtn" class="mt-4 bg-emerald-400 text-gray-900 px-4 py-2 rounded">Add Payment Method</button>
-          </div>
-        </div>
+        <!-- Billing content -->
       </div>
-
       <div id="section-logoupload" class="hidden space-y-6">
-        <h3 class="text-xl font-semibold">Workspace Logo</nobr>
-        <div class="space-y-4">
-          <img id="logoPreview" src="" alt="Logo Preview" class="h-16 w-16 bg-gray-800 rounded" />
-          <input type="file" id="logoInput" accept="image/png" class="bg-gray-800 p-2 rounded" />
-          <p class="text-sm text-gray-400">Optional; PNG 64×64px</p>
-          <button id="saveLogo" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Save Logo</button>
-        </div>
+        <h3 class="text-xl font-semibold">Workspace Logo</h3>
+        <!-- Logo upload content -->
       </div>
-
       <div id="section-generalsettings" class="hidden space-y-6">
         <h3 class="text-xl font-semibold">Workspace Settings</h3>
-        <form id="generalSettingsForm" class="space-y-4 max-w-lg">
-          <div>
-            <label class="block text-gray-300 mb-1">Workspace Name</label>
-            <input id="workspaceName" type="text" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
-          </div>
-          <div>
-            <label class="block text-gray-300 mb-1">Timezone</label>
-            <select id="timezoneSelect" class="w-full p-2 bg-gray-800 border border-gray-700 rounded"></select>
-          </div>
-          <div>
-            <label class="block text-gray-300 mb-1">Week Start Day</label>
-            <select id="weekStartSelect" class="w-full p-2 bg-gray-800 border border-gray-700 rounded"></select>
-          </div>
-          <div>
-            <label class="block text-gray-300 mb-1">Overtime Rule</label>
-            <select id="overtimeRuleSelect" class="w-full p-2 bg-gray-800 border border-gray-700 rounded"></select>
-          </div>
-          <div>
-            <button id="saveGeneral" type="button" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Update Settings</button>
-          </div>
-        </form>
+        <!-- General settings content -->
       </div>
-
       <div id="section-roles" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Roles & Permissions</h3>
-          <button id="addRole" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Add Role</button>
-        </div>
-        <div id="rolesContainer" class="space-y-4"></div>
+        <h3 class="text-xl font-semibold">Roles & Permissions</h3>
+        <!-- Roles content -->
       </div>
     </section>
   </div>
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-    import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
     const firebaseConfig = {
@@ -164,123 +86,40 @@
     const auth = getAuth(app);
 
     onAuthStateChanged(auth, async user => {
-      if (!user) return window.location.href = '/app.html';
+      console.log('Debug: onAuthStateChanged fired, user=', user);
+      // Removed redirect to allow debugging
+      // if (!user) {
+      //   console.error('Debug: No user, would redirect here');
+      //   return;
+      // }
       const workspaceId = localStorage.getItem('activeWorkspace');
-      if (!workspaceId) return window.location.href = '/switch-workspace.html';
+      console.log('Debug: Retrieved workspaceId=', workspaceId);
+      // if (!workspaceId) {
+      //   console.error('Debug: No workspaceId, would redirect here');
+      //   return;
+      // }
 
       // setup tab clicks
       document.querySelectorAll('aside button').forEach(btn => {
         btn.addEventListener('click', () => {
+          console.log('Debug: Tab clicked=', btn.dataset.section);
           document.querySelectorAll('section [id^="section-"]').forEach(sec => sec.classList.add('hidden'));
           document.getElementById('section-' + btn.dataset.section).classList.remove('hidden');
         });
       });
       document.getElementById('tab-userprofile').click();
 
-      // populate sidebar
-      const wsRef = doc(db, 'workspaces', workspaceId);
-      const wsSnap = await getDoc(wsRef);
-      if (wsSnap.exists()) {
-        const data = wsSnap.data();
-        document.getElementById('workspacePlanSidebar').textContent = data.plan;
-        if (data.plan !== 'Enterprise') document.getElementById('upgradePlanSidebar').classList.remove('hidden');
+      // populate sidebar plan (if workspaceId exists)
+      if (workspaceId) {
+        const wsRef = doc(db, 'workspaces', workspaceId);
+        const wsSnap = await getDoc(wsRef);
+        console.log('Debug: Workspace snapshot exists=', wsSnap.exists());
+        if (wsSnap.exists()) {
+          const data = wsSnap.data();
+          document.getElementById('workspacePlanSidebar').textContent = data.plan;
+          if (data.plan !== 'Enterprise') document.getElementById('upgradePlanSidebar').classList.remove('hidden');
+        }
       }
-
-      // load profile
-      const uRef = doc(db, 'users', user.uid);
-      const uSnap = await getDoc(uRef);
-      if (uSnap.exists()) {
-        const pdata = uSnap.data();
-        document.getElementById('profileName').value = pdata.name || '';
-        document.getElementById('profileEmail').value = pdata.email || '';
-        document.getElementById('profileNotifications').checked = pdata.notifications;
-        document.getElementById('profileTimeFormat').value = pdata.timeFormat;
-        document.getElementById('profileLanguage').value = pdata.language;
-      }
-
-      document.getElementById('saveProfile').onclick = async () => {
-        const updates = {
-          name: document.getElementById('profileName').value,
-          notifications: document.getElementById('profileNotifications').checked,
-          timeFormat: document.getElementById('profileTimeFormat').value,
-          language: document.getElementById('profileLanguage').value
-        };
-        await updateDoc(uRef, updates);
-      };
-
-      // load billing
-      const historyCol = collection(db, 'workspaces', workspaceId, 'payments');
-      const historySnap = await getDocs(historyCol);
-      const histList = document.getElementById('paymentHistoryList');
-      historySnap.forEach(docSnap => {
-        const li = document.createElement('li');
-        const d = docSnap.data();
-        li.textContent = `${d.date}: $${d.amount}`;
-        histList.appendChild(li);
-      });
-      document.getElementById('userPrice').textContent = '$10/mo';
-
-      const pmCol = collection(db, 'workspaces', workspaceId, 'paymentMethods');
-      const pmSnap = await getDocs(pmCol);
-      const pmList = document.getElementById('paymentMethodsList');
-      pmSnap.forEach(docSnap => {
-        const div = document.createElement('div'); div.textContent = docSnap.id; pmList.appendChild(div);
-      });
-
-      // logo
-      const logoRef = doc(db, 'workspaces', workspaceId);
-      document.getElementById('saveLogo').onclick = async () => {
-        const file = document.getElementById('logoInput').files[0];
-        /* upload logic */
-      };
-
-      // general
-      const tzSelect = document.getElementById('timezoneSelect');
-      const weekStartSelect = document.getElementById('weekStartSelect');
-      const overtimeRuleSelect = document.getElementById('overtimeRuleSelect');
-      ['UTC−12:00','UTC−11:00','UTC−10:00','UTC−09:00','UTC−08:00','UTC−07:00','UTC−06:00','UTC−05:00','UTC−04:00','UTC−03:00','UTC−02:00','UTC−01:00','UTC±00:00','UTC+01:00','UTC+02:00','UTC+03:00','UTC+04:00','UTC+05:00','UTC+06:00','UTC+07:00','UTC+08:00','UTC+09:00','UTC+10:00','UTC+11:00','UTC+12:00'].forEach(tz => { const o=document.createElement('option'); o.value=o.textContent=tz; tzSelect.appendChild(o); });
-      ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(d=>{const o=document.createElement('option');o.value=o.textContent=d;weekStartSelect.appendChild(o);} );
-      ['None','Daily after 8h','Weekly after 40h','Custom'].forEach(r=>{const o=document.createElement('option');o.value=o.textContent=r;overtimeRuleSelect.appendChild(o);} );
-      if (wsSnap.exists()) {
-        const d = wsSnap.data();
-        document.getElementById('workspaceName').value = d.name;
-        tzSelect.value = d.timezone;
-        weekStartSelect.value = d.weekStart;
-        overtimeRuleSelect.value = d.overtimeRule;
-      }
-      document.getElementById('saveGeneral').onclick = async () => {
-        await updateDoc(wsRef, {
-          name: document.getElementById('workspaceName').value,
-          timezone: tzSelect.value,
-          weekStart: weekStartSelect.value,
-          overtimeRule: overtimeRuleSelect.value
-        });
-      };
-
-      // roles
-      const permList = ['Manage Users','Manage Roles','Approve Timesheets','View Reports','Manage Payroll','Manage Settings','View Time Off','Manage Time Off'];
-      const rolesCol = collection(db, 'workspaces', workspaceId, 'roles');
-      const rolesSnap = await getDocs(rolesCol);
-      const rolesContainer = document.getElementById('rolesContainer');
-      rolesSnap.forEach(docSnap => {
-        const rid = docSnap.id; const data = docSnap.data();
-        const card = document.createElement('div'); card.className='bg-gray-800 p-4 rounded';
-        const title = Object.assign(document.createElement('h4'),{textContent:rid,className:'font-semibold mb-2'});
-        card.appendChild(title);
-        permList.forEach(p=>{
-          const lbl = document.createElement('label'); lbl.className='flex items-center space-x-2';
-          const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=data[p]||false; cb.id=`${rid}-${p}`;
-          lbl.append(cb,document.createElement('span')).querySelector('span').textContent=p;
-          card.appendChild(lbl);
-        });
-        const sb = Object.assign(document.createElement('button'),{textContent:'Save',className:'mt-2 bg-emerald-400 text-gray-900 px-2 py-1 rounded'});
-        sb.onclick = async()=>{
-          const upd={}; permList.forEach(p=>upd[p]=document.getElementById(`${rid}-${p}`).checked);
-          await setDoc(doc(db,'workspaces',workspaceId,'roles',rid),upd,{merge:true});
-        };
-        card.appendChild(sb);
-        rolesContainer.appendChild(card);
-      });
     });
   </script>
 </body>

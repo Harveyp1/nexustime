@@ -1,4 +1,3 @@
-<!-- Settings Page with Workspace Check -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,61 +5,179 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Settings - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body class="bg-gray-950 text-white font-inter">
-  <script>
-    const selectedWorkspace = localStorage.getItem('activeWorkspace');
-    if (!selectedWorkspace) window.location.href = '/switch-workspace.html';
-  </script>
-
-  <nav class="bg-gray-900 text-white py-3 shadow-md">
-    <div class="container mx-auto px-6 flex justify-between items-center">
-      <a href="/dashboard.html" class="text-xl font-bold text-emerald-400">NexusTime</a>
-      <div class="flex space-x-4 text-sm">
-        <a href="/dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-        <a href="/schedule.html" class="hover:text-emerald-400">Schedule</a>
-        <a href="/timesheets.html" class="hover:text-emerald-400">Timesheets</a>
-        <a href="/workspace.html" class="hover:text-emerald-400">Workspace</a>
-        <a href="/employees.html" class="hover:text-emerald-400">Employees</a>
-        <a href="/manage.html" class="hover:text-emerald-400">Manage</a>
-        <a href="/timeoff.html" class="hover:text-emerald-400">Time Off</a>
-        <a href="/settings.html" class="hover:text-emerald-400">Settings</a>
-        <a href="/switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
-        <a href="/app.html" class="hover:text-emerald-400">Logout</a>
-      </div>
+  <!-- Top Navigation -->
+  <header class="bg-gray-900 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10" />
+      <span class="text-2xl font-bold text-emerald-400">NexusTime</span>
     </div>
-  </nav>
+    <nav class="space-x-6 text-gray-300">
+      <a href="dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+      <a href="timesheet.html" class="hover:text-emerald-400">Timesheets</a>
+      <a href="schedule.html" class="hover:text-emerald-400">Schedule</a>
+      <a href="settings.html" class="hover:text-emerald-400 font-semibold">Settings</a>
+      <a href="switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+    </nav>
+  </header>
 
-  <main class="p-6 max-w-4xl mx-auto">
-    <h1 class="text-xl font-bold text-emerald-400 mb-4">Workspace Settings - <span id="workspaceName"></span></h1>
-    <form class="space-y-6">
-      <div>
-        <label class="block text-sm font-medium mb-1">Week Start Day</label>
-        <select class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full">
-          <option>Sunday</option>
-          <option>Monday</option>
-          <option>Saturday</option>
-        </select>
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-900 p-6">
+      <h2 class="text-xl font-bold text-gray-200 mb-6">Settings</h2>
+      <!-- Plan Card -->
+      <div id="planCard" class="bg-gray-800 p-4 rounded mb-6 flex justify-between items-center">
+        <div>Plan: <span id="workspacePlanSidebar" class="font-semibold"></span></div>
+        <button id="upgradePlanSidebar" class="bg-yellow-500 text-gray-900 px-3 py-1 rounded hidden">Upgrade</button>
       </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Time Zone</label>
-        <input type="text" placeholder="e.g. America/Chicago" class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Overtime Rule</label>
-        <input type="text" placeholder="e.g. 40 hours/week" class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">PTO Policy</label>
-        <textarea rows="3" placeholder="Describe your PTO policy here..." class="bg-gray-900 border border-gray-700 text-white p-2 rounded w-full"></textarea>
-      </div>
-      <button class="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded">Save Settings</button>
-    </form>
-  </main>
+      <nav class="space-y-4 text-gray-400">
+        <button data-section="generalsettings" id="tab-generalsettings" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">General Settings</button>
+        <button data-section="punchentry" id="tab-punchentry" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Spreadsheet Punch Entry</button>
+        <button data-section="hoursentry" id="tab-hoursentry" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Spreadsheet Hours Entry</button>
+        <button data-section="roles" id="tab-roles" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Roles</button>
+      </nav>
+    </aside>
 
-  <script>
-    document.getElementById('workspaceName').textContent = selectedWorkspace;
+    <!-- Content -->
+    <section class="flex-1 p-8">
+      <!-- General Settings Section -->
+      <div id="section-generalsettings" class="space-y-6">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-semibold">General Settings</h3>
+          <button id="saveGeneral" class="bg-emerald-400 text-gray-900 px-4 py-1 rounded">Update</button>
+        </div>
+        <form id="generalSettingsForm" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-gray-300 mb-1">Workspace Name</label>
+              <input type="text" name="workspaceName" id="workspaceName" class="w-full p-2 bg-gray-800 border border-gray-700 rounded" />
+            </div>
+            <div>
+              <label class="block text-gray-300 mb-1">Timezone</label>
+              <select name="timezone" id="timezone" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+                <!-- GMT options omitted for brevity -->
+                <option value="Etc/GMT">GMT+0:00</option>
+                <option value="Etc/GMT-12">GMT+12:00</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-gray-300 mb-1">Week Start Day</label>
+              <select name="weekStart" id="weekStart" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+                <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+                <option>Thursday</option><option>Friday</option><option>Saturday</option>
+                <option>Sunday</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-300 mb-1">Pay Period</label>
+              <select name="payPeriod" id="payPeriod" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+                <option>Weekly</option><option>Bi-Weekly</option><option>Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-300 mb-1">Overtime Rule</label>
+              <select name="overtimeRule" id="overtimeRule" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+                <option>40 hrs/week</option><option>8 hrs/day</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Other Sections -->
+      <div id="section-punchentry" class="hidden space-y-4">
+        <h3 class="text-xl font-semibold">Spreadsheet Punch Entry</h3>
+        <p class="text-gray-400">Configure your punch entry import settings here.</p>
+      </div>
+      <div id="section-hoursentry" class="hidden space-y-4">
+        <h3 class="text-xl font-semibold">Spreadsheet Hours Entry</h3>
+        <p class="text-gray-400">Configure your hours import settings here.</p>
+      </div>
+      <div id="section-roles" class="hidden space-y-6">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-semibold">Roles</h3>
+          <button id="addRole" class="bg-emerald-400 text-gray-900 px-4 py-1 rounded">Add Role</button>
+        </div>
+        <div id="rolesList" class="space-y-4">
+          <!-- Dynamic list of roles -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+    import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+      authDomain: "nexustime-e8b91.firebaseapp.com",
+      projectId: "nexustime-e8b91",
+      storageBucket: "nexustime-e8b91.appspot.com",
+      messagingSenderId: "516976739338",
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+      measurementId: "G-QRSD6TYH86"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Tab switching
+    document.querySelectorAll('aside button').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('[id^="section-"]').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById('section-' + btn.dataset.section).classList.remove('hidden');
+    }));
+    document.getElementById('tab-generalsettings').click();
+
+    // Load settings for active workspace
+    async function loadSettings() {
+      const wid = localStorage.getItem('activeWorkspaceId');
+      if (!wid) return;
+      const wsRef = doc(db, 'workspaces', wid);
+      const wsSnap = await getDoc(wsRef);
+      let plan = 'Free';
+      if (wsSnap.exists()) {
+        plan = wsSnap.data().plan || 'Free';
+      }
+      document.getElementById('workspacePlanSidebar').textContent = plan;
+      if (plan !== 'Enterprise') document.getElementById('upgradePlanSidebar').classList.remove('hidden');
+
+      const ref = doc(db, 'workspaces', wid, 'settings', 'general');
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        document.getElementById('workspaceName').value = data.workspaceName || '';
+        document.getElementById('timezone').value = data.timezone || 'Etc/GMT';
+        document.getElementById('weekStart').value = data.weekStart || 'Monday';
+        document.getElementById('payPeriod').value = data.payPeriod || 'Weekly';
+        document.getElementById('overtimeRule').value = data.overtimeRule || '40 hrs/week';
+      }
+    }
+
+    // Save updated settings
+    document.getElementById('saveGeneral').addEventListener('click', async () => {
+      const wid = localStorage.getItem('activeWorkspaceId');
+      const ref = doc(db, 'workspaces', wid, 'settings', 'general');
+      const data = {
+        workspaceName: document.getElementById('workspaceName').value,
+        timezone: document.getElementById('timezone').value,
+        weekStart: document.getElementById('weekStart').value,
+        payPeriod: document.getElementById('payPeriod').value,
+        overtimeRule: document.getElementById('overtimeRule').value
+      };
+      await setDoc(ref, data, { merge: true });
+      alert('Settings updated');
+    });
+
+    // Upgrade button handler
+    document.getElementById('upgradePlanSidebar').addEventListener('click', () => {
+      window.location.href = '/pricing.html';
+    });
+
+    loadSettings();
   </script>
 </body>
 </html>

@@ -3,165 +3,146 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard</title>
+  <title>Dashboard - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-950 text-white font-inter">
+  <!-- Error / Debug -->
+  <div id="authError" class="hidden p-6 text-center">
+    <p class="text-red-400 mb-4">You are not signed in. Please <a href="app.html" class="text-emerald-400 underline">log in</a>.</p>
+  </div>
+  <div id="workspaceError" class="hidden p-6 text-center">
+    <p class="text-red-400 mb-4">No workspace selected. Please <a href="switch-workspace.html" class="text-emerald-400 underline">choose a workspace</a>.</p>
+  </div>
+
+  <!-- Main Content -->
+  <div id="mainContainer" class="hidden">
+    <!-- Navigation -->
+    <nav class="bg-gray-900 text-white py-3 shadow-md">
+      <div class="container mx-auto px-6 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+          <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10">
+          <span class="text-xl font-bold text-emerald-400">NexusTime</span>
+        </div>
+        <div class="flex space-x-4 text-sm">
+          <a href="dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+          <a href="schedule.html" class="hover:text-emerald-400">Schedule</a>
+          <a href="timesheet.html" class="hover:text-emerald-400">Timesheets</a>
+          <a href="switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+          <a href="app.html" class="hover:text-emerald-400">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 p-6 space-y-6">
+      <h1 class="text-xl font-bold text-emerald-400">Workspace: <span id="workspaceName"></span></h1>
+
+      <!-- Summary -->
+      <section class="grid grid-cols-1 md:grid-cols-4 gap-4" id="summaryWidgets"></section>
+
+      <!-- Productivity & Alerts -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="alertsSection"></section>
+
+      <!-- Activity Feed -->
+      <section class="bg-gray-800 p-4 rounded-xl" id="activityFeed"></section>
+
+      <!-- Suggestions -->
+      <section class="bg-gray-800 p-4 rounded-xl" id="suggestions"></section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
     const firebaseConfig = {
-      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8s9Ls",
       authDomain: "nexustime-e8b91.firebaseapp.com",
       projectId: "nexustime-e8b91",
       storageBucket: "nexustime-e8b91.appspot.com",
       messagingSenderId: "516976739338",
-      appId: "1:516976739338:web:537ae732707a2a1aab4bf3"
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+      measurementId: "G-QRSD6TYH86"
     };
-    firebase.initializeApp(firebaseConfig);
-  </script>
-</head>
-<body class="bg-gray-950 text-white min-h-screen">
-  <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-    <div>
-      <a href="/dashboard.html">
-        <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-8 w-8 inline-block mr-2">
-      </a>
-    </div>
-    <ul class="flex space-x-6">
-      <li><a href="/dashboard.html" class="hover:text-green-400">Dashboard</a></li>
-      <li><a href="/schedule.html" class="hover:text-green-400">Schedule</a></li>
-      <li><a href="/timesheet.html" class="hover:text-green-400">Timesheet</a></li>
-      <li><a href="/manage.html" class="hover:text-green-400">Manage</a></li>
-      <li><a href="/settings.html" class="hover:text-green-400">Settings</a></li>
-      <li><a href="/switch-workspace.html" class="hover:text-green-400">Switch Workspace</a></li>
-    </ul>
-  </nav>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  <div class="p-6 space-y-10" id="dashboardContent">Loading...</div>
-  <div class="max-w-4xl mx-auto">
-    <h2 class="text-xl font-bold text-white mb-4 text-center">Total Hours by Employee</h2>
-    <canvas id="hoursChart" width="600" height="300"></canvas>
-  </div>
-
-  <script>
-    async function loadDashboard() {
-      const user = firebase.auth().currentUser;
-      if (!user) return;
-
-      const db = firebase.firestore();
-      const userDoc = await db.collection("users").doc(user.uid).get();
-      if (!userDoc.exists || !userDoc.data().activeWorkspaceId) {
-        window.location.href = "/switch-workspace.html";
-        return;
-      }
-
-      const workspaceId = userDoc.data().activeWorkspaceId;
-      const workspaceRef = db.collection("workspaces").doc(workspaceId);
-      const workspaceDoc = await workspaceRef.get();
-      const workspaceData = workspaceDoc.data();
-
-      const employeeSnap = await workspaceRef.collection("employees").get();
-      const timesheetSnap = await workspaceRef.collection("timesheets").get();
-      const timeoffSnap = await workspaceRef.collection("timeoffRequests").orderBy("createdAt", "desc").limit(5).get();
-
-      const employeeCount = employeeSnap.size;
-      const totalHours = timesheetSnap.docs.reduce((sum, doc) => sum + (doc.data().hours || 0), 0);
-      const pending = timesheetSnap.docs.filter(doc => doc.data().status === "pending").length;
-      const approved = timesheetSnap.docs.filter(doc => doc.data().status === "approved").length;
-
-      const recentActivities = timesheetSnap.docs
-        .sort((a, b) => (b.data().updatedAt?.seconds || 0) - (a.data().updatedAt?.seconds || 0))
-        .slice(0, 5)
-        .map(doc => doc.data());
-
-      const activityHTML = recentActivities.map(item => `
-        <div class="bg-gray-900 p-4 rounded-lg">
-          <p><strong>${item.employeeName || 'Employee'}</strong> logged ${item.hours} hrs</p>
-          <p class="text-gray-400 text-sm">Status: ${item.status || 'N/A'}</p>
-        </div>
-      `).join("");
-
-      const timeoffHTML = timeoffSnap.docs.map(doc => {
-        const data = doc.data();
-        return `
-          <div class="bg-gray-900 p-4 rounded-lg">
-            <p><strong>${data.employeeName || 'Employee'}</strong> requested time off</p>
-            <p class="text-gray-400 text-sm">${data.startDate} to ${data.endDate}</p>
-            <p class="text-gray-400 text-sm">Reason: ${data.reason || 'N/A'}</p>
-          </div>
-        `;
-      }).join("");
-
-      const hoursPerEmployee = {};
-      timesheetSnap.docs.forEach(doc => {
-        const data = doc.data();
-        const name = data.employeeName || 'Unknown';
-        hoursPerEmployee[name] = (hoursPerEmployee[name] || 0) + (data.hours || 0);
+    function getCurrentWeekRange() {
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diffToMonday));
+      monday.setHours(0,0,0,0);
+      return Array.from({length:7}, (_,i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d.toISOString().split('T')[0];
       });
-
-      const labels = Object.keys(hoursPerEmployee);
-      const dataPoints = Object.values(hoursPerEmployee);
-
-      new Chart(document.getElementById("hoursChart"), {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "Total Hours",
-            data: dataPoints,
-            backgroundColor: "#10B981"
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { display: true, labels: { color: 'white' } }
-          },
-          scales: {
-            x: { ticks: { color: "white" } },
-            y: { ticks: { color: "white" } }
-          }
-        }
-      });
-
-      document.getElementById("dashboardContent").innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="bg-gray-900 p-4 rounded-lg">
-            <h2 class="text-xl font-semibold">Employees</h2>
-            <p class="text-3xl mt-2">${employeeCount}</p>
-          </div>
-          <div class="bg-gray-900 p-4 rounded-lg">
-            <h2 class="text-xl font-semibold">Total Hours</h2>
-            <p class="text-3xl mt-2">${totalHours}</p>
-          </div>
-          <div class="bg-gray-900 p-4 rounded-lg">
-            <h2 class="text-xl font-semibold">Pending Timesheets</h2>
-            <p class="text-3xl mt-2">${pending}</p>
-          </div>
-          <div class="bg-gray-900 p-4 rounded-lg">
-            <h2 class="text-xl font-semibold">Approved Timesheets</h2>
-            <p class="text-3xl mt-2">${approved}</p>
-          </div>
-        </div>
-
-        <div>
-          <h2 class="text-2xl font-bold mt-10 mb-4">Recent Activity</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            ${activityHTML || '<p class="text-gray-400">No recent activity.</p>'}
-          </div>
-        </div>
-
-        <div>
-          <h2 class="text-2xl font-bold mt-10 mb-4">Recent Time Off Requests</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            ${timeoffHTML || '<p class="text-gray-400">No recent time off requests.</p>'}
-          </div>
-        </div>
-      `;
     }
 
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) loadDashboard();
+    function calculateHours(punches) {
+      punches.sort((a,b) => a.time.localeCompare(b.time));
+      let total = 0, inTime = null;
+      for (const p of punches) {
+        if (p.type === 'in') inTime = p.time;
+        else if (p.type === 'out' && inTime) {
+          const [h1,m1] = inTime.split(':').map(Number);
+          const [h2,m2] = p.time.split(':').map(Number);
+          total += (h2*60 + m2) - (h1*60 + m1);
+          inTime = null;
+        }
+      }
+      return total / 60;
+    }
+
+    async function loadSummary(wsId) {
+      const summaryEl = document.getElementById('summaryWidgets');
+      const empSnap = await getDocs(collection(db, 'workspaces', wsId, 'employees'));
+      const employees = empSnap.docs.map(d => ({id:d.id, ...d.data()}));
+      let totalHours = 0;
+      const weekDates = getCurrentWeekRange();
+      for (const emp of employees) {
+        const punchSnap = await getDocs(collection(db, 'workspaces', wsId, 'employees', emp.id, 'punches'));
+        const weekPunches = punchSnap.docs.map(d=>d.data()).filter(p=>weekDates.includes(p.date));
+        totalHours += calculateHours(weekPunches);
+      }
+      summaryEl.innerHTML = `
+        <div class="bg-gray-800 p-4 rounded-xl">
+          <h2 class="text-sm text-gray-400">Total Employees</h2>
+          <p class="text-2xl font-bold">${employees.length}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded-xl">
+          <h2 class="text-sm text-gray-400">Hours This Week</h2>
+          <p class="text-2xl font-bold">${totalHours.toFixed(1)}h</p>
+        </div>`;
+    }
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        document.getElementById('authError').classList.remove('hidden');
+        return;
+      }
+      const wsId = localStorage.getItem('activeWorkspace');
+      if (!wsId) {
+        document.getElementById('workspaceError').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('mainContainer').classList.remove('hidden');
+      const wsSnap = await getDoc(doc(db, 'workspaces', wsId));
+      const wsData = wsSnap.exists() ? wsSnap.data() : {};
+      document.getElementById('workspaceName').textContent = wsData.name || wsId;
+      await loadSummary(wsId);
+      document.getElementById('activityFeed').innerHTML = `
+        <h3 class="text-lg font-semibold mb-2">Recent Activity</h3>
+        <ul class="text-sm text-gray-300 space-y-2">
+          <li>✔️ Sample activity entry</li>
+        </ul>`;
+      document.getElementById('suggestions').innerHTML = `
+        <h3 class="text-lg font-semibold mb-2">Smart Suggestions</h3>
+        <p class="text-sm text-emerald-400">🧠 Sample suggestion text.</p>`;
     });
   </script>
 </body>

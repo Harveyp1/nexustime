@@ -11,9 +11,9 @@
   <div class="min-h-screen flex flex-col items-center justify-center p-6">
     <div class="w-full max-w-sm bg-gray-800 p-8 rounded-xl shadow-lg">
       <div class="flex justify-center mb-6">
-          <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="NexusTime Logo" class="h-12" />
-        </div>
-        <h2 class="text-2xl font-bold text-center mb-6">Welcome Back</h2>
+        <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="NexusTime Logo" class="h-12" />
+      </div>
+      <h2 class="text-2xl font-bold text-center mb-6">Welcome Back</h2>
       <form id="loginForm" class="space-y-4">
         <div>
           <label class="block text-gray-300 mb-1" for="email">Email</label>
@@ -35,8 +35,9 @@
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
+    // Your web app's Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8s9Ls",
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
       authDomain: "nexustime-e8b91.firebaseapp.com",
       projectId: "nexustime-e8b91",
       storageBucket: "nexustime-e8b91.appspot.com",
@@ -44,15 +45,20 @@
       appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
       measurementId: "G-QRSD6TYH86"
     };
+
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
+    // Redirect if already logged in
     onAuthStateChanged(auth, user => {
       if (user) {
+        console.log('Debug: user is signed in, redirecting to workspace selector');
         window.location.href = 'switch-workspace.html';
       }
     });
 
+    // Handle login form submission
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value;

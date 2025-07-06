@@ -147,7 +147,15 @@
     import { getFirestore, collection, getDocs, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
     import { getAuth } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
-    const firebaseConfig = { apiKey: '<KEY>', authDomain: '<DOMAIN>', projectId: '<PROJECT>', storageBucket: '<BUCKET>', messagingSenderId: '<MSG>', appId: '<ID>', measurementId: '<MEAS>' };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8s9Ls",
+      authDomain: "nexustime-e8b91.firebaseapp.com",
+      projectId: "nexustime-e8b91",
+      storageBucket: "nexustime-e8b91.appspot.com",
+      messagingSenderId: "516976739338",
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+      measurementId: "G-QRSD6TYH86"
+    };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth();

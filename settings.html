@@ -3,59 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard - NexusTime</title>
+  <title>Settings - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body class="bg-gray-950 text-white font-inter">
-  <!-- Error / Debug -->
+  <header id="topNav" class="hidden bg-gray-900 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10" />
+      <span class="text-2xl font-bold text-emerald-400">NexusTime</span>
+    </div>
+    <nav class="space-x-6 text-gray-300">
+      <a href="dashboard.html" class="hover:text-emerald-400">Dashboard</a>
+      <a href="timesheet.html" class="hover:text-emerald-400">Timesheets</a>
+      <a href="schedule.html" class="hover:text-emerald-400">Schedule</a>
+      <a href="settings.html" class="hover:text-emerald-400 font-semibold">Settings</a>
+      <a href="switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+    </nav>
+  </header>
+
+  <!-- Error Messages -->
   <div id="authError" class="hidden p-6 text-center">
-    <p class="text-red-400 mb-4">You are not signed in. Please <a href="app.html" class="text-emerald-400 underline">log in</a>.</p>
+    <p class="text-red-400 mb-4">You are not signed in. Please <a href="app.html" class="text-emerald-400 underline">log in</a> to access settings.</p>
   </div>
   <div id="workspaceError" class="hidden p-6 text-center">
     <p class="text-red-400 mb-4">No workspace selected. Please <a href="switch-workspace.html" class="text-emerald-400 underline">choose a workspace</a>.</p>
   </div>
 
-  <!-- Main Content -->
-  <div id="mainContainer" class="hidden">
-    <!-- Navigation -->
-    <nav class="bg-gray-900 text-white py-3 shadow-md">
-      <div class="container mx-auto px-6 flex justify-between items-center">
-        <div class="flex items-center space-x-4">
-          <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10">
-          <span class="text-xl font-bold text-emerald-400">NexusTime</span>
-        </div>
-        <div class="flex space-x-4 text-sm">
-          <a href="dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-          <a href="schedule.html" class="hover:text-emerald-400">Schedule</a>
-          <a href="timesheet.html" class="hover:text-emerald-400">Timesheets</a>
-          <a href="switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
-          <a href="app.html" class="hover:text-emerald-400">Logout</a>
-        </div>
+  <div id="mainContainer" class="hidden flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-900 p-6 space-y-6">
+      <h2 class="text-xl font-bold text-gray-200">Settings</h2>
+      <div id="planCard" class="bg-gray-800 p-4 rounded flex justify-between items-center">
+        <div>Plan: <span id="workspacePlanSidebar" class="font-semibold"></span></div>
+        <button id="upgradePlanSidebar" class="bg-yellow-500 text-gray-900 px-3 py-1 rounded hidden">Upgrade</button>
       </div>
-    </nav>
+      <nav class="space-y-2 text-gray-400">
+        <button data-section="userprofile" id="tab-userprofile" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">User Profile</button>
+        <button data-section="workspacebilling" id="tab-workspacebilling" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Workspace & Billing</button>
+        <button data-section="logoupload" id="tab-logoupload" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Workspace Logo</button>
+        <button data-section="generalsettings" id="tab-generalsettings" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Workspace Settings</button>
+        <button data-section="roles" id="tab-roles" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Roles & Permissions</button>
+      </nav>
+    </aside>
 
-    <main class="flex-1 p-6 space-y-6">
-      <h1 class="text-xl font-bold text-emerald-400">Workspace: <span id="workspaceName"></span></h1>
-
-      <!-- Summary -->
-      <section class="grid grid-cols-1 md:grid-cols-4 gap-4" id="summaryWidgets"></section>
-
-      <!-- Productivity & Alerts -->
-      <section class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="alertsSection"></section>
-
-      <!-- Activity Feed -->
-      <section class="bg-gray-800 p-4 rounded-xl" id="activityFeed"></section>
-
-      <!-- Suggestions -->
-      <section class="bg-gray-800 p-4 rounded-xl" id="suggestions"></section>
-    </main>
+    <!-- Content -->
+    <section class="flex-1 p-8">
+      <div id="section-userprofile" class="hidden space-y-6">
+        <h3 class="text-xl font-semibold">User Profile</h3>
+      </div>
+      <div id="section-workspacebilling" class="hidden space-y-6">
+        <h3 class="text-xl font-semibold">Workspace & Billing</h3>
+      </div>
+      <div id="section-logoupload" class="hidden space-y-6">
+        <h3 class="text-xl font-semibold">Workspace Logo</h3>
+      </div>
+      <div id="section-generalsettings" class="hidden space-y-6">
+        <h3 class="text-xl font-semibold">Workspace Settings</h3>
+      </div>
+      <div id="section-roles" class="hidden space-y-6">
+        <h3 class="text-xl font-semibold">Roles & Permissions</h3>
+      </div>
+    </section>
   </div>
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
     import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-    import { getFirestore, doc, getDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8s9Ls",
@@ -67,82 +83,43 @@
       measurementId: "G-QRSD6TYH86"
     };
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getFirestore(app);
-
-    function getCurrentWeekRange() {
-      const now = new Date();
-      const day = now.getDay();
-      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(now.setDate(diffToMonday));
-      monday.setHours(0,0,0,0);
-      return Array.from({length:7}, (_,i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        return d.toISOString().split('T')[0];
-      });
-    }
-
-    function calculateHours(punches) {
-      punches.sort((a,b) => a.time.localeCompare(b.time));
-      let total = 0, inTime = null;
-      for (const p of punches) {
-        if (p.type === 'in') inTime = p.time;
-        else if (p.type === 'out' && inTime) {
-          const [h1,m1] = inTime.split(':').map(Number);
-          const [h2,m2] = p.time.split(':').map(Number);
-          total += (h2*60 + m2) - (h1*60 + m1);
-          inTime = null;
-        }
-      }
-      return total / 60;
-    }
-
-    async function loadSummary(wsId) {
-      const summaryEl = document.getElementById('summaryWidgets');
-      const empSnap = await getDocs(collection(db, 'workspaces', wsId, 'employees'));
-      const employees = empSnap.docs.map(d => ({id:d.id, ...d.data()}));
-      let totalHours = 0;
-      const weekDates = getCurrentWeekRange();
-      for (const emp of employees) {
-        const punchSnap = await getDocs(collection(db, 'workspaces', wsId, 'employees', emp.id, 'punches'));
-        const weekPunches = punchSnap.docs.map(d=>d.data()).filter(p=>weekDates.includes(p.date));
-        totalHours += calculateHours(weekPunches);
-      }
-      summaryEl.innerHTML = `
-        <div class="bg-gray-800 p-4 rounded-xl">
-          <h2 class="text-sm text-gray-400">Total Employees</h2>
-          <p class="text-2xl font-bold">${employees.length}</p>
-        </div>
-        <div class="bg-gray-800 p-4 rounded-xl">
-          <h2 class="text-sm text-gray-400">Hours This Week</h2>
-          <p class="text-2xl font-bold">${totalHours.toFixed(1)}h</p>
-        </div>`;
-    }
+    const auth = getAuth(app);
 
     onAuthStateChanged(auth, async user => {
+      console.log('Debug: onAuthStateChanged fired, user=', user);
       if (!user) {
         document.getElementById('authError').classList.remove('hidden');
         return;
       }
-      const wsId = localStorage.getItem('activeWorkspace');
-      if (!wsId) {
+      const workspaceId = localStorage.getItem('activeWorkspace');
+      console.log('Debug: Retrieved workspaceId=', workspaceId);
+      if (!workspaceId) {
         document.getElementById('workspaceError').classList.remove('hidden');
         return;
       }
+
+      // show main content
+      document.getElementById('topNav').classList.remove('hidden');
       document.getElementById('mainContainer').classList.remove('hidden');
-      const wsSnap = await getDoc(doc(db, 'workspaces', wsId));
-      const wsData = wsSnap.exists() ? wsSnap.data() : {};
-      document.getElementById('workspaceName').textContent = wsData.name || wsId;
-      await loadSummary(wsId);
-      document.getElementById('activityFeed').innerHTML = `
-        <h3 class="text-lg font-semibold mb-2">Recent Activity</h3>
-        <ul class="text-sm text-gray-300 space-y-2">
-          <li>✔️ Sample activity entry</li>
-        </ul>`;
-      document.getElementById('suggestions').innerHTML = `
-        <h3 class="text-lg font-semibold mb-2">Smart Suggestions</h3>
-        <p class="text-sm text-emerald-400">🧠 Sample suggestion text.</p>`;
+
+      // setup tabs
+      document.querySelectorAll('aside button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('section [id^="section-"]').forEach(sec => sec.classList.add('hidden'));
+          document.getElementById('section-' + btn.dataset.section).classList.remove('hidden');
+        });
+      });
+      document.getElementById('tab-userprofile').click();
+
+      // load workspace plan
+      const wsRef = doc(db, 'workspaces', workspaceId);
+      const wsSnap = await getDoc(wsRef);
+      if (wsSnap.exists()) {
+        const data = wsSnap.data();
+        document.getElementById('workspacePlanSidebar').textContent = data.plan;
+        if (data.plan !== 'Enterprise') document.getElementById('upgradePlanSidebar').classList.remove('hidden');
+      }
     });
   </script>
 </body>

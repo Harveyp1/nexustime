@@ -1,238 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Settings - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://js.stripe.com/v3/"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
-<body class="bg-gray-950 text-white font-inter">
-  <!-- Top Nav -->
-  <header class="bg-gray-900 px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center space-x-4">
-      <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="Logo" class="h-10">
-      <span class="text-2xl font-bold text-emerald-400">NexusTime</span>
-    </div>
-    <nav class="space-x-6 text-gray-300">
+<body class="bg-gray-900 text-white font-inter min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-gray-800 p-4 flex items-center justify-between">
+    <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="NexusTime Logo" class="h-10" />
+    <nav class="space-x-6">
       <a href="dashboard.html" class="hover:text-emerald-400">Dashboard</a>
-      <a href="timesheet.html" class="hover:text-emerald-400">Timesheets</a>
+      <a href="timesheet.html" class="hover:text-emerald-400">Timesheet</a>
       <a href="schedule.html" class="hover:text-emerald-400">Schedule</a>
-      <a href="settings.html" class="hover:text-emerald-400 font-semibold">Settings</a>
       <a href="switch-workspace.html" class="hover:text-emerald-400">Switch Workspace</a>
+      <a href="app.html" class="hover:text-emerald-400">Logout</a>
     </nav>
   </header>
 
-  <div class="flex min-h-screen">
+  <div class="flex flex-1">
     <!-- Sidebar -->
-    <aside class="w-64 bg-gray-900 p-6 space-y-6">
-      <h2 class="text-xl font-bold text-gray-200">Settings</h2>
-      <div id="planCard" class="bg-gray-800 p-4 rounded flex justify-between items-center">
-        <div>Plan: <span id="workspacePlanSidebar" class="font-semibold"></span></div>
-        <button id="upgradePlanSidebar" class="bg-yellow-500 text-gray-900 px-3 py-1 rounded hidden">Upgrade</button>
+    <aside class="w-64 bg-gray-800 p-6">
+      <div class="bg-gray-700 p-4 rounded-lg mb-6">
+        <h3 class="text-lg font-semibold">Current Plan</h3>
+        <p id="planName" class="mt-2">Pro</p>
+        <button class="mt-4 w-full bg-emerald-400 text-gray-900 py-2 rounded hover:bg-emerald-500">Upgrade</button>
       </div>
-      <nav class="space-y-2 text-gray-400">
-        <button data-section="userprofile" id="tab-userprofile" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">User Profile</button>
-        <button data-section="workspacebilling" id="tab-workspacebilling" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Workspace & Billing</button>
-        <button data-section="logoupload" id="tab-logoupload" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Workspace Logo</button>
-        <button data-section="generalsettings" id="tab-generalsettings" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Workspace Settings</button>
-        <button data-section="roles" id="tab-roles" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800">Roles & Permissions</button>
+      <nav class="space-y-2 text-gray-300">
+        <button data-tab="general" class="w-full text-left py-2 px-3 rounded bg-emerald-600/20">Workspace Settings</button>
+        <button data-tab="user" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">User Profile</button>
+        <button data-tab="workspace" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Billing</button>
+        <button data-tab="logo" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Logo</button>
+        <button data-tab="roles" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Roles</button>
       </nav>
     </aside>
 
     <!-- Content Area -->
-    <section class="flex-1 p-8">
-      <!-- User Profile -->
-      <div id="section-userprofile" class="space-y-6">
-        <h3 class="text-xl font-semibold">User Profile</h3>
-        <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
-          <div>
-            <label class="block text-gray-400">Name</label>
-            <input type="text" id="profileName" class="w-full mt-1 p-2 bg-gray-800 rounded" />
-          </div>
-          <div>
-            <label class="block text-gray-400">Email</label>
-            <input type="email" id="profileEmail" class="w-full mt-1 p-2 bg-gray-800 rounded" disabled />
-          </div>
-          <div class="md:col-span-2">
-            <button type="submit" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Save Profile</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Workspace & Billing -->
-      <div id="section-workspacebilling" class="hidden space-y-6">
-        <h3 class="text-xl font-semibold">Workspace & Billing</h3>
-        <p><span class="font-semibold">Workspace:</span> <span id="workspaceNameDisplay"></span></p>
-        <p><span class="font-semibold">Plan:</span> <span id="workspacePlanDisplay"></span></p>
-        <div class="mt-4">
-          <h4 class="text-lg font-semibold">Payment History</h4>
-          <div id="paymentHistory" class="space-y-2"></div>
+    <main id="mainContent" class="flex-1 p-8 overflow-auto">
+      <h2 class="text-2xl font-bold mb-4">Workspace Settings</h2>
+      <form class="space-y-6 max-w-xl">
+        <div>
+          <label class="block mb-2 font-semibold">Timezone (GMT)</label>
+          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
+            <option>(GMT-12:00) International Date Line West</option>
+            <option>(GMT-11:00) Midway Island, Samoa</option>
+            <option>(GMT-10:00) Hawaii</option>
+            <option>(GMT-09:00) Alaska</option>
+            <option>(GMT-08:00) Pacific Time (US & Canada)</option>
+            <option>(GMT-07:00) Mountain Time (US & Canada)</option>
+            <option>(GMT-06:00) Central Time (US & Canada)</option>
+            <option>(GMT-05:00) Eastern Time (US & Canada)</option>
+            <option>(GMT+00:00) London, Lisbon, Casablanca</option>
+            <option>(GMT+01:00) Amsterdam, Berlin, Rome, Paris</option>
+            <option>(GMT+05:30) India Standard Time</option>
+            <option>(GMT+08:00) Beijing, Perth, Singapore, Hong Kong</option>
+            <option>(GMT+09:00) Tokyo, Seoul, Osaka</option>
+            <option>(GMT+10:00) Sydney, Guam</option>
+            <option>(GMT+12:00) Auckland, Wellington, Fiji</option>
+          </select>
         </div>
-        <button id="addUserBtn" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Add User</button>
-      </div>
 
-      <!-- Workspace Logo -->
-      <div id="section-logoupload" class="hidden space-y-6">
-        <h3 class="text-xl font-semibold">Workspace Logo</h3>
-        <img id="logoPreview" src="" alt="Logo Preview" class="h-16 w-16 bg-gray-800 rounded" />
-        <input type="file" id="logoInput" accept="image/png" />
-        <p class="text-sm text-gray-400">PNG only, 64x64px recommended.</p>
-        <button id="saveLogoBtn" class="bg-emerald-400 text-gray-900 px-4 py-2 rounded">Save Logo</button>
-      </div>
-
-      <!-- General Settings -->
-      <div id="section-generalsettings" class="hidden space-y-6">
-        <h3 class="text-xl font-semibold">Workspace Settings</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
-          <div>
-            <label class="block text-gray-400">Week Start Day</label>
-            <select id="weekStart" class="w-full mt-1 p-2 bg-gray-800 rounded">
-              <option>Monday</option><option>Sunday</option><option>Saturday</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-gray-400">Overtime Rule</label>
-            <select id="overtimeRule" class="w-full mt-1 p-2 bg-gray-800 rounded">
-              <option>Daily Over 8h</option><option>Weekly Over 40h</option>
-            </select>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-gray-400">Time Zone</label>
-            <select id="timeZone" class="w-full mt-1 p-2 bg-gray-800 rounded">
-              <option value="-12">GMT -12:00</option>
-              <option value="-11">GMT -11:00</option>
-              <option value="-10">GMT -10:00</option>
-              <option value="-9">GMT -09:00</option>
-              <option value="-8">GMT -08:00</option>
-              <option value="-7">GMT -07:00</option>
-              <option value="-6">GMT -06:00</option>
-              <option value="-5">GMT -05:00</option>
-              <option value="-4">GMT -04:00</option>
-              <option value="-3">GMT -03:00</option>
-              <option value="-2">GMT -02:00</option>
-              <option value="-1">GMT -01:00</option>
-              <option value="0">GMT +00:00</option>
-              <option value="1">GMT +01:00</option>
-              <option value="2">GMT +02:00</option>
-              <option value="3">GMT +03:00</option>
-              <option value="4">GMT +04:00</option>
-              <option value="5">GMT +05:00</option>
-              <option value="6">GMT +06:00</option>
-              <option value="7">GMT +07:00</option>
-              <option value="8">GMT +08:00</option>
-              <option value="9">GMT +09:00</option>
-              <option value="10">GMT +10:00</option>
-              <option value="11">GMT +11:00</option>
-              <option value="12">GMT +12:00</option>
-            </select>
-          </div>
+        <div>
+          <label class="block mb-2 font-semibold">Week Start Day</label>
+          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
+            <option>Sunday</option>
+            <option>Monday</option>
+            <option>Saturday</option>
+          </select>
         </div>
-      </div>
 
-      <!-- Roles & Permissions -->
-      <div id="section-roles" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xl font-semibold">Roles & Permissions</h3>
-          <button id="addRole" class="bg-emerald-400 text-gray-900 px-4 py-1 rounded">Add Role</button>
+        <div>
+          <label class="block mb-2 font-semibold">Overtime Rule</label>
+          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
+            <option>Over 8 hrs/day</option>
+            <option>Over 40 hrs/week</option>
+            <option>California Rule</option>
+            <option>No Overtime</option>
+          </select>
         </div>
-        <div id="rolesContainer" class="space-y-4"></div>
-      </div>
-    </section>
+
+        <div>
+          <label class="block mb-2 font-semibold">Time Format</label>
+          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
+            <option>12-hour</option>
+            <option>24-hour</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block mb-2 font-semibold">Allow Manual Time Edits</label>
+          <input type="checkbox" class="ml-2 align-middle" checked>
+        </div>
+
+        <button class="mt-6 bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 px-6 rounded">
+          Save Settings
+        </button>
+      </form>
+    </main>
   </div>
-
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-    import { getFirestore, collection, getDocs, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-    import { getAuth } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8s9Ls",
-      authDomain: "nexustime-e8b91.firebaseapp.com",
-      projectId: "nexustime-e8b91",
-      storageBucket: "nexustime-e8b91.appspot.com",
-      messagingSenderId: "516976739338",
-      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
-      measurementId: "G-QRSD6TYH86"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth();
-
-    auth.onAuthStateChanged(user => {
-      if (!user) return window.location.href = '/app.html';
-      const workspaceId = localStorage.getItem('activeWorkspace') || localStorage.getItem('activeWorkspaceId');
-      if (!workspaceId) return window.location.href = '/switch-workspace.html';
-      setupTabs(workspaceId);
-    });
-
-    function hideAllSections() {
-      ['userprofile','workspacebilling','logoupload','generalsettings','roles'].forEach(sec => document.getElementById(`section-${sec}`).classList.add('hidden'));
-    }
-
-    function setupTabs(workspaceId) {
-      ['userprofile','workspacebilling','logoupload','generalsettings','roles'].forEach(sec => {
-        document.getElementById(`tab-${sec}`).onclick = () => {
-          hideAllSections();
-          document.getElementById(`section-${sec}`).classList.remove('hidden');
-        };
-      });
-      document.getElementById('tab-userprofile').click();
-      loadUserProfile();
-      loadWorkspaceBilling();
-      loadLogo();
-      loadGeneralSettings();
-      loadRoles(workspaceId);
-    }
-
-    async function loadUserProfile() {
-      document.getElementById('profileName').value = auth.currentUser.displayName;
-      document.getElementById('profileEmail').value = auth.currentUser.email;
-      document.getElementById('profileForm').onsubmit = e => { e.preventDefault(); /* save logic */ };
-    }
-
-    async function loadWorkspaceBilling() {
-      const nameSpan = document.getElementById('workspaceNameDisplay');
-      const planSpan = document.getElementById('workspacePlanDisplay');
-      /* fetch from Firestore and populate paymentHistory, enable addUserBtn */
-    }
-
-    function loadLogo() {
-      /* fetch logo URL and set logoPreview.src; wire logoInput and saveLogoBtn */
-    }
-
-    function loadGeneralSettings() {
-      /* fetch workspace settings, populate selects */
-    }
-
-    const permissionList = ['Manage Users','Manage Roles','Approve Timesheets','View Reports','Manage Payroll','Manage Settings','View Time Off','Manage Time Off'];
-    async function loadRoles(workspaceId) {
-      const colRef = collection(db,'workspaces',workspaceId,'roles');
-      const snapshot = await getDocs(colRef);
-      const container = document.getElementById('rolesContainer');
-      container.innerHTML = '';
-      snapshot.forEach(docSnap => {
-        const roleId = docSnap.id;
-        const data = docSnap.data();
-        const card = document.createElement('div'); card.className='bg-gray-800 p-4 rounded';
-        const title = document.createElement('h4'); title.textContent=roleId; title.className='font-semibold mb-2'; card.appendChild(title);
-        permissionList.forEach(perm => {
-          const label=document.createElement('label'); label.className='flex items-center space-x-2';
-          const checkbox=document.createElement('input'); checkbox.type='checkbox'; checkbox.id=`${roleId}-${perm}`; checkbox.checked=data[perm]||false;
-          label.appendChild(checkbox);
-          const span=document.createElement('span'); span.textContent=perm; label.appendChild(span);
-          card.appendChild(label);
-        });
-        const saveBtn=document.createElement('button'); saveBtn.textContent='Save'; saveBtn.className='mt-2 bg-emerald-400 text-gray-900 px-2 py-1 rounded';
-        saveBtn.onclick=async()=>{
-          const updates={}; permissionList.forEach(perm=>updates[perm]=document.getElementById(`${roleId}-${perm}`).checked);
-          await setDoc(doc(db,'workspaces',workspaceId,'roles',roleId),updates,{merge:true});
-        };
-        card.appendChild(saveBtn);
-        container.appendChild(card);
-      });
-    }
-  </script>
 </body>
 </html>

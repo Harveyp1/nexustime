@@ -6,9 +6,50 @@
   <title>Settings - NexusTime</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+      authDomain: "nexustime-e8b91.firebaseapp.com",
+      projectId: "nexustime-e8b91",
+      storageBucket: "nexustime-e8b91.firebasestorage.app",
+      messagingSenderId: "516976739338",
+      appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+      measurementId: "G-QRSD6TYH86"
+    };
+
+    console.log("Initializing Firebase with config:", firebaseConfig);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, async (user) => {
+      console.log("onAuthStateChanged fired, user=", user);
+      if (!user) {
+        console.log("Debug: No user, redirecting to app.html");
+        window.location.href = "app.html";
+        return;
+      }
+
+      const workspaceId = localStorage.getItem("activeWorkspace");
+      console.log("Debug: Retrieved workspaceId=", workspaceId);
+      if (!workspaceId) return;
+
+      const docRef = doc(db, "workspaces", workspaceId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        document.getElementById("planName").innerText = data.plan || "Unknown Plan";
+      } else {
+        console.log("No such workspace!");
+      }
+    });
+  </script>
 </head>
 <body class="bg-gray-900 text-white font-inter min-h-screen flex flex-col">
-  <!-- Header -->
   <header class="bg-gray-800 p-4 flex items-center justify-between">
     <img src="https://github.com/Harveyp1/nexustime/blob/main/nexustimelogo.png?raw=true" alt="NexusTime Logo" class="h-10" />
     <nav class="space-x-6">
@@ -21,88 +62,115 @@
   </header>
 
   <div class="flex flex-1">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-gray-800 p-6">
-      <div class="bg-gray-700 p-4 rounded-lg mb-6">
+    <aside class="w-64 bg-gray-800 p-6 space-y-6">
+      <div class="bg-gray-700 p-4 rounded-lg">
         <h3 class="text-lg font-semibold">Current Plan</h3>
-        <p id="planName" class="mt-2">Pro</p>
+        <p id="planName" class="mt-2">Loading...</p>
         <button class="mt-4 w-full bg-emerald-400 text-gray-900 py-2 rounded hover:bg-emerald-500">Upgrade</button>
       </div>
       <nav class="space-y-2 text-gray-300">
-        <button data-tab="general" class="w-full text-left py-2 px-3 rounded bg-emerald-600/20">Workspace Settings</button>
-        <button data-tab="user" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">User Profile</button>
-        <button data-tab="workspace" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Billing</button>
-        <button data-tab="logo" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Logo</button>
-        <button data-tab="roles" class="w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Roles</button>
+        <button data-tab="general" class="tab-btn w-full text-left py-2 px-3 rounded bg-emerald-600/20">Workspace Settings</button>
+        <button data-tab="user" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">User Profile</button>
+        <button data-tab="billing" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Billing</button>
+        <button data-tab="logo" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Logo</button>
+        <button data-tab="roles" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Roles</button>
       </nav>
     </aside>
 
-    <!-- Content Area -->
-    <main id="mainContent" class="flex-1 p-8 overflow-auto">
-      <h2 class="text-2xl font-bold mb-4">Workspace Settings</h2>
-      <form class="space-y-6 max-w-xl">
-        <div>
-          <label class="block mb-2 font-semibold">Timezone (GMT)</label>
-          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
-            <option>(GMT-12:00) International Date Line West</option>
-            <option>(GMT-11:00) Midway Island, Samoa</option>
-            <option>(GMT-10:00) Hawaii</option>
-            <option>(GMT-09:00) Alaska</option>
-            <option>(GMT-08:00) Pacific Time (US & Canada)</option>
-            <option>(GMT-07:00) Mountain Time (US & Canada)</option>
-            <option>(GMT-06:00) Central Time (US & Canada)</option>
-            <option>(GMT-05:00) Eastern Time (US & Canada)</option>
-            <option>(GMT+00:00) London, Lisbon, Casablanca</option>
-            <option>(GMT+01:00) Amsterdam, Berlin, Rome, Paris</option>
-            <option>(GMT+05:30) India Standard Time</option>
-            <option>(GMT+08:00) Beijing, Perth, Singapore, Hong Kong</option>
-            <option>(GMT+09:00) Tokyo, Seoul, Osaka</option>
-            <option>(GMT+10:00) Sydney, Guam</option>
-            <option>(GMT+12:00) Auckland, Wellington, Fiji</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block mb-2 font-semibold">Week Start Day</label>
-          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
-            <option>Sunday</option>
-            <option>Monday</option>
-            <option>Tuesday</option>
-            <option>Wednsday</option>
-            <option>Thursday</option>
-            <option>Friday</option>
-            <option>Saturday</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block mb-2 font-semibold">Overtime Rule</label>
-          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
-            <option>Over 8 hrs/day</option>
-            <option>Over 40 hrs/week</option>
-            <option>California Rule</option>
-            <option>No Overtime</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block mb-2 font-semibold">Time Format</label>
-          <select class="w-full p-2 bg-gray-800 border border-gray-600 rounded">
-            <option>12-hour</option>
-            <option>24-hour</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block mb-2 font-semibold">Allow Manual Time Edits</label>
-          <input type="checkbox" class="ml-2 align-middle" checked>
-        </div>
-
-        <button class="mt-6 bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-2 px-6 rounded">
-          Save Settings
-        </button>
-      </form>
+    <main class="flex-1 p-8 overflow-auto" id="mainContent">
+      <p class="text-gray-400">Select a tab to view settings.</p>
     </main>
   </div>
+
+  <script>
+    const content = document.getElementById("mainContent");
+    const buttons = document.querySelectorAll(".tab-btn");
+
+    const sections = {
+      general: content.innerHTML,
+      user: `
+        <h2 class='text-xl font-bold mb-4'>User Profile</h2>
+        <form class="space-y-4">
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-200">Name</span>
+            <input type="text" class="mt-1 block w-full bg-gray-800 text-white border border-gray-600 rounded p-2" placeholder="Your Name" />
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-200">Email</span>
+            <input type="email" class="mt-1 block w-full bg-gray-800 text-white border border-gray-600 rounded p-2" placeholder="your@email.com" />
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-200">Phone</span>
+            <input type="tel" class="mt-1 block w-full bg-gray-800 text-white border border-gray-600 rounded p-2" placeholder="(555) 555-5555" />
+          </label>
+        </form>
+      `,
+      billing: `
+        <h2 class='text-xl font-bold mb-4'>Workspace Billing</h2>
+        <div class="space-y-6">
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold">Plan Summary</h3>
+            <p>Annual Plan – Starter: $3.40/user/month</p>
+            <p>Annual Plan – Pro: $6.80/user/month</p>
+            <p>Monthly Plan – Starter: $4/user/month</p>
+            <p>Monthly Plan – Pro: $8/user/month</p>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold">Payment Method</h3>
+            <button class="mt-2 bg-emerald-400 text-gray-900 px-4 py-2 rounded hover:bg-emerald-500">Add Payment Method</button>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold">Add Users</h3>
+            <p>Each additional user costs per your selected plan.</p>
+            <button class="mt-2 bg-emerald-400 text-gray-900 px-4 py-2 rounded hover:bg-emerald-500">Add User</button>
+          </div>
+        </div>
+      `,
+      logo: `
+        <h2 class='text-xl font-bold mb-4'>Workspace Logo</h2>
+        <p class='text-gray-300'>Coming Soon</p>
+      `,
+      roles: `
+        <h2 class='text-xl font-bold mb-4'>Roles</h2>
+        <form class="space-y-6">
+          <div>
+            <h3 class="font-semibold mb-2">Administrator</h3>
+            <ul class="space-y-1 text-sm">
+              <li>✓ Full access to all settings</li>
+              <li>✓ Manage users and roles</li>
+              <li>✓ Configure payroll</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-semibold mb-2">Supervisor</h3>
+            <ul class="space-y-1 text-sm">
+              <li>✓ Approve time entries</li>
+              <li>✓ Manage team schedules</li>
+              <li>✓ Review logs</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-semibold mb-2">Employee</h3>
+            <ul class="space-y-1 text-sm">
+              <li>✓ View and edit own time</li>
+              <li>✓ Submit time off</li>
+              <li>✓ Review own logs</li>
+            </ul>
+          </div>
+        </form>
+      `
+    };
+
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        buttons.forEach(b => b.classList.remove("bg-emerald-600/20"));
+        btn.classList.add("bg-emerald-600/20");
+        const tab = btn.getAttribute("data-tab");
+        content.innerHTML = sections[tab] || "<p class='text-red-400'>Section not found.</p>";
+      });
+    });
+
+    document.querySelector('[data-tab="general"]').click();
+  </script>
 </body>
 </html>

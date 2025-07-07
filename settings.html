@@ -29,21 +29,44 @@
       console.log("Debug: onAuthStateChanged fired, user=", user);
       if (user) {
         const uid = user.uid;
-        const workspaceId = localStorage.getItem("activeWorkspace");
         console.log("Debug: User UID:", uid);
-        console.log("Debug: Retrieved workspaceId=", workspaceId);
 
-        if (workspaceId) {
-          const workspaceRef = doc(db, "workspaces", workspaceId);
-          const workspaceSnap = await getDoc(workspaceRef);
-
-          if (workspaceSnap.exists()) {
-            console.log("Debug: Workspace data:", workspaceSnap.data());
-          } else {
-            console.error("Debug: Workspace not found in Firestore.");
+        let workspaceId = localStorage.getItem("activeWorkspace");
+        if (!workspaceId) {
+          try {
+            const userDoc = await getDoc(doc(db, "users", uid));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              workspaceId = data.activeWorkspace;
+              if (workspaceId) {
+                localStorage.setItem("activeWorkspace", workspaceId);
+                console.log("Debug: WorkspaceId recovered from Firestore and set:", workspaceId);
+              } else {
+                console.warn("Debug: No workspaceId found in user doc.");
+              }
+            } else {
+              console.warn("Debug: No user document found.");
+            }
+          } catch (err) {
+            console.error("Debug: Error fetching user doc:", err);
           }
         } else {
-          console.warn("Debug: No active workspaceId found in localStorage.");
+          console.log("Debug: Retrieved workspaceId from localStorage:", workspaceId);
+        }
+
+        if (workspaceId) {
+          try {
+            const workspaceRef = doc(db, "workspaces", workspaceId);
+            const workspaceSnap = await getDoc(workspaceRef);
+
+            if (workspaceSnap.exists()) {
+              console.log("Debug: Workspace data:", workspaceSnap.data());
+            } else {
+              console.error("Debug: Workspace not found in Firestore.");
+            }
+          } catch (err) {
+            console.error("Debug: Error fetching workspace doc:", err);
+          }
         }
       } else {
         console.warn("Debug: No user is signed in. Redirecting to login.");

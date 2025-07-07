@@ -42,13 +42,16 @@
                 localStorage.setItem("activeWorkspace", workspaceId);
                 console.log("Debug: WorkspaceId recovered from Firestore and set:", workspaceId);
               } else {
-                console.warn("Debug: No workspaceId found in user doc.");
+                console.warn("Debug: No workspaceId found in user doc. Redirecting to workspace switch.");
+                window.location.href = "switch-workspace.html";
               }
             } else {
-              console.warn("Debug: No user document found.");
+              console.warn("Debug: No user document found. Redirecting to workspace switch.");
+              window.location.href = "switch-workspace.html";
             }
           } catch (err) {
             console.error("Debug: Error fetching user doc:", err);
+            window.location.href = "switch-workspace.html";
           }
         } else {
           console.log("Debug: Retrieved workspaceId from localStorage:", workspaceId);
@@ -73,6 +76,15 @@
         window.location.href = "app.html";
       }
     });
+
+    window.setWorkspaceManually = () => {
+      const manualId = prompt("Enter a Workspace ID to manually set in localStorage:");
+      if (manualId) {
+        localStorage.setItem("activeWorkspace", manualId);
+        alert("Workspace ID set to: " + manualId + "\nReloading page.");
+        window.location.reload();
+      }
+    };
   </script>
 </head>
 <body class="bg-gray-900 text-white font-inter min-h-screen flex flex-col">
@@ -88,6 +100,7 @@
   </header>
   <main class="flex-1 p-8 overflow-auto">
     <h1 class="text-2xl font-bold mb-6">Settings Debug</h1>
+    <button onclick="setWorkspaceManually()" class="mb-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded">Manually Set Workspace</button>
     <pre id="debugLog" class="bg-gray-800 p-4 rounded text-green-400 text-sm overflow-x-auto"></pre>
   </main>
   <script>

@@ -20,32 +20,37 @@
       measurementId: "G-QRSD6TYH86"
     };
 
+    console.log("Debug: Initializing Firebase with config:", firebaseConfig);
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    const auth = getAuth();
     const db = getFirestore(app);
 
-    onAuthStateChanged(auth, async user => {
-      if (!user) {
-        console.log('No user, redirecting...');
-        window.location.href = 'app.html';
-        return;
-      }
+    onAuthStateChanged(auth, async (user) => {
+      console.log("Debug: onAuthStateChanged fired, user=", user);
+      if (user) {
+        const uid = user.uid;
+        const workspaceId = localStorage.getItem("activeWorkspace");
+        console.log("Debug: User UID:", uid);
+        console.log("Debug: Retrieved workspaceId=", workspaceId);
 
-      const activeWorkspace = localStorage.getItem('activeWorkspace');
-      if (!activeWorkspace) {
-        console.log('No active workspace, redirecting...');
-        window.location.href = 'switch-workspace.html';
-        return;
-      }
+        if (workspaceId) {
+          const workspaceRef = doc(db, "workspaces", workspaceId);
+          const workspaceSnap = await getDoc(workspaceRef);
 
-      const workspaceDoc = await getDoc(doc(db, `workspaces/${activeWorkspace}`));
-      if (workspaceDoc.exists()) {
-        const data = workspaceDoc.data();
-        document.getElementById('planName').innerText = data.plan || 'Unknown';
+          if (workspaceSnap.exists()) {
+            console.log("Debug: Workspace data:", workspaceSnap.data());
+          } else {
+            console.error("Debug: Workspace not found in Firestore.");
+          }
+        } else {
+          console.warn("Debug: No active workspaceId found in localStorage.");
+        }
+      } else {
+        console.warn("Debug: No user is signed in. Redirecting to login.");
+        window.location.href = "app.html";
       }
     });
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body class="bg-gray-900 text-white font-inter min-h-screen flex flex-col">
   <header class="bg-gray-800 p-4 flex items-center justify-between">
@@ -58,50 +63,19 @@
       <a href="app.html" class="hover:text-emerald-400">Logout</a>
     </nav>
   </header>
-
-  <div class="flex flex-1">
-    <aside class="w-64 bg-gray-800 p-6 space-y-6">
-      <div class="bg-gray-700 p-4 rounded-lg">
-        <h3 class="text-lg font-semibold">Current Plan</h3>
-        <p id="planName" class="mt-2">Loading...</p>
-        <button class="mt-4 w-full bg-emerald-400 text-gray-900 py-2 rounded hover:bg-emerald-500">Upgrade</button>
-      </div>
-      <nav class="space-y-2 text-gray-300">
-        <button data-tab="general" class="tab-btn w-full text-left py-2 px-3 rounded bg-emerald-600/20">Workspace Settings</button>
-        <button data-tab="user" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">User Profile</button>
-        <button data-tab="billing" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Billing</button>
-        <button data-tab="logo" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Workspace Logo</button>
-        <button data-tab="roles" class="tab-btn w-full text-left py-2 px-3 rounded hover:bg-emerald-600/20">Roles</button>
-      </nav>
-    </aside>
-
-    <main class="flex-1 p-8 overflow-auto" id="mainContent">
-      <p class="text-gray-400">Select a tab to view settings.</p>
-    </main>
-  </div>
-
+  <main class="flex-1 p-8 overflow-auto">
+    <h1 class="text-2xl font-bold mb-6">Settings Debug</h1>
+    <pre id="debugLog" class="bg-gray-800 p-4 rounded text-green-400 text-sm overflow-x-auto"></pre>
+  </main>
   <script>
-    const content = document.getElementById("mainContent");
-    const buttons = document.querySelectorAll(".tab-btn");
-
-    const sections = {
-      general: content.innerHTML,
-      user: `<h2 class='text-xl font-bold mb-4'>User Profile</h2><form class="space-y-4"><label class="block"><span class="block text-sm font-medium text-gray-200">Name</span><input type="text" class="mt-1 block w-full bg-gray-800 text-white border border-gray-600 rounded p-2" placeholder="Your Name" /></label><label class="block"><span class="block text-sm font-medium text-gray-200">Email</span><input type="email" class="mt-1 block w-full bg-gray-800 text-white border border-gray-600 rounded p-2" placeholder="your@email.com" /></label><label class="block"><span class="block text-sm font-medium text-gray-200">Phone</span><input type="tel" class="mt-1 block w-full bg-gray-800 text-white border border-gray-600 rounded p-2" placeholder="(555) 555-5555" /></label></form>`,
-      billing: `<h2 class='text-xl font-bold mb-4'>Workspace Billing</h2><div class="space-y-6"><div class="bg-gray-800 p-4 rounded-lg"><h3 class="text-lg font-semibold">Plan Summary</h3><p>Annual Plan – Pro: $6.80/user/month</p><p>Monthly Plan – Starter: $4/user/month</p></div><div class="bg-gray-800 p-4 rounded-lg"><h3 class="text-lg font-semibold">Payment Method</h3><button class="mt-2 bg-emerald-400 text-gray-900 px-4 py-2 rounded hover:bg-emerald-500">Add Payment Method</button></div><div class="bg-gray-800 p-4 rounded-lg"><h3 class="text-lg font-semibold">Add Users</h3><p>Each additional user costs per your selected plan.</p><button class="mt-2 bg-emerald-400 text-gray-900 px-4 py-2 rounded hover:bg-emerald-500">Add User</button></div></div>`,
-      logo: `<h2 class='text-xl font-bold mb-4'>Workspace Logo</h2><p class='text-gray-300'>Coming Soon</p>`,
-      roles: `<h2 class='text-xl font-bold mb-4'>Roles</h2><form class="space-y-6"><div><h3 class="font-semibold mb-2">Administrator</h3><ul class="space-y-1 text-sm"><li>✓ Full access to all settings</li><li>✓ Manage users and roles</li><li>✓ Configure payroll</li></ul></div><div><h3 class="font-semibold mb-2">Supervisor</h3><ul class="space-y-1 text-sm"><li>✓ Approve time entries</li><li>✓ Manage team schedules</li><li>✓ Review logs</li></ul></div><div><h3 class="font-semibold mb-2">Employee</h3><ul class="space-y-1 text-sm"><li>✓ View and edit own time</li><li>✓ Submit time off</li><li>✓ Review own logs</li></ul></div></form>`
-    };
-
-    buttons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        buttons.forEach(b => b.classList.remove("bg-emerald-600/20"));
-        btn.classList.add("bg-emerald-600/20");
-        const tab = btn.getAttribute("data-tab");
-        content.innerHTML = sections[tab] || "<p class='text-red-400'>Section not found.</p>";
+    const originalConsoleLog = console.log;
+    const debugOutput = document.getElementById('debugLog');
+    console.log = function (...args) {
+      args.forEach(arg => {
+        debugOutput.innerText += typeof arg === 'object' ? JSON.stringify(arg, null, 2) + '\n' : arg + '\n';
       });
-    });
-
-    document.querySelector('[data-tab="general"]').click();
+      originalConsoleLog.apply(console, args);
+    };
   </script>
 </body>
 </html>

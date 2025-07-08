@@ -1066,6 +1066,62 @@
 
         // --- Helper Functions (Dates, Calculations, etc.) ---
         
+        /**
+         * Calculates estimated taxes based on gross pay.
+         * NOTE: This is a simplified model for demonstration purposes only.
+         * A real-world application must use a dedicated payroll tax API.
+         * @param {number} grossPay The gross pay for the period.
+         * @param {string} filingStatus 'single' or 'married'.
+         * @param {number} allowances The number of allowances claimed.
+         * @returns {object} An object containing the tax breakdown.
+         */
+        function calculateTaxes(grossPay, filingStatus = 'single', allowances = 0) {
+            // FICA Taxes (Social Security & Medicare)
+            const socialSecurityRate = 0.062;
+            const medicareRate = 0.0145;
+            
+            // NOTE: In a real system, there's a wage base limit for Social Security. Ignored for simplicity.
+            const socialSecurity = grossPay * socialSecurityRate;
+            const medicare = grossPay * medicareRate;
+
+            // Simplified Federal Income Tax Calculation
+            // Using 2024 tax brackets and a very simplified standard deduction model.
+            // This is NOT accurate for real payroll but demonstrates the concept.
+            const annualGross = grossPay * 26; // Assuming bi-weekly pay period for annualization
+            const singleBrackets = {
+                0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37
+            };
+            const marriedBrackets = {
+                0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37
+            };
+            
+            const brackets = (filingStatus === 'married') ? marriedBrackets : singleBrackets;
+            let taxableIncome = annualGross; // In a real system, subtract deductions here.
+            let annualFederalTax = 0;
+            let remainingIncome = taxableIncome;
+            
+            const sortedBrackets = Object.keys(brackets).map(Number).sort((a,b) => b-a);
+            
+            for (const bracketStart of sortedBrackets) {
+                if (remainingIncome > bracketStart) {
+                    const incomeInBracket = remainingIncome - bracketStart;
+                    annualFederalTax += incomeInBracket * brackets[bracketStart];
+                    remainingIncome = bracketStart;
+                }
+            }
+
+            const federal = annualFederalTax / 26; // De-annualize for the pay period
+
+            const total = socialSecurity + medicare + (federal > 0 ? federal : 0);
+
+            return {
+                federal: federal > 0 ? federal : 0,
+                socialSecurity,
+                medicare,
+                total
+            };
+        }
+        
         function processDayPunches(employeeId, day, punchesOverride = null) {
             const dateString = day ? day.toISOString().split('T')[0] : null;
             const entry = employeeId && dateString ? timesheets[employeeId]?.[dateString] : null;
@@ -2786,8 +2842,8 @@
                         <table class="w-full text-left">
                             <thead class="bg-gray-800"><tr>
                                 <th class="p-4 font-semibold">Employee</th>
-                                <th class="p-4 font-semibold">Total Hours</th>
                                 <th class="p-4 font-semibold">Gross Pay</th>
+                                <th class="p-4 font-semibold">Taxes</th>
                                 <th class="p-4 font-semibold">Deductions</th>
                                 <th class="p-4 font-semibold">Net Pay</th>
                             </tr></thead>
@@ -2811,7 +2867,10 @@
 
                 const grossPay = (regularHours * (emp.hourlyRate || 0)) + (overtimeHours * (emp.hourlyRate || 0) * 1.5);
                 
-                const empDeductions = emp.payroll?.deductions || [];
+                const payrollInfo = emp.payroll || {};
+                const taxes = calculateTaxes(grossPay, payrollInfo.filingStatus, payrollInfo.allowances);
+                
+                const empDeductions = payrollInfo.deductions || [];
                 let totalDeductions = 0;
                 empDeductions.forEach(ded => {
                     if (ded.type === 'fixed') {
@@ -2821,13 +2880,13 @@
                     }
                 });
 
-                const netPay = grossPay - totalDeductions;
+                const netPay = grossPay - taxes.total - totalDeductions;
                 
                 reportHtml += `
                      <tr class="border-b border-gray-700">
                         <td class="p-4">${emp.name}</td>
-                        <td class="p-4">${totalHours.toFixed(2)}</td>
                         <td class="p-4">$${grossPay.toFixed(2)}</td>
+                        <td class="p-4 text-red-400" title="Fed: $${taxes.federal.toFixed(2)}, SS: $${taxes.socialSecurity.toFixed(2)}, Med: $${taxes.medicare.toFixed(2)}">-$${taxes.total.toFixed(2)}</td>
                         <td class="p-4 text-red-400">-$${totalDeductions.toFixed(2)}</td>
                         <td class="p-4 font-bold text-emerald-400">$${netPay.toFixed(2)}</td>
                     </tr>
@@ -2850,25 +2909,41 @@
             const contentEl = document.getElementById('pay-stub-content');
             
             let deductionsHtml = '';
-            const stubDeductions = stub.deductions || []; // Assume this comes from the stub document
+            const stubDeductions = stub.deductions || [];
             let totalDeductions = 0;
             if (stubDeductions.length > 0) {
+                totalDeductions = stubDeductions.reduce((acc, d) => acc + d.amount, 0);
                 deductionsHtml = `
                     <div class="stub-section">
                         <h2>Deductions</h2>
                         <table class="stub-table">
                             <thead><tr><th>Description</th><th class="amount">Amount</th></tr></thead>
                             <tbody>
-                                ${stubDeductions.map(d => {
-                                    totalDeductions += d.amount; // Assume amount is pre-calculated
-                                    return `<tr><td>${d.name}</td><td class="amount">-$${d.amount.toFixed(2)}</td></tr>`
-                                }).join('')}
+                                ${stubDeductions.map(d => `<tr><td>${d.name}</td><td class="amount">-$${d.amount.toFixed(2)}</td></tr>`).join('')}
                             </tbody>
                         </table>
                     </div>
                 `;
             }
 
+            let taxesHtml = '';
+            const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
+            const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
+
+            taxesHtml = `
+                <div class="stub-section">
+                    <h2>Taxes Withheld</h2>
+                    <table class="stub-table">
+                        <thead><tr><th>Description</th><th class="amount">Amount</th></tr></thead>
+                        <tbody>
+                            <tr><td>Federal Income Tax</td><td class="amount">-$${(stubTaxes.federal || 0).toFixed(2)}</td></tr>
+                            <tr><td>Social Security</td><td class="amount">-$${(stubTaxes.socialSecurity || 0).toFixed(2)}</td></tr>
+                            <tr><td>Medicare</td><td class="amount">-$${(stubTaxes.medicare || 0).toFixed(2)}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
             contentEl.innerHTML = `
                 <style>
                     #pay-stub-content { font-family: 'Courier New', Courier, monospace; }
@@ -2915,10 +2990,11 @@
                     </table>
                 </div>
 
+                ${taxesHtml}
                 ${deductionsHtml}
 
                 <div class="stub-summary">
-                    Net Pay: $${(stub.netPay || stub.grossPay - totalDeductions).toFixed(2)}
+                    Net Pay: $${(stub.netPay || stub.grossPay - totalTaxes - totalDeductions).toFixed(2)}
                 </div>
             `;
             

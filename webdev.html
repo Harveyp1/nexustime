@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusTime - Developer Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #E5E7EB; }
+        .card { background-color: #1F2937; border: 1px solid #374151; }
+        .cta-button { transition: all 0.3s ease; background-color: #34D399; color: #111827; }
+        .cta-button:disabled { background-color: #374151; color: #9CA3AF; cursor: not-allowed; }
+        .secondary-button { background-color: transparent; border: 1px solid #34D399; color: #34D399; transition: all 0.3s ease; }
+        .dev-page { display: none; }
+        .dev-page.active { display: block; }
+        .form-input, .form-select { background-color: #1F2937; border: 1px solid #374151; color: #E5E7EB; border-radius: 0.5rem; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #34D399; box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.5); }
+        .nav-link { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; border-left: 3px solid transparent; }
+        .nav-link:hover { background-color: #374151; }
+        .nav-link.active { background-color: #1F2937; color: #34D399; border-left-color: #34D399; font-weight: 600; }
+        .nav-link svg { margin-right: 1rem; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #34D399; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .toast { position: fixed; bottom: 20px; right: 20px; background-color: #1F2937; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 100; opacity: 0; transition: opacity 0.3s ease-in-out; border-left: 4px solid; }
+        .toast.show { opacity: 1; }
+        .toast.success { border-color: #34D399; }
+        .toast.error { border-color: #F87171; }
+        pre { background-color: #0d1117; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-family: 'Courier New', Courier, monospace; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="dev-portal-container" class="hidden">
+        <div class="flex h-screen">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-gray-900 border-r border-gray-800 p-4 flex flex-col">
+                <div class="flex items-center mb-8">
+                    <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
+                    <span class="ml-2 font-bold text-lg text-red-500">DEV</span>
+                </div>
+                <nav id="dev-nav" class="flex flex-col space-y-2">
+                    <a href="#dashboard" data-page="dashboard" class="nav-link active"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Dashboard</a>
+                    <a href="#users" data-page="users" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a4 4 0 110-8 4 4 0 010 8z"></path></svg>Users</a>
+                    <a href="#workspaces" data-page="workspaces" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>Workspaces</a>
+                    <a href="#coupons" data-page="coupons" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>Coupons</a>
+                    <a href="#explorer" data-page="explorer" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>Data Explorer</a>
+                </nav>
+                <div class="mt-auto">
+                    <button id="dev-logout-button" class="w-full secondary-button px-4 py-2 rounded-lg text-sm font-medium">Log Out</button>
+                </div>
+            </aside>
+            <!-- Main Content -->
+            <main class="flex-1 p-8 overflow-y-auto">
+                <div id="dev-dashboard" class="dev-page active"></div>
+                <div id="dev-users" class="dev-page"></div>
+                <div id="dev-workspaces" class="dev-page"></div>
+                <div id="dev-coupons" class="dev-page"></div>
+                <div id="dev-explorer" class="dev-page"></div>
+            </main>
+        </div>
+    </div>
+    <div id="auth-container"></div>
+    <div id="toast-container"></div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- SECURITY: SUPER ADMIN UID ---
+        // This is the most critical part. ONLY the user with this UID can access this portal.
+        const SUPER_ADMIN_UID = "JzCSorMPyVUR906kHTlDfhOa1Xg2";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+            authDomain: "nexustime-e8b91.firebaseapp.com",
+            projectId: "nexustime-e8b91",
+            storageBucket: "nexustime-e8b91.appspot.com",
+            messagingSenderId: "516976739338",
+            appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+            measurementId: "G-QRSD6TYH86"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global State
+        let allUsers = [];
+        let allWorkspaces = [];
+        let allCoupons = [];
+        let dashboardChart = null;
+        let planChart = null;
+        
+        // DOM Elements
+        const authContainer = document.getElementById('auth-container');
+        const devPortalContainer = document.getElementById('dev-portal-container');
+        const devNav = document.getElementById('dev-nav');
+        const devPages = document.querySelectorAll('.dev-page');
+        const devLogoutButton = document.getElementById('dev-logout-button');
+        const toastContainer = document.getElementById('toast-container');
+        
+        // --- Core Portal Logic ---
+        
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // --- SECURITY CHECK ---
+                if (user.uid !== SUPER_ADMIN_UID) {
+                    authContainer.innerHTML = `<div class="p-8 text-center text-red-400">
+                        <h1 class="text-2xl font-bold">Access Denied</h1>
+                        <p>You are not authorized to view this page.</p>
+                        <p class="mt-4"><a href="app.html" class="text-emerald-400 underline">Go to App</a></p>
+                    </div>`;
+                    return;
+                }
+                
+                authContainer.innerHTML = '';
+                devPortalContainer.classList.remove('hidden');
+                
+                await loadAllData();
+                handleDevRouting();
+
+            } else {
+                devPortalContainer.classList.add('hidden');
+                renderLoginForm();
+            }
+        });
+
+        function handleDevRouting() {
+            const hash = window.location.hash.substring(1) || 'dashboard';
+            showDevPage(hash);
+        }
+        
+        window.addEventListener('hashchange', handleDevRouting);
+
+        const showDevPage = (pageId) => {
+            devPages.forEach(page => page.classList.remove('active'));
+            const targetPage = document.getElementById(`dev-${pageId}`);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            devNav.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.toggle('active', link.dataset.page === pageId);
+            });
+            
+            // Render content for the page
+            switch(pageId) {
+                case 'dashboard': renderDevDashboard(); break;
+                case 'users': renderUserManagement(); break;
+                case 'workspaces': renderWorkspaceManagement(); break;
+                case 'coupons': renderCouponManagement(); break;
+                case 'explorer': renderDataExplorer(); break;
+            }
+        };
+        
+        async function loadAllData() {
+            const [usersSnapshot, workspacesSnapshot, couponsSnapshot] = await Promise.all([
+                getDocs(collection(db, "users")),
+                getDocs(collection(db, "workspaces")),
+                getDocs(collection(db, "couponCodes"))
+            ]);
+            allUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            allWorkspaces = workspacesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            allCoupons = couponsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        // --- Render Functions ---
+
+        function renderDevDashboard() {
+            const container = document.getElementById('dev-dashboard');
+            
+            const totalUsers = allUsers.length;
+            const totalWorkspaces = allWorkspaces.length;
+            const planCounts = allUsers.reduce((acc, user) => {
+                const plan = user.plan || 'Free';
+                acc[plan] = (acc[plan] || 0) + 1;
+                return acc;
+            }, {});
+
+            container.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Platform Analytics</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Users</h3><p class="text-4xl font-bold text-white mt-2">${totalUsers}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Workspaces</h3><p class="text-4xl font-bold text-white mt-2">${totalWorkspaces}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Active Coupons</h3><p class="text-4xl font-bold text-white mt-2">${allCoupons.filter(c => c.active).length}</p></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">New Users & Workspaces (Last 30 Days)</h3><canvas id="dashboard-chart"></canvas></div>
+                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">User Plan Distribution</h3><canvas id="plan-chart"></canvas></div>
+                </div>
+            `;
+            
+            if(dashboardChart) dashboardChart.destroy();
+            dashboardChart = new Chart(document.getElementById('dashboard-chart'), {
+                type: 'line',
+                data: {
+                    labels: [...Array(30).keys()].map(i => `Day ${i+1}`), // Dummy labels
+                    datasets: [
+                        { label: 'New Users', data: [...Array(30).keys()].map(() => Math.floor(Math.random() * 10)), borderColor: '#34D399', tension: 0.1 },
+                        { label: 'New Workspaces', data: [...Array(30).keys()].map(() => Math.floor(Math.random() * 5)), borderColor: '#60A5FA', tension: 0.1 }
+                    ]
+                }
+            });
+
+            if(planChart) planChart.destroy();
+            planChart = new Chart(document.getElementById('plan-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(planCounts),
+                    datasets: [{
+                        data: Object.values(planCounts),
+                        backgroundColor: ['#4B5563', '#F59E0B', '#34D399', '#8B5CF6']
+                    }]
+                }
+            });
+        }
+
+        function renderUserManagement() {
+            const container = document.getElementById('dev-users');
+            let tableRows = allUsers.map(user => `
+                <tr class="border-b border-gray-700">
+                    <td class="p-3">${user.name}</td>
+                    <td class="p-3">${user.email}</td>
+                    <td class="p-3 text-gray-400">${user.id}</td>
+                    <td class="p-3">
+                        <select data-uid="${user.id}" class="form-select bg-gray-800 text-sm py-1">
+                            <option value="Free" ${user.plan === 'Free' ? 'selected' : ''}>Free</option>
+                            <option value="Starter" ${user.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                            <option value="Pro" ${user.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                            <option value="Enterprise" ${user.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <button data-uid="${user.id}" class="cta-button text-sm px-3 py-1 rounded-md save-plan-btn">Save</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            container.innerHTML = `
+                 <h1 class="text-3xl font-bold text-white mb-8">User Management</h1>
+                 <div class="card p-0 overflow-hidden">
+                     <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-800"><tr>
+                                <th class="p-3 font-semibold">Name</th>
+                                <th class="p-3 font-semibold">Email</th>
+                                <th class="p-3 font-semibold">User ID</th>
+                                <th class="p-3 font-semibold">Plan</th>
+                                <th class="p-3 font-semibold">Action</th>
+                            </tr></thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                     </div>
+                 </div>
+            `;
+
+            container.querySelectorAll('.save-plan-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const uid = e.target.dataset.uid;
+                    const newPlan = container.querySelector(`select[data-uid="${uid}"]`).value;
+                    await updateDoc(doc(db, 'users', uid), { plan: newPlan });
+                    showToast(`User ${uid} plan updated to ${newPlan}.`, 'success');
+                });
+            });
+        }
+        
+        function renderWorkspaceManagement() {
+             const container = document.getElementById('dev-workspaces');
+            let tableRows = allWorkspaces.map(ws => {
+                const owner = allUsers.find(u => u.id === ws.ownerId);
+                return `
+                    <tr class="border-b border-gray-700">
+                        <td class="p-3">${ws.name}</td>
+                        <td class="p-3 text-gray-400">${ws.id}</td>
+                        <td class="p-3">${owner?.email || 'N/A'}</td>
+                        <td class="p-3">
+                            <select data-wsid="${ws.id}" class="form-select bg-gray-800 text-sm py-1">
+                                <option value="Free" ${ws.plan === 'Free' ? 'selected' : ''}>Free</option>
+                                <option value="Starter" ${ws.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                                <option value="Pro" ${ws.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                                <option value="Enterprise" ${ws.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                            </select>
+                        </td>
+                        <td class="p-3">${ws.createdAt.toDate().toLocaleDateString()}</td>
+                        <td class="p-3"><button data-wsid="${ws.id}" class="cta-button text-sm px-3 py-1 rounded-md save-ws-plan-btn">Save</button></td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                 <h1 class="text-3xl font-bold text-white mb-8">Workspace Management</h1>
+                 <div class="card p-0 overflow-hidden">
+                     <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-800"><tr>
+                                <th class="p-3 font-semibold">Name</th><th class="p-3 font-semibold">Workspace ID</th>
+                                <th class="p-3 font-semibold">Owner</th><th class="p-3 font-semibold">Plan</th>
+                                <th class="p-3 font-semibold">Created</th><th class="p-3 font-semibold">Action</th>
+                            </tr></thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                     </div>
+                 </div>
+            `;
+            container.querySelectorAll('.save-ws-plan-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const wsid = e.target.dataset.wsid;
+                    const newPlan = container.querySelector(`select[data-wsid="${wsid}"]`).value;
+                    await updateDoc(doc(db, 'workspaces', wsid), { plan: newPlan });
+                    showToast(`Workspace ${wsid} plan updated to ${newPlan}.`, 'success');
+                });
+            });
+        }
+
+        function renderCouponManagement() {
+            const container = document.getElementById('dev-coupons');
+            let tableRows = allCoupons.map(coupon => `
+                 <tr class="border-b border-gray-700 ${!coupon.active ? 'opacity-50' : ''}">
+                    <td class="p-3 font-mono">${coupon.code}</td>
+                    <td class="p-3">${coupon.discountPercent}%</td>
+                    <td class="p-3">${coupon.uses || 0} / ${coupon.maxUses || '∞'}</td>
+                    <td class="p-3">${coupon.expires ? coupon.expires.toDate().toLocaleDateString() : 'Never'}</td>
+                    <td class="p-3"><span class="px-2 py-1 text-xs rounded-full ${coupon.active ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}">${coupon.active ? 'Active' : 'Inactive'}</span></td>
+                    <td class="p-3"><button data-cid="${coupon.id}" data-active="${coupon.active}" class="secondary-button text-sm px-3 py-1 rounded-md toggle-coupon-btn">${coupon.active ? 'Deactivate' : 'Activate'}</button></td>
+                </tr>
+            `).join('');
+
+            container.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Coupon Code Management</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-1">
+                        <form id="add-coupon-form" class="card p-6 space-y-4">
+                            <h3 class="text-xl font-semibold">Create New Coupon</h3>
+                            <div><label class="block mb-1">Coupon Code</label><input type="text" name="code" class="form-input w-full uppercase" required></div>
+                            <div><label class="block mb-1">Discount (%)</label><input type="number" name="discount" class="form-input w-full" min="1" max="100" required></div>
+                            <div><label class="block mb-1">Max Uses (optional)</label><input type="number" name="maxUses" class="form-input w-full" min="1"></div>
+                            <div><label class="block mb-1">Expires On (optional)</label><input type="date" name="expires" class="form-input w-full"></div>
+                            <button type="submit" class="w-full cta-button py-2 rounded-lg">Create Coupon</button>
+                        </form>
+                    </div>
+                    <div class="lg:col-span-2 card p-0 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-800"><tr>
+                                    <th class="p-3 font-semibold">Code</th><th class="p-3 font-semibold">Discount</th>
+                                    <th class="p-3 font-semibold">Uses</th><th class="p-3 font-semibold">Expires</th>
+                                    <th class="p-3 font-semibold">Status</th><th class="p-3 font-semibold">Action</th>
+                                </tr></thead>
+                                <tbody>${tableRows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('add-coupon-form').addEventListener('submit', handleCreateCoupon);
+            container.querySelectorAll('.toggle-coupon-btn').forEach(btn => {
+                btn.addEventListener('click', handleToggleCoupon);
+            });
+        }
+        
+        function renderDataExplorer() {
+            const container = document.getElementById('dev-explorer');
+            container.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Raw Data Explorer</h1>
+                <div class="card p-6">
+                    <div class="mb-4">
+                        <label class="block mb-1">Select Collection:</label>
+                        <select id="collection-selector" class="form-select w-full md:w-1/2">
+                            <option value="users">users</option>
+                            <option value="workspaces">workspaces</option>
+                            <option value="couponCodes">couponCodes</option>
+                        </select>
+                    </div>
+                    <div id="data-output">
+                        <pre><code>Select a collection to view data.</code></pre>
+                    </div>
+                </div>
+            `;
+            document.getElementById('collection-selector').addEventListener('change', async (e) => {
+                const collectionName = e.target.value;
+                const output = document.getElementById('data-output');
+                output.innerHTML = '<div class="loader"></div>';
+                const snapshot = await getDocs(collection(db, collectionName));
+                const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                output.innerHTML = `<pre><code>${JSON.stringify(data, null, 2)}</code></pre>`;
+            });
+        }
+
+        // --- Event Handlers & Auth ---
+        
+        async function handleCreateCoupon(e) {
+            e.preventDefault();
+            const form = e.target;
+            const newCoupon = {
+                code: form.code.value.toUpperCase(),
+                discountPercent: Number(form.discount.value),
+                maxUses: form.maxUses.value ? Number(form.maxUses.value) : null,
+                expires: form.expires.value ? Timestamp.fromDate(new Date(form.expires.value)) : null,
+                uses: 0,
+                active: true,
+                createdAt: Timestamp.now()
+            };
+            
+            await addDoc(collection(db, 'couponCodes'), newCoupon);
+            showToast(`Coupon ${newCoupon.code} created.`, 'success');
+            form.reset();
+            await loadAllData();
+            renderCouponManagement();
+        }
+
+        async function handleToggleCoupon(e) {
+            const cid = e.target.dataset.cid;
+            const newActiveState = e.target.dataset.active === 'false'; // Note: DOM attribute is a string
+            await updateDoc(doc(db, 'couponCodes', cid), { active: newActiveState });
+            showToast(`Coupon status updated.`, 'success');
+            await loadAllData();
+            renderCouponManagement();
+        }
+
+        function renderLoginForm() {
+            authContainer.innerHTML = `
+                <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10">
+                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Dev Portal Login</h3></div>
+                    <form id="dev-login-form">
+                        <div class="mb-4"><label for="dev-email" class="block text-gray-300 mb-2">Admin Email</label><input type="email" id="dev-email" class="w-full p-3 form-input" required></div>
+                        <div class="mb-6"><label for="dev-password" class="block text-gray-300 mb-2">Admin Password</label><input type="password" id="dev-password" class="w-full p-3 form-input" required></div>
+                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Authenticate</button></div>
+                    </form>
+                    <p id="dev-login-error" class="text-red-500 text-center mt-4"></p>
+                </div></section>
+            `;
+            document.getElementById('dev-login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                document.getElementById('dev-login-error').textContent = '';
+                const email = document.getElementById('dev-email').value;
+                const password = document.getElementById('dev-password').value;
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } catch (error) {
+                    document.getElementById('dev-login-error').textContent = `Login Failed: ${error.message}`;
+                }
+            });
+        }
+        
+        devLogoutButton.addEventListener('click', () => signOut(auth));
+        
+        const showToast = (message, type = 'success') => {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 3000);
+        };
+
+    </script>
+</body>
+</html>

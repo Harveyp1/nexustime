@@ -12,7 +12,10 @@
         .card { background-color: #1F2937; border: 1px solid #374151; }
         .cta-button { transition: all 0.3s ease; background-color: #34D399; color: #111827; }
         .cta-button:disabled { background-color: #374151; color: #9CA3AF; cursor: not-allowed; }
+        .danger-button { background-color: #EF4444; color: white; transition: all 0.3s ease; }
+        .danger-button:hover { background-color: #DC2626; }
         .secondary-button { background-color: transparent; border: 1px solid #34D399; color: #34D399; transition: all 0.3s ease; }
+        .secondary-button:hover { background-color: #34D399; color: #111827; }
         .dev-page { display: none; }
         .dev-page.active { display: block; }
         .form-input, .form-select { background-color: #1F2937; border: 1px solid #374151; color: #E5E7EB; border-radius: 0.5rem; }
@@ -23,11 +26,14 @@
         .nav-link svg { margin-right: 1rem; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #34D399; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; bottom: 20px; right: 20px; background-color: #1F2937; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 100; opacity: 0; transition: opacity 0.3s ease-in-out; border-left: 4px solid; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background-color: #1F2937; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; border-left: 4px solid; }
         .toast.show { opacity: 1; }
         .toast.success { border-color: #34D399; }
         .toast.error { border-color: #F87171; }
         pre { background-color: #0d1117; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-family: 'Courier New', Courier, monospace; }
+        .list-item { cursor: pointer; transition: background-color 0.2s; }
+        .list-item:hover, .list-item.selected { background-color: #374151; }
+        .modal-overlay { background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 500; }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -41,7 +47,7 @@
                 </div>
                 <nav id="dev-nav" class="flex flex-col space-y-2">
                     <a href="#dashboard" data-page="dashboard" class="nav-link active"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Dashboard</a>
-                    <a href="#users" data-page="users" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a4 4 0 110-8 4 4 0 010 8z"></path></svg>Users</a>
+                    <a href="#customers" data-page="customers" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a4 4 0 110-8 4 4 0 010 8z"></path></svg>Customers</a>
                     <a href="#workspaces" data-page="workspaces" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>Workspaces</a>
                     <a href="#coupons" data-page="coupons" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>Coupons</a>
                     <a href="#explorer" data-page="explorer" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>Data Explorer</a>
@@ -53,7 +59,7 @@
             <!-- Main Content -->
             <main class="flex-1 p-8 overflow-y-auto">
                 <div id="dev-dashboard" class="dev-page active"></div>
-                <div id="dev-users" class="dev-page"></div>
+                <div id="dev-customers" class="dev-page"></div>
                 <div id="dev-workspaces" class="dev-page"></div>
                 <div id="dev-coupons" class="dev-page"></div>
                 <div id="dev-explorer" class="dev-page"></div>
@@ -62,15 +68,30 @@
     </div>
     <div id="auth-container"></div>
     <div id="toast-container"></div>
+    <!-- Modals -->
+    <div id="edit-modal" class="hidden fixed inset-0 modal-overlay items-center justify-center" role="dialog" aria-modal="true">
+        <div id="edit-modal-content" class="card rounded-lg shadow-xl m-8 max-w-lg w-full"></div>
+    </div>
+    <div id="confirmation-modal" class="hidden fixed inset-0 modal-overlay items-center justify-center" role="dialog" aria-modal="true">
+        <div class="card rounded-lg shadow-xl m-8 max-w-md w-full">
+             <div class="p-6 text-center">
+                <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mb-2">Are you sure?</h3>
+                <p id="confirmation-modal-message" class="text-gray-400 mb-6"></p>
+                <div class="flex justify-center gap-4">
+                    <button id="confirmation-cancel-btn" class="secondary-button px-6 py-2 rounded-lg">Cancel</button>
+                    <button id="confirmation-confirm-btn" class="danger-button px-6 py-2 rounded-lg">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- SECURITY: SUPER ADMIN UID ---
-        // This is the most critical part. ONLY the user with this UID can access this portal.
         const SUPER_ADMIN_UID = "JzCSorMPyVUR906kHTlDfhOa1Xg2";
 
         // Firebase Configuration
@@ -95,6 +116,9 @@
         let allCoupons = [];
         let dashboardChart = null;
         let planChart = null;
+        let selectedItemId = null;
+        let customerFilters = {};
+        let workspaceFilters = {};
         
         // DOM Elements
         const authContainer = document.getElementById('auth-container');
@@ -108,13 +132,8 @@
         
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // --- SECURITY CHECK ---
                 if (user.uid !== SUPER_ADMIN_UID) {
-                    authContainer.innerHTML = `<div class="p-8 text-center text-red-400">
-                        <h1 class="text-2xl font-bold">Access Denied</h1>
-                        <p>You are not authorized to view this page.</p>
-                        <p class="mt-4"><a href="app.html" class="text-emerald-400 underline">Go to App</a></p>
-                    </div>`;
+                    authContainer.innerHTML = `<div class="p-8 text-center text-red-400"><h1 class="text-2xl font-bold">Access Denied</h1><p>You are not authorized to view this page.</p><p class="mt-4"><a href="app.html" class="text-emerald-400 underline">Go to App</a></p></div>`;
                     return;
                 }
                 
@@ -138,6 +157,7 @@
         window.addEventListener('hashchange', handleDevRouting);
 
         const showDevPage = (pageId) => {
+            selectedItemId = null; // Reset selection on page change
             devPages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(`dev-${pageId}`);
             if (targetPage) {
@@ -151,10 +171,11 @@
             // Render content for the page
             switch(pageId) {
                 case 'dashboard': renderDevDashboard(); break;
-                case 'users': renderUserManagement(); break;
+                case 'customers': renderCustomerManagement(); break;
                 case 'workspaces': renderWorkspaceManagement(); break;
                 case 'coupons': renderCouponManagement(); break;
                 case 'explorer': renderDataExplorer(); break;
+                default: renderDevDashboard();
             }
         };
         
@@ -220,104 +241,417 @@
             });
         }
 
-        function renderUserManagement() {
-            const container = document.getElementById('dev-users');
-            let tableRows = allUsers.map(user => `
-                <tr class="border-b border-gray-700">
-                    <td class="p-3">${user.name}</td>
-                    <td class="p-3">${user.email}</td>
-                    <td class="p-3 text-gray-400">${user.id}</td>
-                    <td class="p-3">
-                        <select data-uid="${user.id}" class="form-select bg-gray-800 text-sm py-1">
-                            <option value="Free" ${user.plan === 'Free' ? 'selected' : ''}>Free</option>
-                            <option value="Starter" ${user.plan === 'Starter' ? 'selected' : ''}>Starter</option>
-                            <option value="Pro" ${user.plan === 'Pro' ? 'selected' : ''}>Pro</option>
-                            <option value="Enterprise" ${user.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
-                        </select>
-                    </td>
-                    <td class="p-3">
-                        <button data-uid="${user.id}" class="cta-button text-sm px-3 py-1 rounded-md save-plan-btn">Save</button>
-                    </td>
-                </tr>
-            `).join('');
-
+        // --- CUSTOMER MANAGEMENT ---
+        function renderCustomerManagement() {
+            const container = document.getElementById('dev-customers');
             container.innerHTML = `
-                 <h1 class="text-3xl font-bold text-white mb-8">User Management</h1>
-                 <div class="card p-0 overflow-hidden">
-                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-800"><tr>
-                                <th class="p-3 font-semibold">Name</th>
-                                <th class="p-3 font-semibold">Email</th>
-                                <th class="p-3 font-semibold">User ID</th>
-                                <th class="p-3 font-semibold">Plan</th>
-                                <th class="p-3 font-semibold">Action</th>
-                            </tr></thead>
-                            <tbody>${tableRows}</tbody>
-                        </table>
-                     </div>
-                 </div>
+                <h1 class="text-3xl font-bold text-white mb-8">Customer Management</h1>
+                <div id="customer-filter-bar" class="card p-4 mb-6"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div id="customer-list-container" class="lg:col-span-2 card p-4"></div>
+                    <div id="customer-details-sidebar" class="lg:col-span-1 card p-6"></div>
+                </div>
             `;
+            renderCustomerFilters();
+            renderCustomerList();
+            renderCustomerDetailsSidebar();
+        }
 
-            container.querySelectorAll('.save-plan-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const uid = e.target.dataset.uid;
-                    const newPlan = container.querySelector(`select[data-uid="${uid}"]`).value;
-                    await updateDoc(doc(db, 'users', uid), { plan: newPlan });
-                    showToast(`User ${uid} plan updated to ${newPlan}.`, 'success');
+        function renderCustomerFilters() {
+            document.getElementById('customer-filter-bar').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="customer-name-filter" class="form-input" placeholder="Filter by name or email..." value="${customerFilters.name || ''}">
+                    <select id="customer-plan-filter" class="form-select">
+                        <option value="">All Plans</option>
+                        <option value="Free" ${customerFilters.plan === 'Free' ? 'selected' : ''}>Free</option>
+                        <option value="Starter" ${customerFilters.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                        <option value="Pro" ${customerFilters.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                        <option value="Enterprise" ${customerFilters.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                    </select>
+                </div>`;
+
+            document.getElementById('customer-name-filter').addEventListener('input', (e) => {
+                customerFilters.name = e.target.value.toLowerCase();
+                renderCustomerList();
+            });
+            document.getElementById('customer-plan-filter').addEventListener('change', (e) => {
+                customerFilters.plan = e.target.value;
+                renderCustomerList();
+            });
+        }
+
+        function renderCustomerList() {
+            const ownerIds = new Set(allWorkspaces.map(ws => ws.ownerId));
+            let customers = allUsers.filter(u => ownerIds.has(u.id));
+
+            if (customerFilters.name) {
+                customers = customers.filter(c => c.name.toLowerCase().includes(customerFilters.name) || c.email.toLowerCase().includes(customerFilters.name));
+            }
+            if (customerFilters.plan) {
+                customers = customers.filter(c => (c.plan || 'Free') === customerFilters.plan);
+            }
+
+            const listHtml = customers.map(c => `
+                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center ${selectedItemId === c.id ? 'selected' : ''}" data-id="${c.id}">
+                    <div>
+                        <p class="font-semibold text-white">${c.name}</p>
+                        <p class="text-sm text-gray-400">${c.email}</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300">${c.plan || 'Free'}</span>
+                </div>
+            `).join('');
+            document.getElementById('customer-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No customers found.</p>';
+
+            document.querySelectorAll('#customer-list-container .list-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    selectedItemId = item.dataset.id;
+                    renderCustomerList(); // to update selection style
+                    renderCustomerDetailsSidebar();
                 });
+            });
+        }
+
+        function renderCustomerDetailsSidebar() {
+            const sidebar = document.getElementById('customer-details-sidebar');
+            if (!selectedItemId) {
+                sidebar.innerHTML = '<p class="text-gray-500">Select a customer to see details.</p>';
+                return;
+            }
+            const customer = allUsers.find(c => c.id === selectedItemId);
+            const customerWorkspaces = allWorkspaces.filter(ws => ws.ownerId === customer.id);
+            sidebar.innerHTML = `
+                <h3 class="text-xl font-bold text-white mb-4">${customer.name}</h3>
+                <div class="space-y-3 text-sm">
+                    <p><strong class="text-gray-400">Email:</strong> ${customer.email}</p>
+                    <p><strong class="text-gray-400">User ID:</strong> <span class="font-mono">${customer.id}</span></p>
+                    <p><strong class="text-gray-400">Current Plan:</strong> ${customer.plan || 'Free'}</p>
+                    <p><strong class="text-gray-400">Owned Workspaces:</strong> ${customerWorkspaces.length}</p>
+                    <ul class="pl-4 text-gray-400 list-disc">
+                        ${customerWorkspaces.map(ws => `<li>${ws.name} (${ws.plan || 'Free'})</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="mt-6 space-y-2 border-t border-gray-700 pt-4">
+                    <button data-id="${customer.id}" class="w-full secondary-button edit-customer-btn">Edit Customer</button>
+                    <button data-id="${customer.id}" class="w-full danger-button delete-customer-btn">Delete Customer</button>
+                </div>
+            `;
+            sidebar.querySelector('.edit-customer-btn').addEventListener('click', openEditCustomerModal);
+            sidebar.querySelector('.delete-customer-btn').addEventListener('click', handleDeleteCustomer);
+        }
+
+        // --- WORKSPACE MANAGEMENT ---
+        function renderWorkspaceManagement() {
+            const container = document.getElementById('dev-workspaces');
+            container.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Workspace Management</h1>
+                <div id="workspace-filter-bar" class="card p-4 mb-6"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div id="workspace-list-container" class="lg:col-span-2 card p-4"></div>
+                    <div id="workspace-details-sidebar" class="lg:col-span-1 card p-6"></div>
+                </div>
+            `;
+            renderWorkspaceFilters();
+            renderWorkspaceList();
+            renderWorkspaceDetailsSidebar();
+        }
+
+        function renderWorkspaceFilters() {
+             document.getElementById('workspace-filter-bar').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="workspace-name-filter" class="form-input" placeholder="Filter by name or owner email..." value="${workspaceFilters.name || ''}">
+                    <select id="workspace-plan-filter" class="form-select">
+                        <option value="">All Plans</option>
+                        <option value="Free" ${workspaceFilters.plan === 'Free' ? 'selected' : ''}>Free</option>
+                        <option value="Starter" ${workspaceFilters.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                        <option value="Pro" ${workspaceFilters.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                        <option value="Enterprise" ${workspaceFilters.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                    </select>
+                </div>`;
+            
+            document.getElementById('workspace-name-filter').addEventListener('input', (e) => {
+                workspaceFilters.name = e.target.value.toLowerCase();
+                renderWorkspaceList();
+            });
+            document.getElementById('workspace-plan-filter').addEventListener('change', (e) => {
+                workspaceFilters.plan = e.target.value;
+                renderWorkspaceList();
+            });
+        }
+
+        function renderWorkspaceList() {
+            let filteredWorkspaces = allWorkspaces;
+            if (workspaceFilters.name) {
+                filteredWorkspaces = filteredWorkspaces.filter(ws => {
+                    const owner = allUsers.find(u => u.id === ws.ownerId);
+                    return ws.name.toLowerCase().includes(workspaceFilters.name) || (owner && owner.email.toLowerCase().includes(workspaceFilters.name));
+                });
+            }
+             if (workspaceFilters.plan) {
+                filteredWorkspaces = filteredWorkspaces.filter(ws => (ws.plan || 'Free') === workspaceFilters.plan);
+            }
+            const listHtml = filteredWorkspaces.map(ws => `
+                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center ${selectedItemId === ws.id ? 'selected' : ''}" data-id="${ws.id}">
+                    <div>
+                        <p class="font-semibold text-white">${ws.name}</p>
+                        <p class="text-sm text-gray-400">Owner: ${allUsers.find(u => u.id === ws.ownerId)?.email || 'N/A'}</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300">${ws.plan || 'Free'}</span>
+                </div>
+            `).join('');
+            document.getElementById('workspace-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No workspaces found.</p>';
+
+             document.querySelectorAll('#workspace-list-container .list-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    selectedItemId = item.dataset.id;
+                    renderWorkspaceList();
+                    renderWorkspaceDetailsSidebar();
+                });
+            });
+        }
+
+        async function renderWorkspaceDetailsSidebar() {
+            const sidebar = document.getElementById('workspace-details-sidebar');
+            if (!selectedItemId) {
+                sidebar.innerHTML = '<p class="text-gray-500">Select a workspace to see details.</p>';
+                return;
+            }
+            const workspace = allWorkspaces.find(ws => ws.id === selectedItemId);
+            const owner = allUsers.find(u => u.id === workspace.ownerId);
+
+            const membersSnapshot = await getDocs(collection(db, `workspaces/${workspace.id}/members`));
+
+            sidebar.innerHTML = `
+                <h3 class="text-xl font-bold text-white mb-4">${workspace.name}</h3>
+                <div class="space-y-3 text-sm">
+                    <p><strong class="text-gray-400">Workspace ID:</strong> <span class="font-mono">${workspace.id}</span></p>
+                    <p><strong class="text-gray-400">Owner:</strong> ${owner?.name || 'N/A'} (${owner?.email || 'N/A'})</p>
+                    <p><strong class="text-gray-400">Plan:</strong> ${workspace.plan || 'Free'}</p>
+                    <p><strong class="text-gray-400">Members:</strong> ${membersSnapshot.size}</p>
+                    <p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt.toDate().toLocaleString()}</p>
+                </div>
+                 <div class="mt-6 space-y-2 border-t border-gray-700 pt-4">
+                    <button data-id="${workspace.id}" class="w-full secondary-button edit-workspace-btn">Edit Workspace</button>
+                    <button data-id="${workspace.id}" class="w-full danger-button delete-workspace-btn">Delete Workspace</button>
+                </div>
+            `;
+            sidebar.querySelector('.edit-workspace-btn').addEventListener('click', openEditWorkspaceModal);
+            sidebar.querySelector('.delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
+        }
+
+        // --- Modal & CRUD Handlers ---
+
+        function openEditCustomerModal(e) {
+            const customerId = e.target.dataset.id;
+            const customer = allUsers.find(c => c.id === customerId);
+            const modalContent = document.getElementById('edit-modal-content');
+            modalContent.innerHTML = `
+                <form id="edit-customer-form" data-id="${customerId}">
+                    <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit Customer: ${customer.name}</h3></div>
+                    <div class="p-6 space-y-4">
+                        <div><label class="block mb-1">Name</label><input type="text" name="name" class="form-input w-full" value="${customer.name}"></div>
+                        <div><label class="block mb-1">Email</label><input type="email" name="email" class="form-input w-full" value="${customer.email}" disabled></div>
+                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full">
+                            <option value="Free" ${customer.plan === 'Free' ? 'selected' : ''}>Free</option>
+                            <option value="Starter" ${customer.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                            <option value="Pro" ${customer.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                            <option value="Enterprise" ${customer.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                        </select></div>
+                    </div>
+                    <div class="p-4 bg-gray-800 flex justify-end gap-4">
+                        <button type="button" class="secondary-button close-modal-btn">Cancel</button>
+                        <button type="submit" class="cta-button">Save Changes</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('edit-modal').classList.add('flex');
+            modalContent.querySelector('.close-modal-btn').addEventListener('click', closeAllModals);
+            modalContent.querySelector('form').addEventListener('submit', handleSaveCustomer);
+        }
+
+        async function handleSaveCustomer(e) {
+            e.preventDefault();
+            const form = e.target;
+            const customerId = form.dataset.id;
+            const updatedData = {
+                name: form.name.value,
+                plan: form.plan.value
+            };
+            await updateDoc(doc(db, 'users', customerId), updatedData);
+            showToast('Customer updated successfully!', 'success');
+            await loadAllData();
+            renderCustomerList();
+            renderCustomerDetailsSidebar();
+            closeAllModals();
+        }
+        
+        function handleDeleteCustomer(e) {
+            const customerId = e.target.dataset.id;
+            const customer = allUsers.find(c => c.id === customerId);
+            openConfirmationModal(
+                'Delete Customer Account',
+                `This will permanently delete the user '${customer.name}' and ALL workspaces they own. This is highly destructive and cannot be undone.`,
+                async () => {
+                    console.log('Deleting customer and their workspaces...');
+                    // This is a complex, destructive operation. In a real app, this MUST be a Cloud Function.
+                    // This simulation will delete the user doc and their owned workspace docs.
+                    const batch = writeBatch(db);
+                    batch.delete(doc(db, 'users', customerId));
+                    const workspacesToDelete = allWorkspaces.filter(ws => ws.ownerId === customerId);
+                    workspacesToDelete.forEach(ws => {
+                        batch.delete(doc(db, 'workspaces', ws.id));
+                    });
+                    await batch.commit();
+                    showToast('Customer and their workspaces deleted.', 'success');
+                    selectedItemId = null;
+                    await loadAllData();
+                    renderCustomerManagement();
+                    closeAllModals();
+                }
+            );
+        }
+
+        function openEditWorkspaceModal(e) {
+            const workspaceId = e.target.dataset.id;
+            const workspace = allWorkspaces.find(ws => ws.id === workspaceId);
+            const modalContent = document.getElementById('edit-modal-content');
+
+            const ownerOptions = allUsers.filter(u => allWorkspaces.some(ws => ws.ownerId === u.id)).map(owner => 
+                `<option value="${owner.id}" ${workspace.ownerId === owner.id ? 'selected' : ''}>${owner.email}</option>`
+            ).join('');
+
+            modalContent.innerHTML = `
+                <form id="edit-workspace-form" data-id="${workspaceId}">
+                    <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit Workspace: ${workspace.name}</h3></div>
+                    <div class="p-6 space-y-4">
+                        <div><label class="block mb-1">Workspace Name</label><input type="text" name="name" class="form-input w-full" value="${workspace.name}"></div>
+                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full">
+                            <option value="Free" ${workspace.plan === 'Free' ? 'selected' : ''}>Free</option>
+                            <option value="Starter" ${workspace.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                            <option value="Pro" ${workspace.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                            <option value="Enterprise" ${workspace.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                        </select></div>
+                        <div><label class="block mb-1">Owner</label><select name="ownerId" class="form-select w-full">${ownerOptions}</select></div>
+                    </div>
+                    <div class="p-4 bg-gray-800 flex justify-end gap-4">
+                        <button type="button" class="secondary-button close-modal-btn">Cancel</button>
+                        <button type="submit" class="cta-button">Save Changes</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('edit-modal').classList.add('flex');
+            modalContent.querySelector('.close-modal-btn').addEventListener('click', closeAllModals);
+            modalContent.querySelector('form').addEventListener('submit', handleSaveWorkspace);
+        }
+
+        async function handleSaveWorkspace(e) {
+            e.preventDefault();
+            const form = e.target;
+            const workspaceId = form.dataset.id;
+            const updatedData = {
+                name: form.name.value,
+                plan: form.plan.value,
+                ownerId: form.ownerId.value
+            };
+            await updateDoc(doc(db, 'workspaces', workspaceId), updatedData);
+            showToast('Workspace updated successfully!', 'success');
+            await loadAllData();
+            renderWorkspaceList();
+            renderWorkspaceDetailsSidebar();
+            closeAllModals();
+        }
+
+        function handleDeleteWorkspace(e) {
+            const workspaceId = e.target.dataset.id;
+            const workspace = allWorkspaces.find(ws => ws.id === workspaceId);
+            openConfirmationModal(
+                'Delete Workspace',
+                `This will permanently delete the workspace '${workspace.name}'. All member and time data will be lost. This cannot be undone.`,
+                async () => {
+                    // In production, a Cloud Function should handle deleting subcollections.
+                    await deleteDoc(doc(db, 'workspaces', workspaceId));
+                    showToast('Workspace deleted.', 'success');
+                    selectedItemId = null;
+                    await loadAllData();
+                    renderWorkspaceManagement();
+                    closeAllModals();
+                }
+            );
+        }
+        
+        function openConfirmationModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirmation-modal');
+            document.getElementById('confirmation-modal-title').textContent = title;
+            document.getElementById('confirmation-modal-message').textContent = message;
+            
+            const confirmBtn = document.getElementById('confirmation-confirm-btn');
+            const newConfirmBtn = confirmBtn.cloneNode(true); // Clone to remove old listeners
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            
+            newConfirmBtn.addEventListener('click', onConfirm);
+            modal.querySelector('#confirmation-cancel-btn').addEventListener('click', closeAllModals);
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeAllModals() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-modal').classList.remove('flex');
+            document.getElementById('confirmation-modal').classList.add('hidden');
+            document.getElementById('confirmation-modal').classList.remove('flex');
+        }
+
+
+        // Other Management Functions (Coupons, Explorer, etc.)
+        
+        function renderCouponManagement() { /* ... (code from previous step) ... */ }
+        function renderDataExplorer() { /* ... (code from previous step) ... */ }
+        async function handleCreateCoupon(e) { /* ... (code from previous step) ... */ }
+        async function handleToggleCoupon(e) { /* ... (code from previous step) ... */ }
+        
+        // --- AUTH & HELPERS ---
+        function renderLoginForm() {
+            authContainer.innerHTML = `
+                <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10">
+                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Dev Portal Login</h3></div>
+                    <form id="dev-login-form">
+                        <div class="mb-4"><label for="dev-email" class="block text-gray-300 mb-2">Admin Email</label><input type="email" id="dev-email" class="w-full p-3 form-input" required></div>
+                        <div class="mb-6"><label for="dev-password" class="block text-gray-300 mb-2">Admin Password</label><input type="password" id="dev-password" class="w-full p-3 form-input" required></div>
+                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Authenticate</button></div>
+                    </form>
+                    <p id="dev-login-error" class="text-red-500 text-center mt-4"></p>
+                </div></section>
+            `;
+            document.getElementById('dev-login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                document.getElementById('dev-login-error').textContent = '';
+                const email = document.getElementById('dev-email').value;
+                const password = document.getElementById('dev-password').value;
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } catch (error) {
+                    document.getElementById('dev-login-error').textContent = `Login Failed: ${error.message}`;
+                }
             });
         }
         
-        function renderWorkspaceManagement() {
-             const container = document.getElementById('dev-workspaces');
-            let tableRows = allWorkspaces.map(ws => {
-                const owner = allUsers.find(u => u.id === ws.ownerId);
-                return `
-                    <tr class="border-b border-gray-700">
-                        <td class="p-3">${ws.name}</td>
-                        <td class="p-3 text-gray-400">${ws.id}</td>
-                        <td class="p-3">${owner?.email || 'N/A'}</td>
-                        <td class="p-3">
-                            <select data-wsid="${ws.id}" class="form-select bg-gray-800 text-sm py-1">
-                                <option value="Free" ${ws.plan === 'Free' ? 'selected' : ''}>Free</option>
-                                <option value="Starter" ${ws.plan === 'Starter' ? 'selected' : ''}>Starter</option>
-                                <option value="Pro" ${ws.plan === 'Pro' ? 'selected' : ''}>Pro</option>
-                                <option value="Enterprise" ${ws.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
-                            </select>
-                        </td>
-                        <td class="p-3">${ws.createdAt.toDate().toLocaleDateString()}</td>
-                        <td class="p-3"><button data-wsid="${ws.id}" class="cta-button text-sm px-3 py-1 rounded-md save-ws-plan-btn">Save</button></td>
-                    </tr>
-                `;
-            }).join('');
-
-            container.innerHTML = `
-                 <h1 class="text-3xl font-bold text-white mb-8">Workspace Management</h1>
-                 <div class="card p-0 overflow-hidden">
-                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-800"><tr>
-                                <th class="p-3 font-semibold">Name</th><th class="p-3 font-semibold">Workspace ID</th>
-                                <th class="p-3 font-semibold">Owner</th><th class="p-3 font-semibold">Plan</th>
-                                <th class="p-3 font-semibold">Created</th><th class="p-3 font-semibold">Action</th>
-                            </tr></thead>
-                            <tbody>${tableRows}</tbody>
-                        </table>
-                     </div>
-                 </div>
-            `;
-            container.querySelectorAll('.save-ws-plan-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const wsid = e.target.dataset.wsid;
-                    const newPlan = container.querySelector(`select[data-wsid="${wsid}"]`).value;
-                    await updateDoc(doc(db, 'workspaces', wsid), { plan: newPlan });
-                    showToast(`Workspace ${wsid} plan updated to ${newPlan}.`, 'success');
-                });
-            });
-        }
-
-        function renderCouponManagement() {
+        devLogoutButton.addEventListener('click', () => signOut(auth));
+        
+        const showToast = (message, type = 'success') => {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 3000);
+        };
+    // Re-pasting the functions that were omitted for brevity
+    function renderCouponManagement() {
             const container = document.getElementById('dev-coupons');
             let tableRows = allCoupons.map(coupon => `
                  <tr class="border-b border-gray-700 ${!coupon.active ? 'opacity-50' : ''}">
@@ -363,7 +697,6 @@
                 btn.addEventListener('click', handleToggleCoupon);
             });
         }
-        
         function renderDataExplorer() {
             const container = document.getElementById('dev-explorer');
             container.innerHTML = `
@@ -391,9 +724,6 @@
                 output.innerHTML = `<pre><code>${JSON.stringify(data, null, 2)}</code></pre>`;
             });
         }
-
-        // --- Event Handlers & Auth ---
-        
         async function handleCreateCoupon(e) {
             e.preventDefault();
             const form = e.target;
@@ -413,7 +743,6 @@
             await loadAllData();
             renderCouponManagement();
         }
-
         async function handleToggleCoupon(e) {
             const cid = e.target.dataset.cid;
             const newActiveState = e.target.dataset.active === 'false'; // Note: DOM attribute is a string
@@ -422,46 +751,6 @@
             await loadAllData();
             renderCouponManagement();
         }
-
-        function renderLoginForm() {
-            authContainer.innerHTML = `
-                <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10">
-                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Dev Portal Login</h3></div>
-                    <form id="dev-login-form">
-                        <div class="mb-4"><label for="dev-email" class="block text-gray-300 mb-2">Admin Email</label><input type="email" id="dev-email" class="w-full p-3 form-input" required></div>
-                        <div class="mb-6"><label for="dev-password" class="block text-gray-300 mb-2">Admin Password</label><input type="password" id="dev-password" class="w-full p-3 form-input" required></div>
-                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Authenticate</button></div>
-                    </form>
-                    <p id="dev-login-error" class="text-red-500 text-center mt-4"></p>
-                </div></section>
-            `;
-            document.getElementById('dev-login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                document.getElementById('dev-login-error').textContent = '';
-                const email = document.getElementById('dev-email').value;
-                const password = document.getElementById('dev-password').value;
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } catch (error) {
-                    document.getElementById('dev-login-error').textContent = `Login Failed: ${error.message}`;
-                }
-            });
-        }
-        
-        devLogoutButton.addEventListener('click', () => signOut(auth));
-        
-        const showToast = (message, type = 'success') => {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            toastContainer.appendChild(toast);
-            setTimeout(() => { toast.classList.add('show'); }, 100);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => { toast.remove(); }, 300);
-            }, 3000);
-        };
-
     </script>
 </body>
 </html>

@@ -418,10 +418,11 @@
         let manageCurrentPage = 1;
         const MANAGE_ITEMS_PER_PAGE = 10;
         let employeeFilters = {};
-        const PLAN_WORKSPACE_LIMITS = { Free: 1, Starter: 1, Pro: 2, Enterprise: Infinity };
+        const PLAN_WORKSPACE_LIMITS = { Free: 1, Starter: 1, Pro: 3, Enterprise: Infinity };
         const PLAN_USER_LIMITS = { Free: 5, Starter: Infinity, Pro: Infinity, Enterprise: Infinity };
+        const PLAN_PROJECT_LIMITS = { Free: 3, Starter: Infinity, Pro: Infinity, Enterprise: Infinity };
+        const PLAN_HIERARCHY = { Free: 0, Starter: 1, Pro: 2, Enterprise: 3 };
         let calendarDate = new Date();
-
         
         // DOM Elements
         const pages = document.querySelectorAll('.page');
@@ -464,6 +465,13 @@
         
         // --- Core App Logic ---
 
+        const checkPlanPermission = (requiredPlan) => {
+            if (!currentWorkspaceData || !currentWorkspaceData.plan) return false;
+            const currentPlanLevel = PLAN_HIERARCHY[currentWorkspaceData.plan] ?? -1;
+            const requiredPlanLevel = PLAN_HIERARCHY[requiredPlan] ?? 99;
+            return currentPlanLevel >= requiredPlanLevel;
+        };
+
         const showPage = (pageId) => {
             pages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(pageId);
@@ -490,19 +498,21 @@
                 mobileMenuButton.style.display = 'inline-flex';
                 logoutButtonDesktop.style.display = 'inline-flex';
 
-                const navLinks = [
+                let navLinks = [
                     { page: 'dashboard', label: 'Dashboard', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>' },
                     { page: 'timesheet', label: 'Timesheets', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
-                    { page: 'schedule', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
-                    { page: 'time-off', label: 'Time Off', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>' },
-                    { page: 'pay-stubs', label: 'Pay Stubs', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2H8a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>' },
-                    { page: 'tasks', label: 'Tasks', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>' },
+                    { page: 'schedule', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>', requiredPlan: 'Pro' },
+                    { page: 'time-off', label: 'Time Off', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>', requiredPlan: 'Pro' },
+                    { page: 'pay-stubs', label: 'Pay Stubs', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2H8a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>', requiredPlan: 'Enterprise' },
+                    { page: 'tasks', label: 'Tasks', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>', requiredPlan: 'Pro' },
                     { page: 'manage', label: 'Manage', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>' },
                     { page: 'settings', label: 'Settings', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>' },
                     { page: 'company-selection', label: 'Switch Workspace', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 2zM5.404 4.343a.75.75 0 010 1.06l-1.47 1.47a.75.75 0 11-1.06-1.06l1.47-1.47a.75.75 0 011.06 0zm9.192 0a.75.75 0 011.06 0l1.47 1.47a.75.75 0 11-1.06 1.06l-1.47-1.47a.75.75 0 010-1.06zM10 4a6 6 0 100 12 6 6 0 000-12zM10 16a4 4 0 100-8 4 4 0 000 8z" clip-rule="evenodd" /></svg>' },
                 ];
+
+                const visibleNavLinks = navLinks.filter(link => !link.requiredPlan || checkPlanPermission(link.requiredPlan));
                 
-                const linksHtml = navLinks.map(link => `
+                const linksHtml = visibleNavLinks.map(link => `
                     <a href="#${link.page}" data-page="${link.page}" class="nav-link text-gray-300 hover:text-white">
                         ${link.icon}
                         <span>${link.label}</span>
@@ -545,12 +555,16 @@
             if (user) {
                 currentUser = user;
                 await loadUserData(user.uid);
-                updateNav();
-
+                
                 if (!currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
                     window.location.hash = 'onboarding';
                 }
 
+                if (currentWorkspaceId) {
+                    await loadWorkspaceData(currentWorkspaceId);
+                }
+                
+                updateNav();
                 handleRouting(); 
             } else {
                 currentUser = null;
@@ -646,6 +660,18 @@
             if (!workspaceId) return;
             
             const wsDocRef = doc(db, "workspaces", workspaceId);
+            const wsDocSnap = await getDoc(wsDocRef);
+            
+            if (wsDocSnap.exists()) {
+                currentWorkspaceData = { id: wsDocSnap.id, ...wsDocSnap.data() };
+            } else {
+                console.error("Workspace not found!");
+                currentWorkspaceId = null;
+                showPage('company-selection');
+                return;
+            }
+
+            // Fetch subcollections only if workspace exists
             const membersColRef = collection(db, "workspaces", workspaceId, "members");
             const projectsColRef = collection(db, "workspaces", workspaceId, "projects");
             const tasksColRef = collection(db, "workspaces", workspaceId, "tasks");
@@ -656,8 +682,7 @@
             const schedulesColRef = collection(db, "workspaces", workspaceId, "schedules");
 
 
-            const [wsDocSnap, membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
-                getDoc(wsDocRef),
+            const [membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
                 getDocs(query(membersColRef)),
                 getDocs(query(projectsColRef)),
                 getDocs(query(tasksColRef)),
@@ -667,15 +692,6 @@
                 getDocs(query(verificationColRef)),
                 getDocs(query(schedulesColRef))
             ]);
-
-            if (wsDocSnap.exists()) {
-                currentWorkspaceData = { id: wsDocSnap.id, ...wsDocSnap.data() };
-            } else {
-                console.error("Workspace not found!");
-                currentWorkspaceId = null;
-                showPage('company-selection');
-                return;
-            }
 
             employees = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             projects = projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -702,6 +718,7 @@
             verificationSnapshot.forEach(doc => {
                 verificationData[doc.id] = doc.data();
             });
+            updateNav(); // Re-run nav update after workspace data is loaded
         }
 
         async function renderWorkspaceSelection() {
@@ -737,6 +754,7 @@
                             <div>
                                 ${isActive ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                                 <h3 class="text-xl font-bold text-white mb-2">${ws.name}</h3>
+                                <p class="text-sm font-semibold text-emerald-400">${ws.plan || 'Free'} Plan</p>
                             </div>
                             <div class="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
                                 <p>${memberCount} Members</p>
@@ -799,7 +817,7 @@
         }
 
         async function renderDashboard() {
-            await loadWorkspaceData(currentWorkspaceId);
+            if (!currentWorkspaceId) return;
             dashboardTitle.textContent = `${currentWorkspaceData.name} Dashboard`;
             let totalHours = 0;
             let recentEntries = [];
@@ -836,7 +854,6 @@
         }
 
         async function renderTimesheetPage() {
-            await loadWorkspaceData(currentWorkspaceId);
             renderEmployeeFilter();
             renderEmployeeDetails();
             renderSpreadsheet();
@@ -903,22 +920,54 @@
             tableHtml += `<td class="text-emerald-400">${weeklyTotal.toFixed(2)}</td></tr>`;
             tableHtml += '</tfoot></table>';
             spreadsheetContainer.innerHTML = tableHtml;
-            renderVerificationStatus(weekStartDateString);
+            
+            if (checkPlanPermission('Starter')) {
+                renderVerificationStatus(weekStartDateString);
+            } else {
+                const verificationSection = document.getElementById('verification-section');
+                if (verificationSection) verificationSection.innerHTML = '';
+            }
+            
             document.querySelectorAll('.day-header.editable').forEach(th => th.addEventListener('click', (e) => openPunchModal(e.currentTarget.dataset.date)));
         }
 
         async function renderManagePage(activeTab = 'employees') {
-            await loadWorkspaceData(currentWorkspaceId);
+            const payrollTabEl = manageTabs.querySelector('[data-tab="payroll"]');
+            if (!checkPlanPermission('Enterprise')) {
+                if(payrollTabEl) payrollTabEl.style.display = 'none';
+                if (activeTab === 'payroll') activeTab = 'employees';
+            } else {
+                if(payrollTabEl) payrollTabEl.style.display = 'inline-block';
+            }
+
             manageTabs.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
             const activeTabEl = manageTabs.querySelector(`[data-tab="${activeTab}"]`);
             if(activeTabEl) activeTabEl.classList.add('active');
             
             addNewButton.style.display = ['payroll', 'departments'].includes(activeTab) ? 'none' : 'inline-block';
-            if (activeTab === 'employees' || activeTab === 'projects') {
-                addNewButton.textContent = `Add New ${activeTab.slice(0, -1)}`;
+            
+            const plan = currentWorkspaceData.plan || 'Free';
+            const userLimit = PLAN_USER_LIMITS[plan];
+            const projectLimit = PLAN_PROJECT_LIMITS[plan];
+            const canAddEmployees = plan !== 'Free' || employees.length < userLimit;
+            const canAddProjects = plan !== 'Free' || projects.length < projectLimit;
+            let isLimitReached = false;
+
+            if (activeTab === 'employees') {
+                addNewButton.innerHTML = `Add New Employee`;
+                if (!canAddEmployees) isLimitReached = true;
+            } else if (activeTab === 'projects') {
+                addNewButton.innerHTML = `Add New Project`;
+                if (!canAddProjects) isLimitReached = true;
             }
             
-            selectedManageItem = null; // Reset selection on tab change
+            addNewButton.disabled = isLimitReached;
+            addNewButton.title = isLimitReached ? `Upgrade your plan to add more ${activeTab}.` : '';
+            if (isLimitReached) {
+                addNewButton.innerHTML += ` <span class="text-xs font-normal">(Plan Limit Reached)</span>`;
+            }
+
+            selectedManageItem = null;
             
             if (activeTab === 'employees') {
                 employeeFilterBar.style.display = 'block';
@@ -1529,6 +1578,11 @@
         function setupEmployeeModalTabs(modal) {
             const tabs = modal.querySelectorAll('#employee-modal-tabs .tab-button');
             const panes = modal.querySelectorAll('.modal-tab-pane');
+            const payrollTab = modal.querySelector('[data-tab="payroll"]');
+            
+            if (payrollTab && !checkPlanPermission('Enterprise')) {
+                payrollTab.style.display = 'none';
+            }
 
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -1819,14 +1873,13 @@
         // --- Settings Page ---
 
         async function renderSettingsPage() {
-            await loadWorkspaceData(currentWorkspaceId);
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdmin = userRole === 'Admin';
 
             const tabs = [
                 { id: 'profile', label: 'My Profile', visible: true },
                 { id: 'workspace', label: 'Workspace', visible: isAdmin },
-                { id: 'payroll', label: 'Payroll', visible: isAdmin },
+                { id: 'payroll', label: 'Payroll', visible: isAdmin && checkPlanPermission('Enterprise') },
                 { id: 'billing', label: 'Billing & Plan', visible: isAdmin },
                 { id: 'danger', label: 'Danger Zone', visible: isAdmin }
             ];
@@ -1892,6 +1945,19 @@
             const container = document.getElementById('profile-settings-tab');
             const prefs = currentUserData.preferences || {};
             const notifications = prefs.notifications || {};
+            const integrationsHtml = checkPlanPermission('Starter') ? `
+                 <!-- Integrations -->
+                <div class="card p-8">
+                    <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
+                    <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                        <div>
+                            <h4 class="font-bold text-white">Google Calendar</h4>
+                            <p class="text-sm text-gray-400">Sync your NexusTime schedule with Google Calendar.</p>
+                        </div>
+                        <button type="button" id="connect-calendar-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
+                    </div>
+                </div>
+            ` : '';
 
             container.innerHTML = `
                 <form id="profile-settings-form" class="space-y-12">
@@ -1919,16 +1985,6 @@
                         <h3 class="text-xl font-semibold text-white mb-6">Preferences & Notifications</h3>
                         <div class="space-y-6">
                            <div>
-                                <label class="block text-gray-400 mb-1">Default Start Page</label>
-                                <select name="startPage" class="form-select w-full md:w-1/2">
-                                    <option value="dashboard" ${prefs.startPage === 'dashboard' ? 'selected' : ''}>Dashboard</option>
-                                    <option value="timesheet" ${prefs.startPage === 'timesheet' ? 'selected' : ''}>Timesheet</option>
-                                    <option value="schedule" ${prefs.startPage === 'schedule' ? 'selected' : ''}>Schedule</option>
-                                    <option value="tasks" ${prefs.startPage === 'tasks' ? 'selected' : ''}>Tasks</option>
-                                </select>
-                           </div>
-                           <div class="border-t border-gray-700 my-2"></div>
-                           <div>
                                 <h4 class="font-medium text-white mb-2">Email Notifications</h4>
                                 <div class="space-y-2">
                                     <label class="flex items-center"><input type="checkbox" name="notificationTimesheet" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 mr-2" ${notifications.timesheetReminders !== false ? 'checked' : ''}><span class="text-gray-300">Weekly Timesheet Reminders</span></label>
@@ -1938,100 +1994,94 @@
                            </div>
                         </div>
                     </div>
-                     <!-- Integrations -->
-                    <div class="card p-8">
-                        <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
-                        <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
-                            <div>
-                                <h4 class="font-bold text-white">Google Calendar</h4>
-                                <p class="text-sm text-gray-400">Sync your NexusTime schedule with Google Calendar.</p>
-                            </div>
-                            <button type="button" id="connect-calendar-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
-                        </div>
-                    </div>
+                    ${integrationsHtml}
                     <div class="flex justify-end">
                         <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Profile Settings</button>
                     </div>
                 </form>
             `;
             document.getElementById('profile-settings-form').addEventListener('submit', handleSaveProfileSettings);
-            document.getElementById('connect-calendar-btn').addEventListener('click', () => {
-                showToast('Calendar integration coming soon!', 'success');
-            });
+            const connectCalendarBtn = document.getElementById('connect-calendar-btn');
+            if (connectCalendarBtn) {
+                connectCalendarBtn.addEventListener('click', () => {
+                    showToast('Calendar integration coming soon!', 'success');
+                });
+            }
         }
 
         function renderWorkspaceSettings() {
             const container = document.getElementById('workspace-settings-tab');
             const ws = currentWorkspaceData;
-            const rules = ws.rules || {};
-            const security = ws.security || {};
-            const plan = ws.plan || 'Free';
             
+            const proFeaturesHtml = checkPlanPermission('Pro') ? `
+                 <div class="card p-8">
+                     <h3 class="text-xl font-semibold text-white mb-6">Security (Pro Feature)</h3>
+                     <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-white">Require Two-Factor Authentication</h4>
+                                <p class="text-sm text-gray-400">Force all members to use 2FA for enhanced security.</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" name="require2FA" ${ws.security?.require2FA ? 'checked' : ''}><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="border-t border-gray-700 my-2"></div>
+                         <div>
+                            <label class="block text-gray-400 mb-1">Session Timeout</label>
+                            <select name="sessionTimeout" class="form-select w-full md:w-1/2">
+                                <option value="30" ${ws.security?.sessionTimeout == 30 ? 'selected' : ''}>30 minutes</option>
+                                <option value="60" ${ws.security?.sessionTimeout == 60 ? 'selected' : ''}>1 hour</option>
+                                <option value="480" ${ws.security?.sessionTimeout == 480 ? 'selected' : ''}>8 hours</option>
+                                <option value="0" ${!ws.security?.sessionTimeout || ws.security?.sessionTimeout == 0 ? 'selected' : ''}>Never</option>
+                            </select>
+                            <p class="text-sm text-gray-400 mt-1">Automatically log out users after a period of inactivity.</p>
+                        </div>
+                     </div>
+                </div>
+                 <div class="card p-8">
+                     <h3 class="text-xl font-semibold text-white mb-6">Data & API (Pro Feature)</h3>
+                     <div class="space-y-6">
+                         <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-white">Export Workspace Data</h4>
+                                <p class="text-sm text-gray-400">Download all your workspace data as a CSV file.</p>
+                            </div>
+                            <button type="button" id="export-data-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
+                        </div>
+                         <div class="border-t border-gray-700 my-2"></div>
+                         <div>
+                            <h4 class="font-medium text-white">API Access</h4>
+                            <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
+                            <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
+                        </div>
+                     </div>
+                </div>
+            ` : `
+                <div class="card p-8 border border-dashed border-gray-600 text-center">
+                    <h3 class="text-lg font-semibold text-white">Unlock Advanced Settings</h3>
+                    <p class="text-gray-400 mt-2">Upgrade to the Pro plan to access advanced security, data exports, and API access.</p>
+                    <button type="button" id="upgrade-from-ws-settings-btn" class="mt-4 cta-button px-6 py-2 rounded-lg">Upgrade Plan</button>
+                </div>
+            `;
+
             container.innerHTML = `
                 <form id="workspace-settings-form" class="space-y-12">
-                    <!-- General Workspace Settings -->
                     <div class="card p-8">
                          <h3 class="text-xl font-semibold text-white mb-6">General</h3>
                          <div class="space-y-4">
                             <div><label class="block text-gray-400">Workspace Name</label><input type="text" name="workspaceName" class="form-input w-full mt-1" value="${ws.name || ''}"></div>
                          </div>
                     </div>
-                    <!-- Security Settings -->
-                     <div class="card p-8">
-                         <h3 class="text-xl font-semibold text-white mb-6">Security</h3>
-                         <div class="space-y-6">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-medium text-white">Require Two-Factor Authentication</h4>
-                                    <p class="text-sm text-gray-400">Force all members to use 2FA for enhanced security.</p>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" name="require2FA" ${security.require2FA ? 'checked' : ''}><span class="toggle-slider"></span></label>
-                            </div>
-                            <div class="border-t border-gray-700 my-2"></div>
-                             <div>
-                                <label class="block text-gray-400 mb-1">Session Timeout</label>
-                                <select name="sessionTimeout" class="form-select w-full md:w-1/2">
-                                    <option value="30" ${security.sessionTimeout == 30 ? 'selected' : ''}>30 minutes</option>
-                                    <option value="60" ${security.sessionTimeout == 60 ? 'selected' : ''}>1 hour</option>
-                                    <option value="480" ${security.sessionTimeout == 480 ? 'selected' : ''}>8 hours</option>
-                                    <option value="0" ${!security.sessionTimeout || security.sessionTimeout == 0 ? 'selected' : ''}>Never</option>
-                                </select>
-                                <p class="text-sm text-gray-400 mt-1">Automatically log out users after a period of inactivity.</p>
-                            </div>
-                         </div>
-                    </div>
-                     <!-- Data & API -->
-                     <div class="card p-8">
-                         <h3 class="text-xl font-semibold text-white mb-6">Data & API</h3>
-                         <div class="space-y-6">
-                             <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-medium text-white">Export Workspace Data</h4>
-                                    <p class="text-sm text-gray-400">Download all your workspace data as a CSV file.</p>
-                                </div>
-                                <button type="button" id="export-data-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
-                            </div>
-                             <div class="border-t border-gray-700 my-2"></div>
-                             <div>
-                                <h4 class="font-medium text-white">API Access</h4>
-                                ${(plan === 'Pro' || plan === 'Enterprise') ? `
-                                    <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
-                                    <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
-                                `: `
-                                    <p class="text-sm text-gray-400">Upgrade to Pro or Enterprise to get API access.</p>
-                                `}
-                            </div>
-                         </div>
-                    </div>
+                    ${proFeaturesHtml}
                     <div class="flex justify-end">
                         <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Workspace Settings</button>
                     </div>
                 </form>
             `;
             document.getElementById('workspace-settings-form').addEventListener('submit', handleSaveWorkspaceSettings);
-            document.getElementById('export-data-btn').addEventListener('click', () => {
-                showToast('Data export feature coming soon!', 'success');
-            });
+            const exportBtn = document.getElementById('export-data-btn');
+            if(exportBtn) exportBtn.addEventListener('click', () => { showToast('Data export feature coming soon!', 'success'); });
+            const upgradeBtn = document.getElementById('upgrade-from-ws-settings-btn');
+            if(upgradeBtn) upgradeBtn.addEventListener('click', () => switchSettingsTab('billing'));
         }
 
         async function renderPayrollSettingsTab() {
@@ -2115,10 +2165,10 @@
             const currentPlan = currentWorkspaceData.plan || 'Free';
             
             const plans = {
-                Free: { price: 0, features: ["1 User Seat", "3 Active Projects", "Basic Time Tracking", "Community Support"] },
-                Starter: { price: 5, features: ["Unlimited Users", "Unlimited Projects", "Team Collaboration", "Timesheet Approvals", "Email Support"] },
-                Pro: { price: 10, features: ["Everything in Starter", "Advanced Analytics", "Billing & Invoicing", "API & Integrations", "Priority Support"] },
-                Enterprise: { price: 12, features: ["Everything in Pro", "Single Sign-On (SSO)", "Audit Logs", "Dedicated Support", "Volume Discounts"] }
+                Free: { price: 0, annual: 0, features: ["1 User Seat", "3 Active Projects", "Basic Time Tracking"] },
+                Starter: { price: 6, annual: 5, features: ["Unlimited Users", "Unlimited Projects", "Timesheet Approvals", "Team Reporting"] },
+                Pro: { price: 12, annual: 10, features: ["Everything in Starter", "Scheduling & Tasks", "Project Budgeting", "API & Integrations"] },
+                Enterprise: { price: 15, annual: 12, features: ["Everything in Pro", "Full Payroll Suite", "SAML SSO & Audit Logs", "Dedicated Support"] }
             };
             
             let plansHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
@@ -2136,7 +2186,7 @@
                     <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''}">
                          ${isCurrent ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
-                        <p class="text-4xl font-extrabold my-4 text-white">$${planDetails.price}<span class="text-base font-medium text-gray-400">/user/month</span></p>
+                        <p class="text-4xl font-extrabold my-4 text-white">$<span data-price-monthly="${planDetails.price}" data-price-annual="${planDetails.annual}">${planDetails.price}</span><span class="text-base font-medium text-gray-400">/user/month</span></p>
                         <ul class="space-y-2 text-gray-300 flex-grow mb-6">
                             ${planDetails.features.map(f => `
                                 <li class="flex items-center">
@@ -2221,7 +2271,6 @@
             const updatedProfile = {
                 name: form.name.value,
                 preferences: {
-                    startPage: form.startPage.value,
                     notifications: {
                         timesheetReminders: form.notificationTimesheet.checked,
                         scheduleUpdates: form.notificationSchedule.checked,
@@ -2248,11 +2297,14 @@
             
             const updatedSettings = {
                 name: form.workspaceName.value,
-                security: {
+            };
+
+            if (checkPlanPermission('Pro')) {
+                updatedSettings.security = {
                     require2FA: form.require2FA.checked,
                     sessionTimeout: Number(form.sessionTimeout.value)
                 }
-            };
+            }
 
             try {
                 await updateDoc(workspaceDocRef, updatedSettings);
@@ -2266,12 +2318,13 @@
         }
         
         async function handlePlanSelection(newPlan) {
-            const userDocRef = doc(db, "users", currentUser.uid);
+            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
             try {
-                await updateDoc(userDocRef, { plan: newPlan }); // Update plan on the user document
+                await updateDoc(workspaceDocRef, { plan: newPlan });
                 showToast(`Successfully changed plan to ${newPlan}!`, 'success');
-                await loadUserData(currentUser.uid); // Reload user data to reflect plan change
-                renderBillingSettings(); // Re-render to update the UI
+                await loadWorkspaceData(currentWorkspaceId); 
+                renderBillingSettings(); 
+                updateNav();
             } catch (error) {
                 console.error("Error changing plan:", error);
                 showToast(`Failed to change plan: ${error.message}`, 'error');
@@ -2331,7 +2384,6 @@
 
         async function renderOnboardingPage() {
             const userPlan = currentUserData.plan || 'Free';
-            const userLimit = PLAN_USER_LIMITS[userPlan] || 0;
             const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
             const existingWorkspaceCount = Object.keys(currentUserData.workspaces || {}).length;
 
@@ -2346,25 +2398,11 @@
                 return;
             }
             
-            let totalActiveUsers = 0;
-            const workspaceIds = Object.keys(currentUserData.workspaces || {});
-            if (workspaceIds.length > 0) {
-                const memberQueries = workspaceIds.map(id => getDocs(query(collection(db, `workspaces/${id}/members`), where("status", "==", "Active"))));
-                const memberSnapshots = await Promise.all(memberQueries);
-                totalActiveUsers = memberSnapshots.reduce((acc, snapshot) => acc + snapshot.size, 0);
-            }
-
             const industries = ["Software", "Healthcare", "Retail", "Education", "Construction", "Finance", "Legal", "Hospitality", "Transportation", "Manufacturing", "Marketing", "Non-Profit", "Real Estate", "Telecommunications", "Government"];
             const companySizes = ["1-10 employees", "11-50 employees", "51-200 employees", "201-500 employees", "500+ employees"];
             const timezones = {"(GMT-12:00) International Date Line West": "Etc/GMT+12", "(GMT-11:00) Midway Island, Samoa": "Pacific/Samoa", "(GMT-10:00) Hawaii": "Pacific/Honolulu", "(GMT-09:00) Alaska": "America/Anchorage", "(GMT-08:00) Pacific Time (US & Canada)": "America/Los_Angeles", "(GMT-07:00) Mountain Time (US & Canada)": "America/Denver", "(GMT-06:00) Central Time (US & Canada)": "America/Chicago", "(GMT-05:00) Eastern Time (US & Canada)": "America/New_York", "(GMT-04:00) Atlantic Time (Canada)": "America/Halifax", "(GMT-03:00) Buenos Aires, Georgetown": "America/Argentina/Buenos_Aires", "(GMT-02:00) Mid-Atlantic": "Atlantic/South_Georgia", "(GMT-01:00) Cape Verde Is.": "Atlantic/Cape_Verde", "(GMT+00:00) London, Lisbon": "Europe/London", "(GMT+01:00) Amsterdam, Berlin, Rome": "Europe/Berlin", "(GMT+02:00) Athens, Jerusalem": "Europe/Athens", "(GMT+03:00) Moscow, St. Petersburg": "Europe/Moscow", "(GMT+04:00) Abu Dhabi, Muscat": "Asia/Dubai", "(GMT+05:00) Islamabad, Karachi, Tashkent": "Asia/Karachi", "(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi": "Asia/Kolkata", "(GMT+06:00) Almaty, Novosibirsk": "Asia/Almaty", "(GMT+07:00) Bangkok, Hanoi, Jakarta": "Asia/Bangkok", "(GMT+08:00) Beijing, Perth, Singapore, Hong Kong": "Asia/Hong_Kong", "(GMT+09:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk": "Asia/Tokyo", "(GMT+09:30) Adelaide, Darwin": "Australia/Darwin", "(GMT+10:00) Brisbane, Canberra, Melbourne, Sydney": "Australia/Sydney", "(GMT+11:00) Magadan, Solomon Is., New Caledonia": "Pacific/Guadalcanal", "(GMT+12:00) Auckland, Wellington, Fiji": "Pacific/Auckland"};
 
             onboardingContainer.innerHTML = `
-                <div class="card p-4 mb-6">
-                    <h4 class="font-semibold text-white">${userPlan} Plan</h4>
-                    <p class="text-sm text-gray-400 mt-1">
-                        Users: ${totalActiveUsers} / ${userLimit === Infinity ? 'Unlimited' : userLimit}
-                    </p>
-                </div>
                 <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Create a New Workspace</h2>
                 <form id="onboarding-form" class="space-y-4">
                     <div><label class="block text-gray-300 mb-1">Workspace Name</label><input type="text" name="workspaceName" class="w-full p-3 form-input" required></div>
@@ -2426,7 +2464,11 @@
         
         // --- Schedule Page Rendering ---
         async function renderSchedulePage() {
-            await loadWorkspaceData(currentWorkspaceId);
+            if (!checkPlanPermission('Pro')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Pro plan to access Scheduling.', 'error');
+                return;
+            }
             const container = document.getElementById('schedule-container');
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
@@ -2557,7 +2599,11 @@
         
         // --- Tasks Page Rendering ---
         async function renderTasksPage() {
-            await loadWorkspaceData(currentWorkspaceId);
+            if (!checkPlanPermission('Pro')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Pro plan to access Tasks.', 'error');
+                return;
+            }
             const container = document.getElementById('tasks-container');
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
@@ -2674,7 +2720,11 @@
 
         // --- Time Off Page ---
         async function renderTimeOffPage() {
-            await loadWorkspaceData(currentWorkspaceId);
+            if (!checkPlanPermission('Pro')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Pro plan to access Time Off management.', 'error');
+                return;
+            }
             const container = document.getElementById('time-off-container');
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
@@ -2849,7 +2899,11 @@
         
         // --- Pay Stubs Page ---
         async function renderPayStubsPage() {
-            await loadWorkspaceData(currentWorkspaceId);
+             if (!checkPlanPermission('Enterprise')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Enterprise plan to access Pay Stubs.', 'error');
+                return;
+            }
             const container = document.getElementById('pay-stubs-container');
             const myStubs = payStubs.filter(s => s.userId === currentUser.uid);
 

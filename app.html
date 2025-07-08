@@ -69,10 +69,17 @@
         .nav-link svg { margin-right: 0.75rem; }
 
         @media print {
+            body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body * { visibility: hidden; }
             #pay-stub-content, #pay-stub-content * { visibility: visible; }
-            #pay-stub-content { position: absolute; left: 0; top: 0; width: 100%; }
-            @page { size: auto; margin: 0; }
+            #pay-stub-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                color: #111827; /* black text for printing */
+            }
+            @page { size: auto; margin: 20px; }
         }
     </style>
 </head>
@@ -645,7 +652,7 @@
                 getDocs(query(projectsColRef)),
                 getDocs(query(tasksColRef)),
                 getDocs(query(timeOffColRef)),
-                getDocs(query(payStubsColRef)),
+                getDocs(query(payStubsColRef, orderBy("payDate", "desc"))),
                 getDocs(query(timesheetsColRef)),
                 getDocs(query(verificationColRef))
             ]);
@@ -1027,7 +1034,7 @@
                         <p><strong class="text-gray-400">Role:</strong> ${emp.role || 'N/A'}</p>
                         <p><strong class="text-gray-400">Status:</strong> ${emp.status}</p>
                         <p><strong class="text-gray-400">Employee ID:</strong> ${emp.employeeId || 'N/A'}</p>
-                        <p><strong class="text-gray-400">Hourly Rate:</strong> $${emp.hourlyRate || '0.00'}</p>
+                        <p><strong class="text-gray-400">Hourly Rate:</strong> $${(emp.hourlyRate || 0).toFixed(2)}</p>
                         <p><strong class="text-gray-400">Department:</strong> ${emp.department || 'N/A'}</p>
                         <p><strong class="text-gray-400">Pay Type:</strong> ${emp.payType || 'N/A'}</p>
                         <p><strong class="text-gray-400">Employee Type:</strong> ${emp.employeeType || 'N/A'}</p>
@@ -1099,7 +1106,7 @@
             };
             
             const brackets = (filingStatus === 'married') ? marriedBrackets : singleBrackets;
-            let taxableIncome = annualGross; // In a real system, subtract deductions here.
+            let taxableIncome = annualGross; // In a real system, subtract pre-tax deductions here.
             let annualFederalTax = 0;
             let remainingIncome = taxableIncome;
             
@@ -2773,7 +2780,7 @@
                                 <thead class="bg-gray-800"><tr>
                                     <th class="p-4 font-semibold">Pay Period</th>
                                     <th class="p-4 font-semibold">Pay Date</th>
-                                    <th class="p-4 font-semibold">Gross Pay</th>
+                                    <th class="p-4 font-semibold">Net Pay</th>
                                     <th class="p-4 font-semibold">Actions</th>
                                 </tr></thead>
                                 <tbody>
@@ -2781,7 +2788,7 @@
                                     <tr class="border-b border-gray-700">
                                         <td class="p-4">${stub.periodStart} - ${stub.periodEnd}</td>
                                         <td class="p-4">${stub.payDate}</td>
-                                        <td class="p-4">$${stub.grossPay.toFixed(2)}</td>
+                                        <td class="p-4 font-semibold">$${stub.netPay.toFixed(2)}</td>
                                         <td class="p-4"><button data-stub-id="${stub.id}" class="view-stub-btn secondary-button px-3 py-1 rounded-md text-sm">View</button></td>
                                     </tr>
                                 `).join('')}
@@ -2944,9 +2951,85 @@
             reportHtml += '</tbody></table></div></div><div class="flex justify-end mt-6"><button id="finalize-payroll-btn" class="cta-button px-6 py-2 rounded-lg">Finalize Pay Run</button></div>';
             container.innerHTML = reportHtml;
             
-            document.getElementById('finalize-payroll-btn').addEventListener('click', () => {
-                showToast('Pay run finalized! (Simulation)', 'success');
-            });
+            document.getElementById('finalize-payroll-btn').addEventListener('click', handleFinalizePayRun);
+        }
+
+        async function handleFinalizePayRun() {
+            const startDate = document.getElementById('payroll-start-date').value;
+            const endDate = document.getElementById('payroll-end-date').value;
+
+            if (!startDate || !endDate) {
+                showToast('Please select a start and end date for the pay period.', 'error');
+                return;
+            }
+
+            const finalizeBtn = document.getElementById('finalize-payroll-btn');
+            finalizeBtn.disabled = true;
+            finalizeBtn.textContent = 'Finalizing...';
+
+            try {
+                for (const emp of employees) {
+                    const empTimesheets = timesheets[emp.id] || {};
+                    const overtimeRules = currentWorkspaceData.rules?.overtime || { enabled: false, weekly: 40 };
+                    
+                    let totalHours = 0;
+                    Object.values(empTimesheets).forEach(day => {
+                       totalHours += calculateTotalHoursFromPairs(processDayPunches(emp.id, null, day.punches).pairs);
+                    });
+
+                    let regularHours = totalHours;
+                    let overtimeHours = 0;
+                    if (overtimeRules.enabled && totalHours > overtimeRules.weekly) {
+                        overtimeHours = totalHours - overtimeRules.weekly;
+                        regularHours = overtimeRules.weekly;
+                    }
+
+                    const grossPay = (regularHours * (emp.hourlyRate || 0)) + (overtimeHours * (emp.hourlyRate || 0) * 1.5);
+                    const payrollInfo = emp.payroll || {};
+                    const taxes = calculateTaxes(grossPay, payrollInfo.filingStatus, payrollInfo.allowances);
+                    
+                    const empDeductions = payrollInfo.deductions || [];
+                    const calculatedDeductions = [];
+                    let totalDeductions = 0;
+                    empDeductions.forEach(ded => {
+                        let amount = 0;
+                        if (ded.type === 'fixed') {
+                            amount = ded.amount;
+                        } else if (ded.type === 'percent') {
+                            amount = grossPay * (ded.amount / 100);
+                        }
+                        totalDeductions += amount;
+                        calculatedDeductions.push({ name: ded.name, amount });
+                    });
+
+                    const netPay = grossPay - taxes.total - totalDeductions;
+
+                    const payStubData = {
+                        userId: emp.id,
+                        periodStart: startDate,
+                        periodEnd: endDate,
+                        payDate: new Date().toISOString().split('T')[0],
+                        grossPay,
+                        netPay,
+                        taxes,
+                        deductions: calculatedDeductions,
+                        hourlyRate: emp.hourlyRate || 0,
+                        regularHours,
+                        overtimeHours,
+                        totalHours,
+                        createdAt: new Date()
+                    };
+                    
+                    await addDoc(collection(db, `workspaces/${currentWorkspaceId}/payStubs`), payStubData);
+                }
+                showToast('Pay run finalized and all pay stubs have been generated!', 'success');
+                manageContent.innerHTML = '<div class="card p-6"><p>Pay run successfully finalized. Employees can now view their new pay stubs.</p></div>';
+            } catch (error) {
+                console.error("Error finalizing pay run:", error);
+                showToast(`Error: ${error.message}`, 'error');
+                finalizeBtn.disabled = false;
+                finalizeBtn.textContent = 'Finalize Pay Run';
+            }
         }
         
         function viewPayStub(stubId) {
@@ -2956,93 +3039,92 @@
             const employee = employees.find(e => e.id === stub.userId);
             const contentEl = document.getElementById('pay-stub-content');
             
-            let deductionsHtml = '';
             const stubDeductions = stub.deductions || [];
-            let totalDeductions = 0;
-            if (stubDeductions.length > 0) {
-                totalDeductions = stubDeductions.reduce((acc, d) => acc + d.amount, 0);
-                deductionsHtml = `
-                    <div class="stub-section">
-                        <h2>Deductions</h2>
-                        <table class="stub-table">
-                            <thead><tr><th>Description</th><th class="amount">Amount</th></tr></thead>
-                            <tbody>
-                                ${stubDeductions.map(d => `<tr><td>${d.name}</td><td class="amount">-$${d.amount.toFixed(2)}</td></tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            }
-
-            let taxesHtml = '';
+            const totalDeductions = stubDeductions.reduce((acc, d) => acc + d.amount, 0);
+            
             const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
             const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
 
-            taxesHtml = `
-                <div class="stub-section">
-                    <h2>Taxes Withheld</h2>
-                    <table class="stub-table">
-                        <thead><tr><th>Description</th><th class="amount">Amount</th></tr></thead>
-                        <tbody>
-                            <tr><td>Federal Income Tax</td><td class="amount">-$${(stubTaxes.federal || 0).toFixed(2)}</td></tr>
-                            <tr><td>Social Security</td><td class="amount">-$${(stubTaxes.socialSecurity || 0).toFixed(2)}</td></tr>
-                            <tr><td>Medicare</td><td class="amount">-$${(stubTaxes.medicare || 0).toFixed(2)}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' }; // Placeholder YTD data
             
             contentEl.innerHTML = `
                 <style>
-                    #pay-stub-content { font-family: 'Courier New', Courier, monospace; }
-                    .stub-header { text-align: center; margin-bottom: 2rem; }
-                    .stub-header h1 { font-size: 1.5rem; font-weight: bold; }
-                    .stub-section { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; }
-                    .stub-section h2 { font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; margin-bottom: 1rem; }
-                    .stub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-                    .stub-table { width: 100%; border-collapse: collapse; }
-                    .stub-table th, .stub-table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
-                    .stub-table th { font-weight: bold; }
+                    #pay-stub-content { font-family: system-ui, -apple-system, sans-serif; }
+                    .stub-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+                    .stub-table th, .stub-table td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid #e2e8f0; }
+                    .stub-table th { color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
                     .stub-table .amount { text-align: right; }
-                    .stub-summary { text-align: right; font-size: 1.2rem; font-weight: bold; margin-top: 1rem; }
+                    .stub-section { margin-bottom: 2rem; }
+                    .summary-box { background-color: #f1f5f9; border-radius: 0.5rem; padding: 1.5rem; margin-top: 2rem; }
+                    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+                    .summary-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0; }
+                    .summary-item.total { font-weight: bold; font-size: 1.1rem; border-top: 2px solid #94a3b8; margin-top: 0.5rem; }
                 </style>
-                <div class="stub-header">
-                    <h1>${currentWorkspaceData.name}</h1>
-                    <p>Pay Stub</p>
-                </div>
-                <div class="stub-grid">
-                    <div class="stub-section">
-                        <h2>Employee Information</h2>
-                        <p><strong>Name:</strong> ${employee.name}</p>
-                        <p><strong>Employee ID:</strong> ${employee.employeeId}</p>
+                <header class="flex justify-between items-start mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold">${currentWorkspaceData.name}</h1>
+                        <p class="text-gray-500">Pay Statement</p>
                     </div>
-                    <div class="stub-section">
-                        <h2>Pay Period</h2>
-                        <p><strong>Period:</strong> ${stub.periodStart} - ${stub.periodEnd}</p>
+                    <div class="text-right">
                         <p><strong>Pay Date:</strong> ${stub.payDate}</p>
+                        <p><strong>Pay Period:</strong> ${stub.periodStart} to ${stub.periodEnd}</p>
+                    </div>
+                </header>
+
+                <div class="mb-8 p-4 border rounded-lg">
+                    <h2 class="font-bold text-lg">${employee.name}</h2>
+                    <p class="text-gray-600">Employee ID: ${employee.employeeId}</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="stub-section">
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Earnings</h3>
+                        <table class="stub-table">
+                            <thead><tr><th>Description</th><th class="amount">Hours</th><th class="amount">Rate</th><th class="amount">Current</th><th class="amount">YTD</th></tr></thead>
+                            <tbody>
+                                <tr><td>Regular</td><td class="amount">${stub.regularHours.toFixed(2)}</td><td class="amount">$${stub.hourlyRate.toFixed(2)}</td><td class="amount">$${(stub.regularHours * stub.hourlyRate).toFixed(2)}</td><td class="amount">$${YTD.gross}</td></tr>
+                                ${stub.overtimeHours > 0 ? `<tr><td>Overtime</td><td class="amount">${stub.overtimeHours.toFixed(2)}</td><td class="amount">$${(stub.hourlyRate * 1.5).toFixed(2)}</td><td class="amount">$${(stub.overtimeHours * stub.hourlyRate * 1.5).toFixed(2)}</td><td class="amount">...</td></tr>` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="stub-section">
+                         <h3 class="text-xl font-semibold mb-4 border-b pb-2">Taxes</h3>
+                        <table class="stub-table">
+                            <thead><tr><th>Description</th><th class="amount">Current</th><th class="amount">YTD</th></tr></thead>
+                            <tbody>
+                                <tr><td>Federal Income Tax</td><td class="amount">-${(stubTaxes.federal).toFixed(2)}</td><td class="amount">...</td></tr>
+                                <tr><td>Social Security</td><td class="amount">-${(stubTaxes.socialSecurity).toFixed(2)}</td><td class="amount">...</td></tr>
+                                <tr><td>Medicare</td><td class="amount">-${(stubTaxes.medicare).toFixed(2)}</td><td class="amount">...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                ${stubDeductions.length > 0 ? `
                 <div class="stub-section">
-                    <h2>Earnings</h2>
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Deductions</h3>
                     <table class="stub-table">
-                        <thead><tr><th>Description</th><th class="amount">Rate</th><th class="amount">Hours</th><th class="amount">Total</th></tr></thead>
+                        <thead><tr><th>Description</th><th class="amount">Current</th><th class="amount">YTD</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td>Regular Pay</td>
-                                <td class="amount">$${(stub.hourlyRate || 0).toFixed(2)}</td>
-                                <td class="amount">${(stub.regularHours || 0).toFixed(2)}</td>
-                                <td class="amount">$${(stub.grossPay || 0).toFixed(2)}</td>
-                            </tr>
+                            ${stubDeductions.map(d => `<tr><td>${d.name}</td><td class="amount">-${d.amount.toFixed(2)}</td><td class="amount">...</td></tr>`).join('')}
                         </tbody>
-                        <tfoot><tr><td colspan="3" style="text-align: right; font-weight: bold;">Gross Pay</td><td class="amount" style="font-weight: bold;">$${(stub.grossPay || 0).toFixed(2)}</td></tr></tfoot>
                     </table>
-                </div>
+                </div>` : ''}
 
-                ${taxesHtml}
-                ${deductionsHtml}
-
-                <div class="stub-summary">
-                    Net Pay: $${(stub.netPay || stub.grossPay - totalTaxes - totalDeductions).toFixed(2)}
+                <div class="summary-box">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Summary</h3>
+                    <div class="summary-grid">
+                         <div>
+                            <div class="summary-item"><span>Gross Pay</span><span>$${stub.grossPay.toFixed(2)}</span></div>
+                            <div class="summary-item"><span>Total Taxes</span><span>-$${totalTaxes.toFixed(2)}</span></div>
+                            <div class="summary-item"><span>Total Deductions</span><span>-$${totalDeductions.toFixed(2)}</span></div>
+                         </div>
+                         <div>
+                            <div class="summary-item"><span>YTD Gross</span><span>$${YTD.gross}</span></div>
+                            <div class="summary-item"><span>YTD Taxes</span><span>-$${YTD.taxes}</span></div>
+                            <div class="summary-item"><span>YTD Deductions</span><span>-$${YTD.deductions}</span></div>
+                         </div>
+                    </div>
+                    <div class="summary-item total"><span>Net Pay</span><span>$${stub.netPay.toFixed(2)}</span></div>
                 </div>
             `;
             

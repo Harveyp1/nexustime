@@ -13,6 +13,7 @@
         .header { background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(10px); }
         .secondary-button { background-color: transparent; border: 1px solid #34D399; color: #34D399; transition: all 0.3s ease; }
         .secondary-button:hover { background-color: #34D399; color: #111827; }
+        .feature-icon { background-color: #1F2937; color: #34D399; border-radius: 0.75rem; height: 3.5rem; width: 3.5rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; border: 1px solid #374151;}
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -35,31 +36,48 @@
     <main>
         <section class="py-20">
             <div class="container mx-auto px-6">
-                <div class="text-center mb-12">
-                     <h3 class="text-3xl md:text-4xl font-bold text-white">Everything you need to manage time</h3>
-                    <p class="text-gray-400 mt-2">Focus on your business, we'll handle the timekeeping.</p>
+                <div class="text-center mb-16">
+                     <h3 class="text-3xl md:text-5xl font-bold text-white">One platform to run your entire workforce</h3>
+                    <p class="text-gray-400 mt-3 max-w-2xl mx-auto">From time tracking and scheduling to payroll and compliance, NexusTime provides the tools you need to manage your team with confidence.</p>
                 </div>
-                <div class="grid md:grid-cols-3 gap-8 text-center">
-                    <div class="card p-8 rounded-xl">
-                        <div class="bg-gray-800 text-emerald-400 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 border border-gray-700">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </div>
-                        <h4 class="text-xl font-semibold text-white">Easy Time Entry</h4>
-                        <p class="mt-2 text-gray-400">Employees can log their hours with a single click, from any device.</p>
+
+                <!-- Time & Attendance Features -->
+                <div class="mb-20">
+                    <h3 class="text-2xl font-bold text-white mb-8 text-center">Time & Attendance</h3>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h4 class="text-lg font-semibold text-white">Flexible Time Tracking</h4><p class="mt-1 text-gray-400">Empower employees to clock in/out with a live timer or enter hours manually in a weekly timesheet.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><h4 class="text-lg font-semibold text-white">Timesheet Approvals</h4><p class="mt-1 text-gray-400">Streamline payroll with a digital verification workflow. Employees submit, managers approve, and data is locked for accuracy.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div><h4 class="text-lg font-semibold text-white">Geofencing & GPS</h4><p class="mt-1 text-gray-400">Ensure employees are in the right place at the right time with location-aware clock-in reminders. (Coming Soon)</p></div>
                     </div>
-                    <div class="card p-8 rounded-xl">
-                        <div class="bg-gray-800 text-emerald-400 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 border border-gray-700">
-                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        </div>
-                        <h4 class="text-xl font-semibold text-white">Detailed Reports</h4>
-                        <p class="mt-2 text-gray-400">Generate insightful reports on projects, clients, and employee activity.</p>
+                </div>
+
+                <!-- Scheduling & Tasks -->
+                <div class="mb-20">
+                    <h3 class="text-2xl font-bold text-white mb-8 text-center" id="scheduling">Scheduling & Task Management</h3>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div><h4 class="text-lg font-semibold text-white">Employee Scheduling</h4><p class="mt-1 text-gray-400">Build and publish visual schedules in minutes. Notify your team of their shifts and easily manage changes from one calendar view.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg></div><h4 class="text-lg font-semibold text-white">Assignable Tasks</h4><p class="mt-1 text-gray-400">Create, assign, and track tasks for your employees. Ensure accountability and see progress in a centralized dashboard.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h4 class="text-lg font-semibold text-white">Time Off Management</h4><p class="mt-1 text-gray-400">Manage vacation and sick leave requests with an automated approval workflow. PTO balances are tracked automatically.</p></div>
                     </div>
-                    <div class="card p-8 rounded-xl">
-                        <div class="bg-gray-800 text-emerald-400 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 border border-gray-700">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        </div>
-                        <h4 class="text-xl font-semibold text-white">Simplified Payroll</h4>
-                        <p class="mt-2 text-gray-400">Approve timesheets and export data for seamless payroll processing.</p>
+                </div>
+
+                 <!-- Payroll & Reporting -->
+                <div class="mb-20">
+                    <h3 class="text-2xl font-bold text-white mb-8 text-center" id="payroll">Payroll, Billing & Reporting</h3>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div><h4 class="text-lg font-semibold text-white">Integrated Payroll</h4><p class="mt-1 text-gray-400">Run your entire pay run inside NexusTime. Generate previews, calculate taxes & deductions, and finalize payroll with confidence.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><h4 class="text-lg font-semibold text-white">Advanced Reporting</h4><p class="mt-1 text-gray-400">Gain valuable insights with dashboards and reports for hours, projects, and employee productivity. Export data to CSV.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"></path></svg></div><h4 class="text-lg font-semibold text-white">Expense Tracking</h4><p class="mt-1 text-gray-400">Allow employees to submit expenses for projects or work. Managers can review and approve reimbursements with ease.</p></div>
+                    </div>
+                </div>
+
+                <!-- Admin & Security -->
+                <div>
+                    <h3 class="text-2xl font-bold text-white mb-8 text-center">Administration & Security</h3>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a4 4 0 110-8 4 4 0 010 8z"></path></svg></div><h4 class="text-lg font-semibold text-white">User Roles & Permissions</h4><p class="mt-1 text-gray-400">Control who sees what with granular roles for Admins, Managers, and Employees. Keep sensitive data secure.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><h4 class="text-lg font-semibold text-white">API & Integrations</h4><p class="mt-1 text-gray-400">Connect NexusTime to your other tools with a powerful API and calendar sync to create a seamless workflow.</p></div>
+                        <div class="card p-6 rounded-xl"><div class="feature-icon"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div><h4 class="text-lg font-semibold text-white">Enterprise Security</h4><p class="mt-1 text-gray-400">Meet compliance needs with options for required 2FA, session timeouts, SAML SSO, and detailed audit logs.</p></div>
                     </div>
                 </div>
             </div>

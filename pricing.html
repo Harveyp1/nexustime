@@ -21,9 +21,10 @@
         .toggle-bg:after { content: ''; position: absolute; top: 2px; left: 2px; background: white; border-radius: 9999px; height: 1.5rem; width: 1.5rem; transition: transform 0.2s ease-in-out; }
         input:checked + .toggle-bg:after { transform: translateX(100%); }
         input:checked + .toggle-bg { background-color: #34D399; }
-        .comparison-table th, .comparison-table td { padding: 1rem 1.5rem; text-align: center; }
+        .comparison-table th, .comparison-table td { padding: 1rem 1.5rem; text-align: center; border-bottom: 1px solid #374151; }
         .comparison-table .feature-name { text-align: left; }
-        .comparison-table .check-mark { color: #34D399; }
+        .comparison-table .check-mark { color: #34D399; font-size: 1.25rem; line-height: 1; }
+        .comparison-table .empty-cell { color: #4B5563; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -56,7 +57,7 @@
                             <div class="w-12 h-7 bg-gray-600 rounded-full peer toggle-bg"></div>
                         </label>
                         <span id="annual-label" class="font-semibold text-gray-500">Annually</span>
-                        <span class="bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Save 15%</span>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Save ~20%</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
@@ -65,11 +66,11 @@
                         <div>
                             <h4 class="text-xl font-semibold text-white">Free</h4>
                             <p class="mt-4 text-4xl font-bold text-white">$0</p>
-                            <p class="text-gray-500 h-12">For individuals and small teams just getting started.</p>
+                            <p class="text-gray-500 h-12">For individuals trying out NexusTime.</p>
                             <ul class="mt-6 space-y-3 text-gray-400 text-left feature-list">
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Up to 5 users</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>1 Workspace</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Core Time Tracking</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>1 User</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>3 Projects</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Basic Time Tracking</li>
                             </ul>
                         </div>
                         <a href="app.html#signup" class="mt-8 w-full secondary-button px-6 py-3 rounded-lg font-semibold inline-block">Get Started</a>
@@ -79,15 +80,15 @@
                         <div>
                             <h4 class="text-xl font-semibold text-white">Starter</h4>
                             <div class="mt-4">
-                                <span class="text-4xl font-bold text-white" data-price-monthly="4" data-price-annual="3.40">$4</span>
+                                <span class="text-4xl font-bold text-white" data-price-monthly="6" data-price-annual="5">$6</span>
                                 <span class="text-gray-400">/ user / month</span>
                             </div>
-                            <p class="text-gray-500 h-12">For growing teams that need more power and support.</p>
+                            <p class="text-gray-500 h-12">For small teams that need core collaboration features.</p>
                             <ul class="mt-6 space-y-3 text-gray-400 text-left feature-list">
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Up to 15 users</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Unlimited Users & Projects</li>
                                 <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Everything in Free, plus:</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Advanced Reporting</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Email & Chat Support</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Timesheet Approvals</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Team Reporting</li>
                             </ul>
                         </div>
                         <a href="app.html#signup" class="mt-8 w-full secondary-button px-6 py-3 rounded-lg font-semibold inline-block">Choose Plan</a>
@@ -98,14 +99,15 @@
                         <div>
                             <h4 class="text-xl font-semibold text-white">Pro</h4>
                             <div class="mt-4">
-                                <span class="text-4xl font-bold text-white" data-price-monthly="8" data-price-annual="6.80">$8</span>
+                                <span class="text-4xl font-bold text-white" data-price-monthly="12" data-price-annual="10">$12</span>
                                 <span class="text-gray-400">/ user / month</span>
                             </div>
-                            <p class="text-gray-400 h-12">For businesses that need to manage multiple projects and teams.</p>
+                            <p class="text-gray-500 h-12">For businesses that need advanced control and analytics.</p>
                             <ul class="mt-6 space-y-3 text-gray-300 text-left feature-list">
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Unlimited Users</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Manage Multiple Workspaces</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Everything in Starter, plus:</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Scheduling & Task Mgmt</li>
                                 <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Project Budgeting</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>API & Integrations</li>
                                 <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Priority Support</li>
                             </ul>
                         </div>
@@ -115,16 +117,19 @@
                     <div class="card p-8 rounded-xl w-full text-center flex flex-col justify-between">
                         <div>
                             <h4 class="text-xl font-semibold text-white">Enterprise</h4>
-                            <p class="mt-4 text-4xl font-bold text-white">Custom</p>
-                            <p class="text-gray-500 h-12">For large organizations with complex needs and security requirements.</p>
+                             <div class="mt-4">
+                                <span class="text-4xl font-bold text-white" data-price-monthly="15" data-price-annual="12">$15</span>
+                                <span class="text-gray-400">/ user / month</span>
+                            </div>
+                            <p class="text-gray-500 h-12">For large organizations with complex needs. (Contact for volume discounts)</p>
                             <ul class="mt-6 space-y-3 text-gray-400 text-left feature-list">
                                 <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Everything in Pro, plus:</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Dedicated Account Manager</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Custom Integrations & API</li>
-                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>SAML SSO & Security Audits</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Full Payroll Suite</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>SAML SSO & Audit Logs</li>
+                                <li><svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Dedicated Support</li>
                             </ul>
                         </div>
-                        <a href="contact.html" class="mt-8 w-full secondary-button px-6 py-3 rounded-lg font-semibold inline-block">Contact Us</a>
+                        <a href="contact.html" class="mt-8 w-full secondary-button px-6 py-3 rounded-lg font-semibold inline-block">Contact Sales</a>
                     </div>
                 </div>
             </div>
@@ -134,7 +139,7 @@
         <section class="py-20">
             <div class="container mx-auto px-6">
                 <div class="text-center mb-12">
-                    <h3 class="text-3xl md:text-4xl font-bold text-white">Compare Our Features</h3>
+                    <h3 class="text-3xl md:text-4xl font-bold text-white">Full Feature Comparison</h3>
                     <p class="text-gray-400 mt-2">Find the perfect set of tools for your team's needs.</p>
                 </div>
                 <div class="overflow-x-auto rounded-lg border border-gray-700">
@@ -149,119 +154,34 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Time Tracking -->
-                            <tr class="bg-gray-800"><td colspan="5" class="feature-name text-white font-bold">Time Tracking</td></tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Web, Desktop & Mobile Apps</td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Manual Time Entry</td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Timer with Start/Stop</td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                             <tr class="border-b border-gray-700">
-                                <td class="feature-name">Timesheet Approvals</td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Project Budgeting & Alerts</td>
-                                <td></td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <!-- Reporting -->
-                            <tr class="bg-gray-800"><td colspan="5" class="feature-name text-white font-bold">Reporting & Analytics</td></tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Basic Time Reports</td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Export to CSV/PDF</td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Advanced & Custom Reports</td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <!-- Team Management -->
-                            <tr class="bg-gray-800"><td colspan="5" class="feature-name text-white font-bold">Team & Workspace Management</td></tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">User Roles & Permissions</td>
-                                <td>Basic</td>
-                                <td>Advanced</td>
-                                <td>Advanced</td>
-                                <td>Custom</td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Number of Workspaces</td>
-                                <td>1</td>
-                                <td>1</td>
-                                <td>Up to 3</td>
-                                <td>Unlimited</td>
-                            </tr>
-                            <!-- Support & Security -->
-                            <tr class="bg-gray-800"><td colspan="5" class="feature-name text-white font-bold">Support & Security</td></tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Community Support</td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Email & Chat Support</td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr class="border-b border-gray-700">
-                                <td class="feature-name">Priority Support Queue</td>
-                                <td></td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                             <tr class="border-b border-gray-700">
-                                <td class="feature-name">Dedicated Account Manager</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
-                            <tr>
-                                <td class="feature-name">SAML SSO & Security Audits</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td><span class="check-mark">&#10003;</span></td>
-                            </tr>
+                            <tr class="bg-gray-700/50"><td colspan="5" class="feature-name text-white font-bold">Core Features</td></tr>
+                            <tr><td class="feature-name">Users</td><td>1</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr>
+                            <tr><td class="feature-name">Projects</td><td>3</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr>
+                            <tr><td class="feature-name">Time Tracking (Timer & Manual)</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            
+                            <tr class="bg-gray-700/50"><td colspan="5" class="feature-name text-white font-bold">Management</td></tr>
+                            <tr><td class="feature-name">Timesheet Approvals</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Employee Scheduling</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Task Management</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Time Off Management</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+
+                            <tr class="bg-gray-700/50"><td colspan="5" class="feature-name text-white font-bold">Financial</td></tr>
+                            <tr><td class="feature-name">Project Budgeting & Alerts</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Expense Tracking</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Integrated Payroll Suite</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td></tr>
+
+                            <tr class="bg-gray-700/50"><td colspan="5" class="feature-name text-white font-bold">Reporting & Admin</td></tr>
+                            <tr><td class="feature-name">Basic Reports (CSV Export)</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Advanced & Custom Reports</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">API Access & Integrations</td><td class="empty-cell">&ndash;</td><td>Basic</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Required 2FA & Session Timeout</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">SAML SSO & Audit Logs</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td></tr>
+
+                             <tr class="bg-gray-700/50"><td colspan="5" class="feature-name text-white font-bold">Support</td></tr>
+                            <tr><td class="feature-name">Community Support</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Email & Chat Support</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Priority Support</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td><td><span class="check-mark">&#10003;</span></td></tr>
+                            <tr><td class="feature-name">Dedicated Account Manager</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td class="empty-cell">&ndash;</td><td><span class="check-mark">&#10003;</span></td></tr>
                         </tbody>
                     </table>
                 </div>

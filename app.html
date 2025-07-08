@@ -53,8 +53,9 @@
         .plan-card { border: 2px solid #374151; transition: all 0.2s ease-in-out; display: flex; flex-direction: column; }
         .plan-card.selected { border-color: #34D399; background-color: #374151; }
         .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-        .calendar-day { min-height: 120px; }
+        .calendar-day { min-height: 120px; transition: background-color 0.2s; }
         .calendar-day.other-month { background-color: #1F2937; opacity: 0.5; }
+        .calendar-day:not(.other-month):hover { background-color: #374151; cursor: pointer; }
         .shift-badge { background-color: #3B82F6; color: white; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -177,6 +178,7 @@
                         <nav class="flex space-x-8" id="manage-tabs">
                             <button data-tab="employees" class="tab-button py-4 px-1 font-medium text-lg active">Employees</button>
                             <button data-tab="projects" class="tab-button py-4 px-1 font-medium text-lg">Projects</button>
+                            <button data-tab="departments" class="tab-button py-4 px-1 font-medium text-lg">Departments</button>
                             <button data-tab="payroll" class="tab-button py-4 px-1 font-medium text-lg">Payroll</button>
                         </nav>
                     </div>
@@ -191,7 +193,13 @@
 
         <!-- Schedule Page -->
         <div id="schedule" class="page">
-            <!-- Content will be rendered by renderSchedulePage() -->
+            <section class="py-12">
+                <div class="container mx-auto px-6">
+                    <div id="schedule-container">
+                        <!-- Schedule content will be rendered here by JS -->
+                    </div>
+                </div>
+            </section>
         </div>
         
         <!-- Time Off Page -->
@@ -369,7 +377,7 @@
         // Firebase Imports
         import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, startAt, endAt, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, startAt, endAt, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Firebase Configuration
         const firebaseConfig = {
@@ -485,7 +493,7 @@
                 const navLinks = [
                     { page: 'dashboard', label: 'Dashboard', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>' },
                     { page: 'timesheet', label: 'Timesheets', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
-                    { page: 'schedule', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>' },
+                    { page: 'schedule', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
                     { page: 'time-off', label: 'Time Off', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>' },
                     { page: 'pay-stubs', label: 'Pay Stubs', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2H8a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>' },
                     { page: 'tasks', label: 'Tasks', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>' },
@@ -645,8 +653,10 @@
             const payStubsColRef = collection(db, "workspaces", workspaceId, "payStubs");
             const timesheetsColRef = collection(db, "workspaces", workspaceId, "timeEntries");
             const verificationColRef = collection(db, "workspaces", workspaceId, "verifications");
+            const schedulesColRef = collection(db, "workspaces", workspaceId, "schedules");
 
-            const [wsDocSnap, membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot] = await Promise.all([
+
+            const [wsDocSnap, membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
                 getDoc(wsDocRef),
                 getDocs(query(membersColRef)),
                 getDocs(query(projectsColRef)),
@@ -654,7 +664,8 @@
                 getDocs(query(timeOffColRef)),
                 getDocs(query(payStubsColRef, orderBy("payDate", "desc"))),
                 getDocs(query(timesheetsColRef)),
-                getDocs(query(verificationColRef))
+                getDocs(query(verificationColRef)),
+                getDocs(query(schedulesColRef))
             ]);
 
             if (wsDocSnap.exists()) {
@@ -671,6 +682,7 @@
             tasks = tasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             timeOffRequests = timeOffSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             payStubs = payStubsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            schedules = schedulesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
             if (!activeEmployeeFilter && employees.length > 0) {
                activeEmployeeFilter = employees[0].id;
@@ -901,8 +913,10 @@
             const activeTabEl = manageTabs.querySelector(`[data-tab="${activeTab}"]`);
             if(activeTabEl) activeTabEl.classList.add('active');
             
-            addNewButton.style.display = activeTab === 'payroll' ? 'none' : 'inline-block';
-            addNewButton.textContent = `Add New ${activeTab.slice(0, -1)}`;
+            addNewButton.style.display = ['payroll', 'departments'].includes(activeTab) ? 'none' : 'inline-block';
+            if (activeTab === 'employees' || activeTab === 'projects') {
+                addNewButton.textContent = `Add New ${activeTab.slice(0, -1)}`;
+            }
             
             selectedManageItem = null; // Reset selection on tab change
             
@@ -918,6 +932,9 @@
             } else if (activeTab === 'payroll') {
                 employeeFilterBar.style.display = 'none';
                 renderManagePayroll();
+            } else if (activeTab === 'departments') {
+                employeeFilterBar.style.display = 'none';
+                renderManageDepartments();
             }
         }
 
@@ -1223,6 +1240,7 @@
             projectForm.addEventListener('submit', handleProjectFormSubmit);
             createTaskForm.addEventListener('submit', handleCreateTask);
             requestTimeOffForm.addEventListener('submit', handleRequestTimeOff);
+            addShiftForm.addEventListener('submit', handleAddShift);
             document.getElementById('enter-punch-btn')?.addEventListener('click', () => openPunchModal());
             document.getElementById('prev-week-btn')?.addEventListener('click', () => { currentWeekOffset--; renderTimesheetPage(); });
             document.getElementById('next-week-btn')?.addEventListener('click', () => { currentWeekOffset++; renderTimesheetPage(); });
@@ -1561,10 +1579,11 @@
             const templatesSnap = await getDoc(templatesRef);
             const deductionTemplates = templatesSnap.exists() ? templatesSnap.data().templates : [];
             const newDeductionSelect = editEmployeeForm.querySelector('#new-deduction-template');
-            newDeductionSelect.innerHTML = deductionTemplates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            if(newDeductionSelect) newDeductionSelect.innerHTML = deductionTemplates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
             
             // Add event listener for the "Add" button
-            editEmployeeForm.querySelector('#add-deduction-btn').addEventListener('click', () => {
+            const addDeductionBtn = editEmployeeForm.querySelector('#add-deduction-btn');
+            if(addDeductionBtn) addDeductionBtn.addEventListener('click', () => {
                 const name = newDeductionSelect.value;
                 const amount = parseFloat(editEmployeeForm.querySelector('#new-deduction-amount').value);
                 const type = editEmployeeForm.querySelector('#new-deduction-type').value;
@@ -1908,13 +1927,6 @@
                                     <option value="tasks" ${prefs.startPage === 'tasks' ? 'selected' : ''}>Tasks</option>
                                 </select>
                            </div>
-                           <div>
-                                <label class="block text-gray-400 mb-2">Time Format</label>
-                                <div class="flex gap-6">
-                                    <label class="flex items-center"><input type="radio" name="timeFormat" value="12h" class="mr-2" ${prefs.timeFormat === '12h' || !prefs.timeFormat ? 'checked' : ''}> 12-hour</label>
-                                    <label class="flex items-center"><input type="radio" name="timeFormat" value="24h" class="mr-2" ${prefs.timeFormat === '24h' ? 'checked' : ''}> 24-hour</label>
-                                </div>
-                           </div>
                            <div class="border-t border-gray-700 my-2"></div>
                            <div>
                                 <h4 class="font-medium text-white mb-2">Email Notifications</h4>
@@ -1934,7 +1946,7 @@
                                 <h4 class="font-bold text-white">Google Calendar</h4>
                                 <p class="text-sm text-gray-400">Sync your NexusTime schedule with Google Calendar.</p>
                             </div>
-                            <button type="button" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
+                            <button type="button" id="connect-calendar-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
                         </div>
                     </div>
                     <div class="flex justify-end">
@@ -1943,61 +1955,25 @@
                 </form>
             `;
             document.getElementById('profile-settings-form').addEventListener('submit', handleSaveProfileSettings);
+            document.getElementById('connect-calendar-btn').addEventListener('click', () => {
+                showToast('Calendar integration coming soon!', 'success');
+            });
         }
 
         function renderWorkspaceSettings() {
             const container = document.getElementById('workspace-settings-tab');
-            const rules = currentWorkspaceData.rules || {};
-            const security = currentWorkspaceData.security || {};
+            const ws = currentWorkspaceData;
+            const rules = ws.rules || {};
+            const security = ws.security || {};
+            const plan = ws.plan || 'Free';
+            
             container.innerHTML = `
                 <form id="workspace-settings-form" class="space-y-12">
                     <!-- General Workspace Settings -->
                     <div class="card p-8">
                          <h3 class="text-xl font-semibold text-white mb-6">General</h3>
                          <div class="space-y-4">
-                            <div><label class="block text-gray-400">Workspace Name</label><input type="text" name="workspaceName" class="form-input w-full mt-1" value="${currentWorkspaceData.name || ''}"></div>
-                            <div>
-                                <label class="block text-gray-400 mb-1">Week Start Day</label>
-                                <select name="weekStartDay" class="form-select w-full md:w-1/2">
-                                    <option value="Sunday" ${currentWorkspaceData.weekStartDay === 'Sunday' ? 'selected' : ''}>Sunday</option>
-                                    <option value="Monday" ${currentWorkspaceData.weekStartDay === 'Monday' ? 'selected' : ''}>Monday</option>
-                                </select>
-                            </div>
-                         </div>
-                    </div>
-                     <!-- Time Tracking Rules -->
-                    <div class="card p-8">
-                         <h3 class="text-xl font-semibold text-white mb-6">Time Tracking Rules</h3>
-                         <div class="space-y-6">
-                            <!-- Overtime -->
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-medium text-white">Overtime Calculation</h4>
-                                    <p class="text-sm text-gray-400">Automatically calculate overtime based on these rules.</p>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" name="overtimeEnabled" ${rules.overtime?.enabled ? 'checked' : ''}><span class="toggle-slider"></span></label>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="block text-gray-400">After hours/day</label><input type="number" name="overtimeDaily" class="form-input w-full mt-1" value="${rules.overtime?.daily || 8}"></div>
-                                <div><label class="block text-gray-400">After hours/week</label><input type="number" name="overtimeWeekly" class="form-input w-full mt-1" value="${rules.overtime?.weekly || 40}"></div>
-                            </div>
-                            <div class="border-t border-gray-700 my-6"></div>
-                            <!-- Rounding -->
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-medium text-white">Punch Rounding</h4>
-                                    <p class="text-sm text-gray-400">Round employee clock-in/out times to simplify payroll.</p>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" name="roundingEnabled" ${rules.rounding?.enabled ? 'checked' : ''}><span class="toggle-slider"></span></label>
-                            </div>
-                             <div>
-                                <label class="block text-gray-400 mb-1">Round to the nearest</label>
-                                <select name="roundingMinutes" class="form-select w-full md:w-1/2">
-                                    <option value="5" ${rules.rounding?.minutes == 5 ? 'selected' : ''}>5 minutes</option>
-                                    <option value="10" ${rules.rounding?.minutes == 10 ? 'selected' : ''}>10 minutes</option>
-                                    <option value="15" ${rules.rounding?.minutes == 15 ? 'selected' : ''}>15 minutes</option>
-                                </select>
-                            </div>
+                            <div><label class="block text-gray-400">Workspace Name</label><input type="text" name="workspaceName" class="form-input w-full mt-1" value="${ws.name || ''}"></div>
                          </div>
                     </div>
                     <!-- Security Settings -->
@@ -2018,7 +1994,7 @@
                                     <option value="30" ${security.sessionTimeout == 30 ? 'selected' : ''}>30 minutes</option>
                                     <option value="60" ${security.sessionTimeout == 60 ? 'selected' : ''}>1 hour</option>
                                     <option value="480" ${security.sessionTimeout == 480 ? 'selected' : ''}>8 hours</option>
-                                    <option value="0" ${!security.sessionTimeout ? 'selected' : ''}>Never</option>
+                                    <option value="0" ${!security.sessionTimeout || security.sessionTimeout == 0 ? 'selected' : ''}>Never</option>
                                 </select>
                                 <p class="text-sm text-gray-400 mt-1">Automatically log out users after a period of inactivity.</p>
                             </div>
@@ -2033,13 +2009,17 @@
                                     <h4 class="font-medium text-white">Export Workspace Data</h4>
                                     <p class="text-sm text-gray-400">Download all your workspace data as a CSV file.</p>
                                 </div>
-                                <button type="button" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
+                                <button type="button" id="export-data-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
                             </div>
                              <div class="border-t border-gray-700 my-2"></div>
                              <div>
                                 <h4 class="font-medium text-white">API Access</h4>
-                                <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations (Pro plan required).</p>
-                                <input type="text" class="form-input w-full" value="nt_api_******************" readonly>
+                                ${(plan === 'Pro' || plan === 'Enterprise') ? `
+                                    <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
+                                    <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
+                                `: `
+                                    <p class="text-sm text-gray-400">Upgrade to Pro or Enterprise to get API access.</p>
+                                `}
                             </div>
                          </div>
                     </div>
@@ -2049,6 +2029,9 @@
                 </form>
             `;
             document.getElementById('workspace-settings-form').addEventListener('submit', handleSaveWorkspaceSettings);
+            document.getElementById('export-data-btn').addEventListener('click', () => {
+                showToast('Data export feature coming soon!', 'success');
+            });
         }
 
         async function renderPayrollSettingsTab() {
@@ -2132,42 +2115,37 @@
             const currentPlan = currentWorkspaceData.plan || 'Free';
             
             const plans = {
-                Free: {
-                    price: 0,
-                    features: ["1 User Seat", "3 Active Projects", "Basic Time Tracking", "Community Support"]
-                },
-                Starter: {
-                    price: 5,
-                    features: ["Unlimited Users", "Unlimited Projects", "Team Collaboration", "Timesheet Approvals", "Email Support"]
-                },
-                Pro: {
-                    price: 10,
-                    features: ["Everything in Starter", "Advanced Analytics", "Billing & Invoicing", "API & Integrations", "Priority Support"]
-                },
-                Enterprise: {
-                    price: 12,
-                    features: ["Everything in Pro", "Single Sign-On (SSO)", "Audit Logs", "Dedicated Support", "Volume Discounts"]
-                }
+                Free: { price: 0, features: ["1 User Seat", "3 Active Projects", "Basic Time Tracking", "Community Support"] },
+                Starter: { price: 5, features: ["Unlimited Users", "Unlimited Projects", "Team Collaboration", "Timesheet Approvals", "Email Support"] },
+                Pro: { price: 10, features: ["Everything in Starter", "Advanced Analytics", "Billing & Invoicing", "API & Integrations", "Priority Support"] },
+                Enterprise: { price: 12, features: ["Everything in Pro", "Single Sign-On (SSO)", "Audit Logs", "Dedicated Support", "Volume Discounts"] }
             };
             
             let plansHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
             for (const [planName, planDetails] of Object.entries(plans)) {
                 const isCurrent = planName === currentPlan;
+                let buttonHtml;
+                if (isCurrent) {
+                    buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" disabled>Current Plan</button>`;
+                } else {
+                    const actionText = (plans[planName].price > (plans[currentPlan]?.price || 0)) ? 'Upgrade' : 'Downgrade';
+                    buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}">${actionText} to ${planName}</button>`;
+                }
+
                 plansHtml += `
                     <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''}">
+                         ${isCurrent ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
-                        <p class="text-4xl font-extrabold my-4 text-white">$${planDetails.price}<span class="text-base font-medium text-gray-400">/user/month (billed annually)</span></p>
-                        <ul class="space-y-2 text-gray-300 flex-grow">
+                        <p class="text-4xl font-extrabold my-4 text-white">$${planDetails.price}<span class="text-base font-medium text-gray-400">/user/month</span></p>
+                        <ul class="space-y-2 text-gray-300 flex-grow mb-6">
                             ${planDetails.features.map(f => `
                                 <li class="flex items-center">
-                                    <svg class="w-5 h-5 text-emerald-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                    ${f}
+                                    <svg class="w-5 h-5 text-emerald-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>${f}</span>
                                 </li>`).join('')}
                         </ul>
-                        <div class="mt-6">
-                            <button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}" ${isCurrent ? 'disabled' : ''}>
-                                ${isCurrent ? 'Current Plan' : `Select ${planName}`}
-                            </button>
+                        <div class="mt-auto">
+                            ${buttonHtml}
                         </div>
                     </div>
                 `;
@@ -2244,7 +2222,6 @@
                 name: form.name.value,
                 preferences: {
                     startPage: form.startPage.value,
-                    timeFormat: form.timeFormat.value,
                     notifications: {
                         timesheetReminders: form.notificationTimesheet.checked,
                         scheduleUpdates: form.notificationSchedule.checked,
@@ -2271,18 +2248,6 @@
             
             const updatedSettings = {
                 name: form.workspaceName.value,
-                weekStartDay: form.weekStartDay.value,
-                rules: {
-                    overtime: {
-                        enabled: form.overtimeEnabled.checked,
-                        daily: Number(form.overtimeDaily.value),
-                        weekly: Number(form.overtimeWeekly.value)
-                    },
-                    rounding: {
-                        enabled: form.roundingEnabled.checked,
-                        minutes: Number(form.roundingMinutes.value)
-                    }
-                },
                 security: {
                     require2FA: form.require2FA.checked,
                     sessionTimeout: Number(form.sessionTimeout.value)
@@ -2292,9 +2257,7 @@
             try {
                 await updateDoc(workspaceDocRef, updatedSettings);
                 showToast('Workspace settings saved successfully!', 'success');
-                // Reload workspace data to reflect changes
                 await loadWorkspaceData(currentWorkspaceId);
-                 // Re-render the tab to show new values
                 renderWorkspaceSettings();
             } catch (error) {
                 console.error("Error saving workspace settings:", error);
@@ -2303,11 +2266,11 @@
         }
         
         async function handlePlanSelection(newPlan) {
-            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
+            const userDocRef = doc(db, "users", currentUser.uid);
             try {
-                await updateDoc(workspaceDocRef, { plan: newPlan });
+                await updateDoc(userDocRef, { plan: newPlan }); // Update plan on the user document
                 showToast(`Successfully changed plan to ${newPlan}!`, 'success');
-                await loadWorkspaceData(currentWorkspaceId);
+                await loadUserData(currentUser.uid); // Reload user data to reflect plan change
                 renderBillingSettings(); // Re-render to update the UI
             } catch (error) {
                 console.error("Error changing plan:", error);
@@ -2320,24 +2283,27 @@
                 'Delete Workspace',
                 `This will permanently delete the "${currentWorkspaceData.name}" workspace and all its data. This action cannot be undone.`,
                 async () => {
-                    // This is a placeholder. In a real app, this would be a complex operation,
-                    // likely handled by a Firebase Cloud Function to ensure all subcollections
-                    // (members, timeEntries, projects, etc.) are deleted.
-                    // A client-side delete is not recommended for this.
-                    console.log(`TODO: Implement secure deletion for workspace ${currentWorkspaceId}`);
-                    showToast('Workspace deletion initiated (simulation).', 'success');
+                    const batch = writeBatch(db);
                     
-                    // For now, we'll just remove it from the user's list and log them out of it.
+                    // Note: Deleting subcollections from the client is not recommended for production.
+                    // This should be handled by a Firebase Cloud Function. This is a simplified simulation.
+                    console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
+
                     const userDocRef = doc(db, "users", currentUser.uid);
                     const newWorkspaces = { ...currentUserData.workspaces };
                     delete newWorkspaces[currentWorkspaceId];
                     
-                    await updateDoc(userDocRef, {
+                    batch.update(userDocRef, {
                         workspaces: newWorkspaces,
                         activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
                     });
                     
-                    // Simulate deletion by navigating away
+                    // Mark the workspace for deletion instead of actually deleting it from client
+                    batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
+
+                    await batch.commit();
+
+                    showToast('Workspace deletion initiated.', 'success');
                     window.location.hash = 'company-selection';
                     closeAllModals();
                 }
@@ -2460,17 +2426,135 @@
         
         // --- Schedule Page Rendering ---
         async function renderSchedulePage() {
-          const container = document.getElementById('schedule');
-          container.innerHTML = `
-            <section class="py-12">
-              <div class="container mx-auto px-6">
-                <h2 class="text-3xl font-bold text-white mb-4">Schedule</h2>
-                <p class="text-gray-400">Coming soon…</p>
-              </div>
-            </section>
-          `;
+            await loadWorkspaceData(currentWorkspaceId);
+            const container = document.getElementById('schedule-container');
+            const userRole = currentUserData.workspaces[currentWorkspaceId];
+            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
+                    <div class="flex items-center gap-4">
+                        <button id="prev-month-btn" class="secondary-button p-2 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+                        <h2 id="calendar-header" class="text-3xl font-bold text-white text-center">
+                            ${monthNames[calendarDate.getMonth()]} ${calendarDate.getFullYear()}
+                        </h2>
+                        <button id="next-month-btn" class="secondary-button p-2 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                    </div>
+                    ${isAdminOrManager ? '<button id="add-shift-main-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Add Shift</button>' : ''}
+                </div>
+                <div id="calendar-grid-container" class="card p-4"></div>
+            `;
+
+            renderCalendarGrid();
+
+            document.getElementById('prev-month-btn').addEventListener('click', () => {
+                calendarDate.setMonth(calendarDate.getMonth() - 1);
+                renderSchedulePage();
+            });
+            document.getElementById('next-month-btn').addEventListener('click', () => {
+                calendarDate.setMonth(calendarDate.getMonth() + 1);
+                renderSchedulePage();
+            });
+            const addShiftBtn = document.getElementById('add-shift-main-btn');
+            if(addShiftBtn) addShiftBtn.addEventListener('click', () => openAddShiftModal());
         }
 
+        function renderCalendarGrid() {
+            const gridContainer = document.getElementById('calendar-grid-container');
+            const month = calendarDate.getMonth();
+            const year = calendarDate.getFullYear();
+            
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const startDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon, ...
+
+            const monthShifts = schedules.filter(s => {
+                const shiftDate = new Date(s.start);
+                return shiftDate.getMonth() === month && shiftDate.getFullYear() === year;
+            });
+
+            let gridHtml = `<div class="grid grid-cols-7 text-center font-bold text-gray-400 border-b border-gray-700 mb-2 pb-2">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div class="calendar-grid gap-px bg-gray-700">`;
+
+            // Blank cells for previous month
+            for (let i = 0; i < startDayOfWeek; i++) {
+                gridHtml += `<div class="calendar-day other-month"></div>`;
+            }
+
+            // Cells for current month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const shiftsForDay = monthShifts.filter(s => s.start.startsWith(dateString));
+                
+                let shiftsHtml = shiftsForDay.map(shift => {
+                    const emp = employees.find(e => e.id === shift.userId);
+                    const startTime = new Date(shift.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    return `<div class="shift-badge" title="${emp?.name} - ${shift.title}">${startTime} ${emp?.name}</div>`
+                }).join('');
+
+                gridHtml += `<div class="calendar-day bg-gray-800 p-2" data-date="${dateString}">
+                                <div class="font-bold">${day}</div>
+                                <div class="mt-1 space-y-1">${shiftsHtml}</div>
+                             </div>`;
+            }
+            gridHtml += '</div>';
+            gridContainer.innerHTML = gridHtml;
+
+            gridContainer.querySelectorAll('.calendar-day:not(.other-month)').forEach(dayCell => {
+                dayCell.addEventListener('click', () => openAddShiftModal(dayCell.dataset.date));
+            });
+        }
+        
+        function openAddShiftModal(date = null) {
+            const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            const today = new Date().toISOString().split('T')[0];
+            
+            addShiftForm.innerHTML = `
+                <div><label class="block text-gray-300 mb-1">Employee</label><select name="userId" class="form-select w-full" required>${employeeOptions}</select></div>
+                <div><label class="block text-gray-300 mb-1">Shift Title (optional)</label><input type="text" name="title" class="form-input w-full"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-1">Start Time</label>
+                        <input type="datetime-local" name="start" class="form-input w-full" value="${date || today}T09:00" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-1">End Time</label>
+                        <input type="datetime-local" name="end" class="form-input w-full" value="${date || today}T17:00" required>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">Save Shift</button>
+                </div>
+            `;
+            addShiftModal.style.display = 'flex';
+        }
+
+        async function handleAddShift(e) {
+            e.preventDefault();
+            const form = e.target;
+            const shiftData = {
+                userId: form.userId.value,
+                title: form.title.value || 'Work Shift',
+                start: form.start.value,
+                end: form.end.value,
+                createdAt: new Date()
+            };
+
+            try {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "schedules"), shiftData);
+                showToast('Shift added successfully!', 'success');
+                closeAllModals();
+                renderSchedulePage();
+            } catch (error) {
+                console.error("Error adding shift:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
         // --- Tasks Page Rendering ---
         async function renderTasksPage() {
             await loadWorkspaceData(currentWorkspaceId);
@@ -2968,12 +3052,14 @@
             finalizeBtn.textContent = 'Finalizing...';
 
             try {
+                const payStubsCollectionRef = collection(db, `workspaces/${currentWorkspaceId}/payStubs`);
+
                 for (const emp of employees) {
                     const empTimesheets = timesheets[emp.id] || {};
                     const overtimeRules = currentWorkspaceData.rules?.overtime || { enabled: false, weekly: 40 };
                     
                     let totalHours = 0;
-                    Object.values(empTimesheets).forEach(day => {
+                     Object.values(empTimesheets).forEach(day => {
                        totalHours += calculateTotalHoursFromPairs(processDayPunches(emp.id, null, day.punches).pairs);
                     });
 
@@ -3020,7 +3106,7 @@
                         createdAt: new Date()
                     };
                     
-                    await addDoc(collection(db, `workspaces/${currentWorkspaceId}/payStubs`), payStubData);
+                    await addDoc(payStubsCollectionRef, payStubData);
                 }
                 showToast('Pay run finalized and all pay stubs have been generated!', 'success');
                 manageContent.innerHTML = '<div class="card p-6"><p>Pay run successfully finalized. Employees can now view their new pay stubs.</p></div>';
@@ -3031,6 +3117,7 @@
                 finalizeBtn.textContent = 'Finalize Pay Run';
             }
         }
+
         
         function viewPayStub(stubId) {
             const stub = payStubs.find(s => s.id === stubId);
@@ -3130,6 +3217,55 @@
             
             document.getElementById('pay-stub-modal').style.display = 'flex';
             document.getElementById('print-pay-stub-btn').onclick = () => window.print();
+        }
+
+        // --- MANAGE DEPARTMENTS ---
+        function renderManageDepartments() {
+            manageSidebar.innerHTML = `
+                <h3 class="text-xl font-bold text-white mb-4">Add Department</h3>
+                <form id="add-department-form" class="space-y-4">
+                    <div>
+                        <label for="new-department-name" class="block text-sm font-medium text-gray-300">Department Name</label>
+                        <input type="text" id="new-department-name" class="form-input w-full mt-1" required>
+                    </div>
+                    <button type="submit" class="w-full cta-button px-4 py-2 rounded-lg">Add Department</button>
+                </form>
+            `;
+            const departments = currentWorkspaceData.departments || [];
+            let listHtml = departments.map(dept => `
+                <li class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-800">
+                    <span>${dept}</span>
+                    <button class="text-red-400 hover:text-red-300 font-semibold" data-dept="${dept}">Remove</button>
+                </li>
+            `).join('');
+            
+            manageContent.innerHTML = `<div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Existing Departments</h3><ul class="space-y-2">${listHtml}</ul></div>`;
+
+            document.getElementById('add-department-form').addEventListener('submit', handleAddDepartment);
+            manageContent.querySelectorAll('button[data-dept]').forEach(btn => {
+                btn.addEventListener('click', () => handleRemoveDepartment(btn.dataset.dept));
+            });
+        }
+
+        async function handleAddDepartment(e) {
+            e.preventDefault();
+            const newDept = document.getElementById('new-department-name').value;
+            if (!newDept) return;
+            await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
+                departments: arrayUnion(newDept)
+            });
+            showToast('Department added.', 'success');
+            renderManagePage('departments');
+        }
+
+        async function handleRemoveDepartment(deptName) {
+            if (confirm(`Are you sure you want to remove the "${deptName}" department?`)) {
+                await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
+                    departments: arrayRemove(deptName)
+                });
+                showToast('Department removed.', 'success');
+                renderManagePage('departments');
+            }
         }
 
 

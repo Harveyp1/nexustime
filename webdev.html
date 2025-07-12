@@ -10,31 +10,30 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #111827; color: #E5E7EB; }
         .card { background-color: #1F2937; border: 1px solid #374151; }
-        .cta-button { transition: all 0.3s ease; background-color: #34D399; color: #111827; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.5rem; }
-        .cta-button:hover { background-color: #2dd4bf; }
+        .cta-button { transition: all 0.3s ease; background-color: #34D399; color: #111827; }
         .cta-button:disabled { background-color: #374151; color: #9CA3AF; cursor: not-allowed; }
-        .danger-button { background-color: #EF4444; color: white; transition: all 0.3s ease; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.5rem; }
+        .danger-button { background-color: #EF4444; color: white; transition: all 0.3s ease; }
         .danger-button:hover { background-color: #DC2626; }
-        .secondary-button { background-color: transparent; border: 1px solid #4B5563; color: #9CA3AF; transition: all 0.3s ease; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.5rem; }
-        .secondary-button:hover { background-color: #374151; color: #E5E7EB; border-color: #6B7280; }
+        .secondary-button { background-color: transparent; border: 1px solid #34D399; color: #34D399; transition: all 0.3s ease; }
+        .secondary-button:hover { background-color: #34D399; color: #111827; }
         .dev-page { display: none; }
         .dev-page.active { display: block; }
-        .form-input, .form-select { background-color: #1F2937; border: 1px solid #374151; color: #E5E7EB; border-radius: 0.5rem; padding: 0.75rem 1rem; }
+        .form-input, .form-select { background-color: #1F2937; border: 1px solid #374151; color: #E5E7EB; border-radius: 0.5rem; }
         .form-input:focus, .form-select:focus { outline: none; border-color: #34D399; box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.5); }
         .nav-link { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; border-left: 3px solid transparent; cursor: pointer; }
         .nav-link:hover { background-color: #374151; }
         .nav-link.active { background-color: #1F2937; color: #34D399; border-left-color: #34D399; font-weight: 600; }
         .nav-link svg { margin-right: 1rem; }
-        .loader { border: 4px solid #374151; border-top: 4px solid #34D399; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #34D399; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .toast { position: fixed; bottom: 20px; right: 20px; background-color: #1F2937; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; border-left: 4px solid; transform: translateY(20px); }
-        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast { position: fixed; bottom: 20px; right: 20px; background-color: #1F2937; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; border-left: 4px solid; }
+        .toast.show { opacity: 1; }
         .toast.success { border-color: #34D399; }
         .toast.error { border-color: #F87171; }
         pre { background-color: #0d1117; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-family: 'Courier New', Courier, monospace; }
         .list-item { cursor: pointer; transition: background-color 0.2s; }
         .list-item:hover, .list-item.selected { background-color: #374151; }
-        .modal-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 500; }
+        .modal-overlay { background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 500; }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -48,25 +47,23 @@
                 </div>
                 <nav id="dev-nav" class="flex flex-col space-y-2">
                     <a data-page="dashboard" class="nav-link active"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Dashboard</a>
-                    <a data-page="financials" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>Financials</a>
-                    <a data-page="users" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>User Mgt.</a>
-                    <a data-page="customers" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a4 4 0 110-8 4 4 0 010 8z"></path></svg>Customer Mgt.</a>
-                    <a data-page="workspaces" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>Workspace Mgt.</a>
+                    <a data-page="customers" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197M15 11a4 4 0 110-8 4 4 0 010 8z"></path></svg>Customers</a>
+                    <a data-page="workspaces" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>Workspaces</a>
                     <a data-page="coupons" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>Coupons</a>
+                    <a data-page="payments" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>Payments</a>
                     <a data-page="explorer" class="nav-link"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"></path></svg>Data Explorer</a>
                 </nav>
                 <div class="mt-auto">
-                    <button id="dev-logout-button" class="w-full secondary-button text-sm">Log Out</button>
+                    <button id="dev-logout-button" class="w-full secondary-button px-4 py-2 rounded-lg text-sm font-medium">Log Out</button>
                 </div>
             </aside>
             <!-- Main Content -->
             <main class="flex-1 p-8 overflow-y-auto">
                 <div id="dev-dashboard" class="dev-page active"></div>
-                <div id="dev-financials" class="dev-page"></div>
-                <div id="dev-users" class="dev-page"></div>
                 <div id="dev-customers" class="dev-page"></div>
                 <div id="dev-workspaces" class="dev-page"></div>
                 <div id="dev-coupons" class="dev-page"></div>
+                <div id="dev-payments" class="dev-page"></div>
                 <div id="dev-explorer" class="dev-page"></div>
             </main>
         </div>
@@ -74,18 +71,17 @@
     <div id="auth-container"></div>
     <div id="toast-container"></div>
     <!-- Modals -->
-    <div id="edit-modal" class="hidden modal-overlay" role="dialog" aria-modal="true">
-        <div id="edit-modal-content" class="card rounded-lg shadow-xl m-8 max-w-2xl w-full max-h-[90vh] flex flex-col"></div>
+    <div id="edit-modal" class="hidden fixed inset-0 modal-overlay items-center justify-center" role="dialog" aria-modal="true">
+        <div id="edit-modal-content" class="card rounded-lg shadow-xl m-8 max-w-lg w-full"></div>
     </div>
-    <div id="confirmation-modal" class="hidden modal-overlay" role="dialog" aria-modal="true">
+    <div id="confirmation-modal" class="hidden fixed inset-0 modal-overlay items-center justify-center" role="dialog" aria-modal="true">
         <div class="card rounded-lg shadow-xl m-8 max-w-md w-full">
              <div class="p-6 text-center">
-                <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mt-4 mb-2">Are you sure?</h3>
+                <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mb-2">Are you sure?</h3>
                 <p id="confirmation-modal-message" class="text-gray-400 mb-6"></p>
                 <div class="flex justify-center gap-4">
-                    <button id="confirmation-cancel-btn" class="secondary-button">Cancel</button>
-                    <button id="confirmation-confirm-btn" class="danger-button">Confirm</button>
+                    <button id="confirmation-cancel-btn" class="secondary-button px-6 py-2 rounded-lg">Cancel</button>
+                    <button id="confirmation-confirm-btn" class="danger-button px-6 py-2 rounded-lg">Confirm</button>
                 </div>
             </div>
         </div>
@@ -94,8 +90,8 @@
     <script type="module">
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch, Timestamp, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- SECURITY: SUPER ADMIN UID ---
         const SUPER_ADMIN_UID = "JzCSorMPyVUR906kHTlDfhOa1Xg2";
@@ -120,10 +116,9 @@
         let allUsers = [];
         let allWorkspaces = [];
         let allCoupons = [];
-        let financialData = { mrr: 0, churn: 0, subscriptions: 0, transactions: [] };
-        let charts = {}; // Store all chart instances
-        let selectedItemId = null; 
-        let userFilters = {};
+        let dashboardChart = null;
+        let planChart = null;
+        let selectedItemId = null;
         let customerFilters = {};
         let workspaceFilters = {};
         
@@ -138,17 +133,21 @@
         // --- Core Portal Logic ---
         
         onAuthStateChanged(auth, async (user) => {
-            if (user && user.uid === SUPER_ADMIN_UID) {
+            if (user) {
+                if (user.uid !== SUPER_ADMIN_UID) {
+                    authContainer.innerHTML = `<div class="p-8 text-center text-red-400"><h1 class="text-2xl font-bold">Access Denied</h1><p>You are not authorized to view this page.</p><p class="mt-4"><a href="app.html" class="text-emerald-400 underline">Go to App</a></p></div>`;
+                    return;
+                }
+                
                 authContainer.innerHTML = '';
                 devPortalContainer.classList.remove('hidden');
+                
                 await loadAllData();
                 handleDevRouting();
+
             } else {
                 devPortalContainer.classList.add('hidden');
                 renderLoginForm();
-                if (user) {
-                    authContainer.insertAdjacentHTML('afterbegin', `<div class="p-8 text-center text-red-400"><h1 class="text-2xl font-bold">Access Denied</h1><p>You are not authorized to view this page.</p><p class="mt-4"><a href="app.html" class="text-emerald-400 underline">Go to App</a></p></div>`);
-                }
             }
         });
 
@@ -161,13 +160,12 @@
         devNav.addEventListener('click', (e) => {
             const link = e.target.closest('.nav-link');
             if (link && link.dataset.page) {
-                e.preventDefault();
                 window.location.hash = link.dataset.page;
             }
         });
 
         const showDevPage = (pageId) => {
-            selectedItemId = null; // Reset selection when changing pages
+            selectedItemId = null;
             devPages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(`dev-${pageId}`);
             if (targetPage) {
@@ -181,25 +179,18 @@
                 link.classList.toggle('active', link.dataset.page === pageId);
             });
             
-            // Render content for the page
             switch(pageId) {
                 case 'dashboard': renderDevDashboard(); break;
-                case 'financials': renderFinancialsDashboard(); break;
-                case 'users': renderUserManagement(); break;
                 case 'customers': renderCustomerManagement(); break;
                 case 'workspaces': renderWorkspaceManagement(); break;
                 case 'coupons': renderCouponManagement(); break;
+                case 'payments': renderPaymentsManagement(); break;
                 case 'explorer': renderDataExplorer(); break;
                 default: renderDevDashboard();
             }
         };
         
         async function loadAllData() {
-            const loader = document.createElement('div');
-            loader.innerHTML = '<div class="loader"></div><p class="text-center text-gray-400">Loading platform data...</p>';
-            const activePage = document.querySelector('.dev-page.active') || document.getElementById('dev-dashboard');
-            activePage.innerHTML = ''; // Clear previous content
-            activePage.appendChild(loader);
             try {
                 const [usersSnapshot, workspacesSnapshot, couponsSnapshot] = await Promise.all([
                     getDocs(collection(db, "users")),
@@ -209,15 +200,9 @@
                 allUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 allWorkspaces = workspacesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 allCoupons = couponsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                
-                // Simulate financial data after loading users
-                simulateFinancialData();
-
             } catch (error) {
                 console.error("Error loading data:", error);
                 showToast("Failed to load platform data. Please check console.", "error");
-            } finally {
-                loader.remove();
             }
         }
 
@@ -247,8 +232,8 @@
                 </div>
             `;
             
-            if(charts.dashboard) charts.dashboard.destroy();
-            charts.dashboard = new Chart(document.getElementById('dashboard-chart'), {
+            if(dashboardChart) dashboardChart.destroy();
+            dashboardChart = new Chart(document.getElementById('dashboard-chart'), {
                 type: 'line',
                 data: {
                     labels: [...Array(30).keys()].map(i => `Day ${i+1}`), // Dummy labels
@@ -259,8 +244,8 @@
                 }
             });
 
-            if(charts.plan) charts.plan.destroy();
-            charts.plan = new Chart(document.getElementById('plan-chart'), {
+            if(planChart) planChart.destroy();
+            planChart = new Chart(document.getElementById('plan-chart'), {
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(planCounts),
@@ -272,129 +257,15 @@
             });
         }
 
-        // --- USER MANAGEMENT ---
-        function renderUserManagement() {
-            const container = document.getElementById('dev-users');
-            container.innerHTML = `
-                <h1 class="text-3xl font-bold text-white mb-8">User Management</h1>
-                <p class="text-gray-400 mb-6 -mt-6">This tab lists all non-admin users. Admins are managed via the Customer Mgt. tab.</p>
-                <div id="user-filter-bar" class="card p-4 mb-6"></div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div id="user-list-container" class="lg:col-span-2 card p-2"></div>
-                    <div id="user-details-sidebar" class="lg:col-span-1 card p-6 h-fit sticky top-8"></div>
-                </div>
-            `;
-            renderUserFilters();
-            renderUserList();
-            renderUserDetailsSidebar();
-        }
-
-        function renderUserFilters() {
-            document.getElementById('user-filter-bar').innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input type="text" id="user-name-filter" class="form-input" placeholder="Filter by name or email..." value="${userFilters.name || ''}">
-                    <select id="user-workspace-filter" class="form-select">
-                        <option value="">All Workspaces</option>
-                        ${allWorkspaces.map(ws => `<option value="${ws.id}" ${userFilters.workspace === ws.id ? 'selected' : ''}>${ws.name}</option>`).join('')}
-                    </select>
-                    <select id="user-role-filter" class="form-select">
-                        <option value="">All Roles (Non-Admin)</option>
-                        <option value="Manager" ${userFilters.role === 'Manager' ? 'selected' : ''}>Manager</option>
-                        <option value="Employee" ${userFilters.role === 'Employee' ? 'selected' : ''}>Employee</option>
-                    </select>
-                </div>`;
-
-            document.getElementById('user-name-filter').addEventListener('input', (e) => {
-                userFilters.name = e.target.value.toLowerCase();
-                renderUserList();
-            });
-            document.getElementById('user-workspace-filter').addEventListener('change', (e) => {
-                userFilters.workspace = e.target.value;
-                renderUserList();
-            });
-            document.getElementById('user-role-filter').addEventListener('change', (e) => {
-                userFilters.role = e.target.value;
-                renderUserList();
-            });
-        }
-
-        function renderUserList() {
-            // Base list excludes any user with an Admin role in any workspace
-            let filteredUsers = allUsers.filter(u => !Object.values(u.workspaces || {}).includes('Admin'));
-
-            if (userFilters.name) {
-                filteredUsers = filteredUsers.filter(u => u.name?.toLowerCase().includes(userFilters.name) || u.email.toLowerCase().includes(userFilters.name));
-            }
-            if (userFilters.workspace) {
-                filteredUsers = filteredUsers.filter(u => u.workspaces && u.workspaces[userFilters.workspace]);
-            }
-            if (userFilters.role) {
-                filteredUsers = filteredUsers.filter(u => u.workspaces && Object.values(u.workspaces).includes(userFilters.role));
-            }
-
-
-            const listHtml = filteredUsers.map(u => `
-                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center rounded-lg ${selectedItemId === u.id ? 'selected' : ''}" data-id="${u.id}">
-                    <div>
-                        <p class="font-semibold text-white">${u.name || 'N/A'}</p>
-                        <p class="text-sm text-gray-400">${u.email}</p>
-                    </div>
-                    <span class="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-300">${Object.keys(u.workspaces || {}).length} ws</span>
-                </div>
-            `).join('');
-            document.getElementById('user-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No users found matching filters.</p>';
-
-            document.querySelectorAll('#user-list-container .list-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    selectedItemId = item.dataset.id;
-                    renderUserList(); // to update selection style
-                    renderUserDetailsSidebar();
-                });
-            });
-        }
-
-        function renderUserDetailsSidebar() {
-            const sidebar = document.getElementById('user-details-sidebar');
-            if (!selectedItemId) {
-                sidebar.innerHTML = '<p class="text-gray-500 text-center">Select a user to see details.</p>';
-                return;
-            }
-            const user = allUsers.find(u => u.id === selectedItemId);
-            
-            const userWorkspaces = user.workspaces ? Object.entries(user.workspaces).map(([id, role]) => {
-                const ws = allWorkspaces.find(w => w.id === id);
-                return { id, name: ws?.name || 'Unknown Workspace', role };
-            }) : [];
-
-            sidebar.innerHTML = `
-                <h3 class="text-xl font-bold text-white mb-4">${user.name}</h3>
-                <div class="space-y-3 text-sm">
-                    <p><strong class="text-gray-400">Email:</strong> ${user.email}</p>
-                    <p><strong class="text-gray-400">User ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${user.id}</code></p>
-                    <p class="mt-4"><strong class="text-gray-400">Workspace Memberships:</strong></p>
-                    <ul class="pl-4 text-gray-400 list-disc">
-                        ${userWorkspaces.map(ws => `<li><strong>${ws.name}</strong> as <em>${ws.role}</em></li>`).join('') || '<li>Not in any workspaces.</li>'}
-                    </ul>
-                </div>
-                <div class="mt-6 space-y-2 border-t border-gray-700 pt-4">
-                    <button data-id="${user.id}" class="w-full cta-button edit-user-btn">Edit User Details</button>
-                    <button data-id="${user.id}" class="w-full secondary-button send-reset-btn">Send Password Reset</button>
-                </div>
-            `;
-            sidebar.querySelector('.edit-user-btn').addEventListener('click', openEditUserModal);
-            sidebar.querySelector('.send-reset-btn').addEventListener('click', handleSendPasswordReset);
-        }
-
         // --- CUSTOMER MANAGEMENT ---
         function renderCustomerManagement() {
             const container = document.getElementById('dev-customers');
             container.innerHTML = `
                 <h1 class="text-3xl font-bold text-white mb-8">Customer Management</h1>
-                <p class="text-gray-400 mb-6 -mt-6">This tab lists only primary account owners (users who own at least one workspace).</p>
                 <div id="customer-filter-bar" class="card p-4 mb-6"></div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div id="customer-list-container" class="lg:col-span-2 card p-2"></div>
-                    <div id="customer-details-sidebar" class="lg:col-span-1 card p-6 h-fit sticky top-8"></div>
+                    <div id="customer-list-container" class="lg:col-span-2 card p-4"></div>
+                    <div id="customer-details-sidebar" class="lg:col-span-1 card p-6"></div>
                 </div>
             `;
             renderCustomerFilters();
@@ -430,27 +301,27 @@
             let customers = allUsers.filter(u => ownerIds.has(u.id));
 
             if (customerFilters.name) {
-                customers = customers.filter(c => c.name?.toLowerCase().includes(customerFilters.name) || c.email.toLowerCase().includes(customerFilters.name));
+                customers = customers.filter(c => c.name.toLowerCase().includes(customerFilters.name) || c.email.toLowerCase().includes(customerFilters.name));
             }
             if (customerFilters.plan) {
                 customers = customers.filter(c => (c.plan || 'Free') === customerFilters.plan);
             }
 
             const listHtml = customers.map(c => `
-                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center rounded-lg ${selectedItemId === c.id ? 'selected' : ''}" data-id="${c.id}">
+                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center ${selectedItemId === c.id ? 'selected' : ''}" data-id="${c.id}">
                     <div>
-                        <p class="font-semibold text-white">${c.name || 'N/A'}</p>
+                        <p class="font-semibold text-white">${c.name}</p>
                         <p class="text-sm text-gray-400">${c.email}</p>
                     </div>
                     <span class="px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300">${c.plan || 'Free'}</span>
                 </div>
             `).join('');
-            document.getElementById('customer-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No customers found matching filters.</p>';
+            document.getElementById('customer-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No customers found.</p>';
 
             document.querySelectorAll('#customer-list-container .list-item').forEach(item => {
                 item.addEventListener('click', () => {
                     selectedItemId = item.dataset.id;
-                    renderCustomerList(); // to update selection style
+                    renderCustomerList();
                     renderCustomerDetailsSidebar();
                 });
             });
@@ -459,7 +330,7 @@
         function renderCustomerDetailsSidebar() {
             const sidebar = document.getElementById('customer-details-sidebar');
             if (!selectedItemId) {
-                sidebar.innerHTML = '<p class="text-gray-500 text-center">Select a customer to see details.</p>';
+                sidebar.innerHTML = '<p class="text-gray-500">Select a customer to see details.</p>';
                 return;
             }
             const customer = allUsers.find(c => c.id === selectedItemId);
@@ -468,15 +339,15 @@
                 <h3 class="text-xl font-bold text-white mb-4">${customer.name}</h3>
                 <div class="space-y-3 text-sm">
                     <p><strong class="text-gray-400">Email:</strong> ${customer.email}</p>
-                    <p><strong class="text-gray-400">User ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${customer.id}</code></p>
+                    <p><strong class="text-gray-400">User ID:</strong> <span class="font-mono">${customer.id}</span></p>
                     <p><strong class="text-gray-400">Current Plan:</strong> ${customer.plan || 'Free'}</p>
                     <p><strong class="text-gray-400">Owned Workspaces:</strong> ${customerWorkspaces.length}</p>
                     <ul class="pl-4 text-gray-400 list-disc">
-                        ${customerWorkspaces.map(ws => `<li>${ws.name} (${ws.plan || 'Free'})</li>`).join('') || '<li>No workspaces owned.</li>'}
+                        ${customerWorkspaces.map(ws => `<li>${ws.name} (${ws.plan || 'Free'})</li>`).join('')}
                     </ul>
                 </div>
                 <div class="mt-6 space-y-2 border-t border-gray-700 pt-4">
-                    <button data-id="${customer.id}" class="w-full cta-button edit-customer-btn">Edit Customer</button>
+                    <button data-id="${customer.id}" class="w-full secondary-button edit-customer-btn">Edit Customer</button>
                     <button data-id="${customer.id}" class="w-full danger-button delete-customer-btn">Delete Customer</button>
                 </div>
             `;
@@ -488,13 +359,17 @@
         function renderWorkspaceManagement() {
             const container = document.getElementById('dev-workspaces');
             container.innerHTML = `
-                <h1 class="text-3xl font-bold text-white mb-8">Workspace Management</h1>
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-3xl font-bold text-white">Workspace Management</h1>
+                    <button id="create-workspace-btn" class="cta-button">Create Workspace</button>
+                </div>
                 <div id="workspace-filter-bar" class="card p-4 mb-6"></div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div id="workspace-list-container" class="lg:col-span-2 card p-2"></div>
-                    <div id="workspace-details-sidebar" class="lg:col-span-1 card p-6 h-fit sticky top-8"></div>
+                    <div id="workspace-list-container" class="lg:col-span-2 card p-4"></div>
+                    <div id="workspace-details-sidebar" class="lg:col-span-1 card p-6"></div>
                 </div>
             `;
+            document.getElementById('create-workspace-btn').addEventListener('click', openCreateWorkspaceModal);
             renderWorkspaceFilters();
             renderWorkspaceList();
             renderWorkspaceDetailsSidebar();
@@ -535,7 +410,7 @@
                 filteredWorkspaces = filteredWorkspaces.filter(ws => (ws.plan || 'Free') === workspaceFilters.plan);
             }
             const listHtml = filteredWorkspaces.map(ws => `
-                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center rounded-lg ${selectedItemId === ws.id ? 'selected' : ''}" data-id="${ws.id}">
+                <div class="list-item p-4 border-b border-gray-700 flex justify-between items-center ${selectedItemId === ws.id ? 'selected' : ''}" data-id="${ws.id}">
                     <div>
                         <p class="font-semibold text-white">${ws.name}</p>
                         <p class="text-sm text-gray-400">Owner: ${allUsers.find(u => u.id === ws.ownerId)?.email || 'N/A'}</p>
@@ -543,7 +418,7 @@
                     <span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300">${ws.plan || 'Free'}</span>
                 </div>
             `).join('');
-            document.getElementById('workspace-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No workspaces found matching filters.</p>';
+            document.getElementById('workspace-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No workspaces found.</p>';
 
              document.querySelectorAll('#workspace-list-container .list-item').forEach(item => {
                 item.addEventListener('click', () => {
@@ -557,314 +432,77 @@
         async function renderWorkspaceDetailsSidebar() {
             const sidebar = document.getElementById('workspace-details-sidebar');
             if (!selectedItemId) {
-                sidebar.innerHTML = '<p class="text-gray-500 text-center">Select a workspace to see details.</p>';
+                sidebar.innerHTML = '<p class="text-gray-500">Select a workspace to see details.</p>';
                 return;
             }
             const workspace = allWorkspaces.find(ws => ws.id === selectedItemId);
             const owner = allUsers.find(u => u.id === workspace.ownerId);
 
-            sidebar.innerHTML = `<div class="loader"></div>`; // Show loader while fetching members
             const membersSnapshot = await getDocs(collection(db, `workspaces/${workspace.id}/members`));
 
             sidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">${workspace.name}</h3>
                 <div class="space-y-3 text-sm">
-                    <p><strong class="text-gray-400">Workspace ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${workspace.id}</code></p>
+                    <p><strong class="text-gray-400">Workspace ID:</strong> <span class="font-mono">${workspace.id}</span></p>
                     <p><strong class="text-gray-400">Owner:</strong> ${owner?.name || 'N/A'} (${owner?.email || 'N/A'})</p>
                     <p><strong class="text-gray-400">Plan:</strong> ${workspace.plan || 'Free'}</p>
                     <p><strong class="text-gray-400">Members:</strong> ${membersSnapshot.size}</p>
-                    <p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt?.toDate().toLocaleString() || 'N/A'}</p>
+                    <p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt.toDate().toLocaleString()}</p>
                 </div>
                  <div class="mt-6 space-y-2 border-t border-gray-700 pt-4">
-                    <button data-id="${workspace.id}" class="w-full cta-button edit-workspace-btn">Edit Workspace</button>
-                    <button data-id="${workspace.id}" class="w-full secondary-button clone-workspace-btn">Clone/Backup Workspace</button>
+                    <button data-id="${workspace.id}" class="w-full secondary-button edit-workspace-btn">Edit Workspace</button>
                     <button data-id="${workspace.id}" class="w-full danger-button delete-workspace-btn">Delete Workspace</button>
                 </div>
             `;
             sidebar.querySelector('.edit-workspace-btn').addEventListener('click', openEditWorkspaceModal);
-            sidebar.querySelector('.clone-workspace-btn').addEventListener('click', handleCloneWorkspace);
             sidebar.querySelector('.delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
         }
 
-        // --- FINANCIALS DASHBOARD ---
-        const PLAN_PRICES = { Free: 0, Starter: 5, Pro: 10, Enterprise: 12 };
+        // --- MODAL & CRUD HANDLERS ---
 
-        function simulateFinancialData() {
-            let mrr = 0;
-            let subscriptions = 0;
-            let transactions = [];
-
-            allUsers.forEach(user => {
-                const plan = user.plan || 'Free';
-                const price = PLAN_PRICES[plan] || 0;
-                if (price > 0) {
-                    mrr += price;
-                    subscriptions++;
-                    transactions.push({
-                        id: `txn_${Math.random().toString(36).substr(2, 9)}`,
-                        userEmail: user.email,
-                        plan: plan,
-                        amount: price,
-                        date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        status: 'succeeded'
-                    });
-                }
-            });
-
-            financialData = {
-                mrr: mrr,
-                subscriptions: subscriptions,
-                churn: (Math.random() * 5).toFixed(2), // Dummy churn rate
-                transactions: transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
-            };
-        }
-
-        function renderFinancialsDashboard() {
-            const container = document.getElementById('dev-financials');
-            container.innerHTML = `
-                <h1 class="text-3xl font-bold text-white mb-8">Financial Dashboard</h1>
-                <p class="text-gray-400 mb-6 -mt-6">This is a simulated dashboard. No real payment data is processed.</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Monthly Recurring Revenue (MRR)</h3><p class="text-4xl font-bold text-emerald-400 mt-2">$${financialData.mrr.toLocaleString()}</p></div>
-                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Active Subscriptions</h3><p class="text-4xl font-bold text-white mt-2">${financialData.subscriptions}</p></div>
-                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Churn Rate (30d)</h3><p class="text-4xl font-bold text-red-400 mt-2">${financialData.churn}%</p></div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">MRR Growth</h3><canvas id="mrr-chart"></canvas></div>
-                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Subscriptions Growth</h3><canvas id="subs-chart"></canvas></div>
-                </div>
-
-                <div class="card p-0 overflow-hidden">
-                    <h3 class="text-xl font-semibold text-white p-6">Recent Transactions (Simulated)</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-800"><tr>
-                                <th class="p-4 font-semibold">Date</th><th class="p-4 font-semibold">User</th>
-                                <th class="p-4 font-semibold">Plan</th><th class="p-4 font-semibold">Amount</th>
-                                <th class="p-4 font-semibold">Status</th>
-                            </tr></thead>
-                            <tbody>
-                                ${financialData.transactions.slice(0, 10).map(t => `
-                                    <tr class="border-b border-gray-700">
-                                        <td class="p-4">${t.date}</td>
-                                        <td class="p-4">${t.userEmail}</td>
-                                        <td class="p-4">${t.plan}</td>
-                                        <td class="p-4">$${t.amount.toFixed(2)}</td>
-                                        <td class="p-4"><span class="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300">${t.status}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-            
-            // Render charts
-            if(charts.mrr) charts.mrr.destroy();
-            charts.mrr = new Chart(document.getElementById('mrr-chart'), {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{ label: 'MRR', data: [120, 190, 300, 500, 800, financialData.mrr], borderColor: '#34D399', tension: 0.2 }]
-                }
-            });
-
-            if(charts.subs) charts.subs.destroy();
-            charts.subs = new Chart(document.getElementById('subs-chart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{ label: 'Subscriptions', data: [24, 38, 60, 100, 160, financialData.subscriptions], backgroundColor: '#60A5FA' }]
-                }
-            });
-        }
-
-        // --- Modal & CRUD Handlers ---
-
-        function openEditUserModal(e) {
-            const userId = e.target.dataset.id;
-            const user = allUsers.find(u => u.id === userId);
+        function openEditCustomerModal(e) {
+            const customerId = e.target.dataset.id;
+            const customer = allUsers.find(c => c.id === customerId);
             const modalContent = document.getElementById('edit-modal-content');
-
-            const userWorkspaces = user.workspaces ? Object.entries(user.workspaces).map(([id, role]) => {
-                const ws = allWorkspaces.find(w => w.id === id);
-                return { id, name: ws?.name || id, role };
-            }) : [];
-
-            const availableWorkspaces = allWorkspaces.filter(ws => !(user.workspaces && user.workspaces[ws.id]));
-
             modalContent.innerHTML = `
-                <form id="edit-user-form" data-id="${userId}">
-                    <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit User: ${user.name}</h3></div>
-                    <div class="p-6 space-y-6 overflow-y-auto">
-                        <!-- Basic Info -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block mb-1 text-gray-400">Name</label><input type="text" name="name" class="form-input w-full" value="${user.name || ''}"></div>
-                            ${user.plan ? `<div><label class="block mb-1 text-gray-400">Master Plan</label><select name="plan" class="form-select w-full">
-                                <option value="Free" ${!user.plan || user.plan === 'Free' ? 'selected' : ''}>Free</option>
-                                <option value="Starter" ${user.plan === 'Starter' ? 'selected' : ''}>Starter</option>
-                                <option value="Pro" ${user.plan === 'Pro' ? 'selected' : ''}>Pro</option>
-                                <option value="Enterprise" ${user.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
-                            </select></div>` : ''}
-                        </div>
-                        <!-- Workspace Memberships -->
-                        <div>
-                            <h4 class="text-lg font-semibold text-white mb-2">Workspace Memberships</h4>
-                            <div id="user-workspaces-list" class="space-y-2">
-                                ${userWorkspaces.map(ws => `
-                                    <div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}">
-                                        <span class="flex-grow">${ws.name}</span>
-                                        <select class="form-select text-sm py-1 role-selector">
-                                            <option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option>
-                                            <option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option>
-                                            <option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option>
-                                        </select>
-                                        <button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button>
-                                    </div>
-                                `).join('') || '<p class="text-gray-500">No current memberships.</p>'}
-                            </div>
-                        </div>
-                        <!-- Add to Workspace -->
-                        <div>
-                             <h4 class="text-lg font-semibold text-white mb-2">Add to New Workspace</h4>
-                             <input type="search" id="add-ws-search" class="form-input w-full mb-2" placeholder="Search available workspaces...">
-                             <div class="flex gap-2">
-                                <select id="add-ws-select" class="form-select flex-grow">
-                                    <option value="">Select a workspace...</option>
-                                    ${availableWorkspaces.map(ws => `<option value="${ws.id}">${ws.name}</option>`).join('')}
-                                </select>
-                                <button type="button" id="add-user-to-ws-btn" class="secondary-button text-sm">Add</button>
-                             </div>
-                        </div>
+                <form id="edit-customer-form" data-id="${customerId}">
+                    <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit Customer: ${customer.name}</h3></div>
+                    <div class="p-6 space-y-4">
+                        <div><label class="block mb-1">Name</label><input type="text" name="name" class="form-input w-full" value="${customer.name}"></div>
+                        <div><label class="block mb-1">Email</label><input type="email" name="email" class="form-input w-full" value="${customer.email}" disabled></div>
+                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full">
+                            <option value="Free" ${customer.plan === 'Free' ? 'selected' : ''}>Free</option>
+                            <option value="Starter" ${customer.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                            <option value="Pro" ${customer.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                            <option value="Enterprise" ${customer.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                        </select></div>
                     </div>
-                    <div class="p-4 bg-gray-800 flex justify-end gap-4 mt-auto">
+                    <div class="p-4 bg-gray-800 flex justify-end gap-4">
                         <button type="button" class="secondary-button close-modal-btn">Cancel</button>
                         <button type="submit" class="cta-button">Save Changes</button>
                     </div>
                 </form>
             `;
             document.getElementById('edit-modal').classList.remove('hidden');
-            // Event Listeners for modal
+            document.getElementById('edit-modal').classList.add('flex');
             modalContent.querySelector('.close-modal-btn').addEventListener('click', closeAllModals);
-            modalContent.querySelector('form').addEventListener('submit', handleSaveUser);
-            modalContent.querySelectorAll('.remove-ws-btn').forEach(btn => btn.addEventListener('click', (e) => e.target.closest('.flex').remove()));
-            modalContent.querySelector('#add-user-to-ws-btn').addEventListener('click', handleAddUserToWorkspace);
-            modalContent.querySelector('#add-ws-search').addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                const select = modalContent.querySelector('#add-ws-select');
-                for (const option of select.options) {
-                    if (option.value) { // Don't hide the placeholder
-                        option.hidden = !option.text.toLowerCase().includes(searchTerm);
-                    }
-                }
-            });
-        }
-
-        async function handleSaveUser(e) {
-            e.preventDefault();
-            const form = e.target;
-            const userId = form.dataset.id;
-            
-            const newWorkspacesMap = {};
-            form.querySelectorAll('#user-workspaces-list > div').forEach(div => {
-                const wsId = div.dataset.wsId;
-                const role = div.querySelector('.role-selector').value;
-                newWorkspacesMap[wsId] = role;
-            });
-
-            const updatedUserData = {
-                name: form.name.value,
-                workspaces: newWorkspacesMap
-            };
-            
-            // Only include plan if the element exists (i.e., it's a customer)
-            if (form.plan) {
-                updatedUserData.plan = form.plan.value;
-            }
-
-            const batch = writeBatch(db);
-            batch.update(doc(db, 'users', userId), updatedUserData);
-
-            const originalUser = allUsers.find(u => u.id === userId);
-            const originalWorkspaces = originalUser.workspaces || {};
-
-            for (const wsId in originalWorkspaces) {
-                if (!newWorkspacesMap[wsId]) {
-                    batch.delete(doc(db, `workspaces/${wsId}/members/${userId}`));
-                }
-            }
-            for (const wsId in newWorkspacesMap) {
-                 batch.set(doc(db, `workspaces/${wsId}/members/${userId}`), { uid: userId, role: newWorkspacesMap[wsId] }, { merge: true });
-            }
-
-            try {
-                await batch.commit();
-                showToast('User updated successfully!', 'success');
-                await loadAllData();
-                // Refresh the correct view based on which tab is active
-                if (document.getElementById('dev-users').classList.contains('active')) {
-                    renderUserList();
-                    renderUserDetailsSidebar();
-                } else if (document.getElementById('dev-customers').classList.contains('active')) {
-                    renderCustomerList();
-                    renderCustomerDetailsSidebar();
-                }
-                closeAllModals();
-            } catch (error) {
-                console.error("Error saving user:", error);
-                showToast(`Error: ${error.message}`, 'error');
-            }
-        }
-
-        function handleAddUserToWorkspace() {
-            const addSelect = document.getElementById('add-ws-select');
-            const wsId = addSelect.value;
-            if (!wsId) return;
-            const wsName = addSelect.options[addSelect.selectedIndex].text;
-            
-            const list = document.getElementById('user-workspaces-list');
-            if (list.querySelector('p')) list.innerHTML = '';
-
-            const newEntry = document.createElement('div');
-            newEntry.className = 'flex items-center gap-2 bg-gray-800 p-2 rounded-lg';
-            newEntry.dataset.wsId = wsId;
-            newEntry.innerHTML = `
-                <span class="flex-grow">${wsName}</span>
-                <select class="form-select text-sm py-1 role-selector">
-                    <option value="Employee" selected>Employee</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Admin">Admin</option>
-                </select>
-                <button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button>
-            `;
-            list.appendChild(newEntry);
-            newEntry.querySelector('.remove-ws-btn').addEventListener('click', (e) => e.target.closest('.flex').remove());
-            addSelect.remove(addSelect.selectedIndex);
-        }
-
-        async function handleSendPasswordReset(e) {
-            const userId = e.target.dataset.id;
-            const user = allUsers.find(u => u.id === userId);
-            if (!user) return;
-            try {
-                await sendPasswordResetEmail(auth, user.email);
-                showToast(`Password reset email sent to ${user.email}`, 'success');
-            } catch (error) {
-                console.error("Password reset error:", error);
-                showToast(`Error: ${error.message}`, 'error');
-            }
-        }
-
-        function openEditCustomerModal(e) {
-            // This now just calls the main user editor
-            openEditUserModal(e);
+            modalContent.querySelector('form').addEventListener('submit', handleSaveCustomer);
         }
 
         async function handleSaveCustomer(e) {
-            // This now just calls the main user save function
-            handleSaveUser(e);
+            e.preventDefault();
+            const form = e.target;
+            const customerId = form.dataset.id;
+            const updatedData = {
+                name: form.name.value,
+                plan: form.plan.value
+            };
+            await updateDoc(doc(db, 'users', customerId), updatedData);
+            showToast('Customer updated successfully!', 'success');
+            await loadAllData();
+            renderCustomerList();
+            renderCustomerDetailsSidebar();
+            closeAllModals();
         }
         
         function handleDeleteCustomer(e) {
@@ -875,25 +513,95 @@
                 `This will permanently delete the user '${customer.name}' and ALL workspaces they own. This is highly destructive and cannot be undone.`,
                 async () => {
                     console.log('Deleting customer and their workspaces...');
-                    try {
-                        const batch = writeBatch(db);
-                        batch.delete(doc(db, 'users', customerId));
-                        const workspacesToDelete = allWorkspaces.filter(ws => ws.ownerId === customerId);
-                        workspacesToDelete.forEach(ws => {
-                            batch.delete(doc(db, 'workspaces', ws.id));
-                        });
-                        await batch.commit();
-                        showToast('Customer and their workspaces deleted.', 'success');
-                        selectedItemId = null;
-                        await loadAllData();
-                        renderCustomerManagement();
-                        closeAllModals();
-                    } catch (error) {
-                         console.error("Error deleting customer:", error);
-                         showToast(`Error: ${error.message}`, 'error');
-                    }
+                    const batch = writeBatch(db);
+                    batch.delete(doc(db, 'users', customerId));
+                    const workspacesToDelete = allWorkspaces.filter(ws => ws.ownerId === customerId);
+                    workspacesToDelete.forEach(ws => {
+                        batch.delete(doc(db, 'workspaces', ws.id));
+                    });
+                    await batch.commit();
+                    showToast('Customer and their workspaces deleted.', 'success');
+                    selectedItemId = null;
+                    await loadAllData();
+                    renderCustomerManagement();
+                    closeAllModals();
                 }
             );
+        }
+
+        function openCreateWorkspaceModal() {
+            const modalContent = document.getElementById('edit-modal-content');
+            const userOptions = allUsers.map(u => `<option value="${u.id}">${u.email}</option>`).join('');
+
+            modalContent.innerHTML = `
+                <form id="create-workspace-form">
+                    <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Create New Workspace</h3></div>
+                    <div class="p-6 space-y-4">
+                        <div><label class="block mb-1">Workspace Name</label><input type="text" name="name" class="form-input w-full" required></div>
+                        <div><label class="block mb-1">Owner</label><select name="ownerId" class="form-select w-full" required>${userOptions}</select></div>
+                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full" required>
+                            <option value="Free">Free</option>
+                            <option value="Starter">Starter</option>
+                            <option value="Pro">Pro</option>
+                            <option value="Enterprise">Enterprise</option>
+                        </select></div>
+                    </div>
+                    <div class="p-4 bg-gray-800 flex justify-end gap-4">
+                        <button type="button" class="secondary-button close-modal-btn">Cancel</button>
+                        <button type="submit" class="cta-button">Create Workspace</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('edit-modal').classList.add('flex');
+            modalContent.querySelector('.close-modal-btn').addEventListener('click', closeAllModals);
+            modalContent.querySelector('form').addEventListener('submit', handleCreateWorkspace);
+        }
+
+        async function handleCreateWorkspace(e) {
+            e.preventDefault();
+            const form = e.target;
+            const ownerId = form.ownerId.value;
+            const ownerData = allUsers.find(u => u.id === ownerId);
+            if (!ownerData) {
+                showToast("Selected owner not found.", "error");
+                return;
+            }
+
+            const batch = writeBatch(db);
+
+            const newWorkspaceRef = doc(collection(db, 'workspaces'));
+            batch.set(newWorkspaceRef, {
+                name: form.name.value,
+                plan: form.plan.value,
+                ownerId: ownerId,
+                createdAt: Timestamp.now(),
+                departments: ["General"],
+                payTypes: ["Hourly", "Salary"],
+                employeeTypes: ["Full-time", "Part-time"],
+                projectCustomFields: ["Client Name", "Budget"]
+            });
+
+            const ownerMemberRef = doc(db, 'workspaces', newWorkspaceRef.id, 'members', ownerId);
+            batch.set(ownerMemberRef, {
+                uid: ownerId,
+                email: ownerData.email,
+                name: ownerData.name,
+                role: 'Admin',
+                status: 'Active'
+            });
+
+            const userRef = doc(db, 'users', ownerId);
+            batch.update(userRef, {
+                [`workspaces.${newWorkspaceRef.id}`]: 'Admin'
+            });
+
+            await batch.commit();
+            showToast('Workspace created successfully!', 'success');
+            await loadAllData();
+            renderWorkspaceList();
+            renderWorkspaceDetailsSidebar();
+            closeAllModals();
         }
 
         function openEditWorkspaceModal(e) {
@@ -901,8 +609,7 @@
             const workspace = allWorkspaces.find(ws => ws.id === workspaceId);
             const modalContent = document.getElementById('edit-modal-content');
 
-            const ownerIds = new Set(allWorkspaces.map(ws => ws.ownerId));
-            const ownerOptions = allUsers.filter(u => ownerIds.has(u.id)).map(owner => 
+            const ownerOptions = allUsers.filter(u => allWorkspaces.some(ws => ws.ownerId === u.id)).map(owner => 
                 `<option value="${owner.id}" ${workspace.ownerId === owner.id ? 'selected' : ''}>${owner.email}</option>`
             ).join('');
 
@@ -910,14 +617,14 @@
                 <form id="edit-workspace-form" data-id="${workspaceId}">
                     <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit Workspace: ${workspace.name}</h3></div>
                     <div class="p-6 space-y-4">
-                        <div><label class="block mb-1 text-gray-400">Workspace Name</label><input type="text" name="name" class="form-input w-full" value="${workspace.name}"></div>
-                        <div><label class="block mb-1 text-gray-400">Plan</label><select name="plan" class="form-select w-full">
-                            <option value="Free" ${!workspace.plan || workspace.plan === 'Free' ? 'selected' : ''}>Free</option>
+                        <div><label class="block mb-1">Workspace Name</label><input type="text" name="name" class="form-input w-full" value="${workspace.name}"></div>
+                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full">
+                            <option value="Free" ${workspace.plan === 'Free' ? 'selected' : ''}>Free</option>
                             <option value="Starter" ${workspace.plan === 'Starter' ? 'selected' : ''}>Starter</option>
                             <option value="Pro" ${workspace.plan === 'Pro' ? 'selected' : ''}>Pro</option>
                             <option value="Enterprise" ${workspace.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
                         </select></div>
-                        <div><label class="block mb-1 text-gray-400">Owner</label><select name="ownerId" class="form-select w-full">${ownerOptions}</select></div>
+                        <div><label class="block mb-1">Owner</label><select name="ownerId" class="form-select w-full">${ownerOptions}</select></div>
                     </div>
                     <div class="p-4 bg-gray-800 flex justify-end gap-4">
                         <button type="button" class="secondary-button close-modal-btn">Cancel</button>
@@ -926,6 +633,7 @@
                 </form>
             `;
             document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('edit-modal').classList.add('flex');
             modalContent.querySelector('.close-modal-btn').addEventListener('click', closeAllModals);
             modalContent.querySelector('form').addEventListener('submit', handleSaveWorkspace);
         }
@@ -939,17 +647,12 @@
                 plan: form.plan.value,
                 ownerId: form.ownerId.value
             };
-            try {
-                await updateDoc(doc(db, 'workspaces', workspaceId), updatedData);
-                showToast('Workspace updated successfully!', 'success');
-                await loadAllData();
-                renderWorkspaceList();
-                renderWorkspaceDetailsSidebar();
-                closeAllModals();
-            } catch(error) {
-                console.error("Error saving workspace:", error);
-                showToast(`Error: ${error.message}`, 'error');
-            }
+            await updateDoc(doc(db, 'workspaces', workspaceId), updatedData);
+            showToast('Workspace updated successfully!', 'success');
+            await loadAllData();
+            renderWorkspaceList();
+            renderWorkspaceDetailsSidebar();
+            closeAllModals();
         }
 
         function handleDeleteWorkspace(e) {
@@ -959,87 +662,37 @@
                 'Delete Workspace',
                 `This will permanently delete the workspace '${workspace.name}'. All member and time data will be lost. This cannot be undone.`,
                 async () => {
-                    // In production, a Cloud Function should handle deleting subcollections.
-                    try {
-                        await deleteDoc(doc(db, 'workspaces', workspaceId));
-                        showToast('Workspace deleted.', 'success');
-                        selectedItemId = null;
-                        await loadAllData();
-                        renderWorkspaceManagement();
-                        closeAllModals();
-                    } catch(error) {
-                        console.error("Error deleting workspace:", error);
-                        showToast(`Error: ${error.message}`, 'error');
-                    }
+                    await deleteDoc(doc(db, 'workspaces', workspaceId));
+                    showToast('Workspace deleted.', 'success');
+                    selectedItemId = null;
+                    await loadAllData();
+                    renderWorkspaceManagement();
+                    closeAllModals();
                 }
             );
-        }
-
-        async function handleCloneWorkspace(e) {
-            const workspaceId = e.target.dataset.id;
-            const workspace = allWorkspaces.find(ws => ws.id === workspaceId);
-            const newName = prompt("Enter a name for the new cloned workspace:", `${workspace.name} (Clone)`);
-            if (!newName) return;
-
-            showToast('Starting workspace clone... This may take a moment.', 'success');
-
-            try {
-                // 1. Get all documents from the source workspace and its main subcollections
-                const sourceWsDoc = await getDoc(doc(db, "workspaces", workspaceId));
-                const subcollectionNames = ["members", "projects", "timeEntries", "schedules", "tasks"]; // Add any other subcollections here
-                
-                const subcollectionSnapshots = await Promise.all(
-                    subcollectionNames.map(name => getDocs(collection(db, `workspaces/${workspaceId}/${name}`)))
-                );
-
-                // 2. Start a batch write
-                const batch = writeBatch(db);
-                
-                // 3. Create the new workspace doc
-                const newWsRef = doc(collection(db, "workspaces"));
-                const newWsData = { ...sourceWsDoc.data(), name: newName, createdAt: Timestamp.now() };
-                batch.set(newWsRef, newWsData);
-
-                // 4. Add all subcollection docs to the batch
-                subcollectionSnapshots.forEach((snapshot, index) => {
-                    const subcollectionName = subcollectionNames[index];
-                    snapshot.forEach(docSnapshot => {
-                        const newDocRef = doc(collection(db, `workspaces/${newWsRef.id}/${subcollectionName}`));
-                        batch.set(newDocRef, docSnapshot.data());
-                    });
-                });
-
-                // 5. Commit the batch
-                await batch.commit();
-
-                showToast(`Workspace "${newName}" created successfully!`, 'success');
-                await loadAllData();
-                renderWorkspaceManagement();
-
-            } catch (error) {
-                console.error("Error cloning workspace:", error);
-                showToast(`Error cloning workspace: ${error.message}`, 'error');
-            }
         }
         
         function openConfirmationModal(title, message, onConfirm) {
             const modal = document.getElementById('confirmation-modal');
             document.getElementById('confirmation-modal-title').textContent = title;
-            document.getElementById('confirmation-modal-message').innerHTML = message;
+            document.getElementById('confirmation-modal-message').textContent = message;
             
             const confirmBtn = document.getElementById('confirmation-confirm-btn');
-            const newConfirmBtn = confirmBtn.cloneNode(true); // Clone to remove old listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true); 
             confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             
             newConfirmBtn.addEventListener('click', onConfirm);
             modal.querySelector('#confirmation-cancel-btn').addEventListener('click', closeAllModals);
 
             modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function closeAllModals() {
             document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-modal').classList.remove('flex');
             document.getElementById('confirmation-modal').classList.add('hidden');
+            document.getElementById('confirmation-modal').classList.remove('flex');
         }
 
         function renderCouponManagement() {
@@ -1065,7 +718,7 @@
                             <div><label class="block mb-1">Discount (%)</label><input type="number" name="discount" class="form-input w-full" min="1" max="100" required></div>
                             <div><label class="block mb-1">Max Uses (optional)</label><input type="number" name="maxUses" class="form-input w-full" min="1"></div>
                             <div><label class="block mb-1">Expires On (optional)</label><input type="date" name="expires" class="form-input w-full"></div>
-                            <button type="submit" class="w-full cta-button">Create Coupon</button>
+                            <button type="submit" class="w-full cta-button py-2 rounded-lg">Create Coupon</button>
                         </form>
                     </div>
                     <div class="lg:col-span-2 card p-0 overflow-hidden">
@@ -1151,6 +804,80 @@
             renderCouponManagement();
         }
         
+        async function renderPaymentsManagement() {
+            const container = document.getElementById('dev-payments');
+            container.innerHTML = `<div class="loader"></div>`;
+
+            const configRef = doc(db, 'configuration', 'stripe');
+            const configSnap = await getDoc(configRef);
+            const config = configSnap.exists() ? configSnap.data() : { priceMap: { Starter:{}, Pro:{}, Enterprise:{} } };
+
+            container.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Payment & API Key Management</h1>
+                <form id="payments-config-form" class="space-y-8">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold mb-4">Stripe API Keys</h3>
+                        <div class="space-y-4">
+                            <div><label class="block mb-1">Publishable Key (pk_...)</label><input type="text" data-key="publishableKey" class="form-input w-full" value="${config.publishableKey || ''}"></div>
+                            <div><label class="block mb-1">Secret Key (sk_...)</label><input type="password" data-key="secretKey" class="form-input w-full" value="${config.secretKey || ''}"></div>
+                            <div><label class="block mb-1">Webhook Signing Secret (whsec_...)</label><input type="password" data-key="webhookSecret" class="form-input w-full" value="${config.webhookSecret || ''}"></div>
+                        </div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold mb-4">Stripe Price IDs</h3>
+                        <div class="mb-6"><h4 class="font-bold text-lg text-emerald-400">Starter Plan</h4><div class="grid md:grid-cols-2 gap-4 mt-2">
+                            <div><label class="block mb-1">Monthly Price ID</label><input type="text" data-plan="Starter" data-cycle="monthly" class="form-input w-full" value="${config.priceMap?.Starter?.monthly || 'price_1RimnBCaLDv0y6ZNZMUUmXLh'}"></div>
+                            <div><label class="block mb-1">Annual Price ID</label><input type="text" data-plan="Starter" data-cycle="annual" class="form-input w-full" value="${config.priceMap?.Starter?.annual || 'price_1Rip7YCaLDv0y6ZNpkocncl9'}"></div>
+                        </div></div>
+                        <div class="mb-6"><h4 class="font-bold text-lg text-emerald-400">Pro Plan</h4><div class="grid md:grid-cols-2 gap-4 mt-2">
+                            <div><label class="block mb-1">Monthly Price ID</label><input type="text" data-plan="Pro" data-cycle="monthly" class="form-input w-full" value="${config.priceMap?.Pro?.monthly || 'price_1Rip7YCaLDv0y6ZNAE5fFaZX'}"></div>
+                            <div><label class="block mb-1">Annual Price ID</label><input type="text" data-plan="Pro" data-cycle="annual" class="form-input w-full" value="${config.priceMap?.Pro?.annual || 'price_1Rip7YCaLDv0y6ZNbIUCtzjp'}"></div>
+                        </div></div>
+                        <div><h4 class="font-bold text-lg text-emerald-400">Enterprise Plan</h4><div class="grid md:grid-cols-2 gap-4 mt-2">
+                            <div><label class="block mb-1">Monthly Price ID</label><input type="text" data-plan="Enterprise" data-cycle="monthly" class="form-input w-full" value="${config.priceMap?.Enterprise?.monthly || 'price_1Rip8SCaLDv0y6ZNYJ1QjrC9'}"></div>
+                            <div><label class="block mb-1">Annual Price ID</label><input type="text" data-plan="Enterprise" data-cycle="annual" class="form-input w-full" value="${config.priceMap?.Enterprise?.annual || 'price_1Rip8fCaLDv0y6ZNRiirOvUE'}"></div>
+                        </div></div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="cta-button px-8 py-3 rounded-lg text-lg">Save Payment Configuration</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('payments-config-form').addEventListener('submit', handleSavePaymentsConfig);
+        }
+
+        async function handleSavePaymentsConfig(e) {
+            e.preventDefault();
+            const form = e.target;
+            const configData = {
+                publishableKey: form.querySelector('[data-key="publishableKey"]').value,
+                secretKey: form.querySelector('[data-key="secretKey"]').value,
+                webhookSecret: form.querySelector('[data-key="webhookSecret"]').value,
+                priceMap: {
+                    Starter: {
+                        monthly: form.querySelector('[data-plan="Starter"][data-cycle="monthly"]').value,
+                        annual: form.querySelector('[data-plan="Starter"][data-cycle="annual"]').value,
+                    },
+                    Pro: {
+                        monthly: form.querySelector('[data-plan="Pro"][data-cycle="monthly"]').value,
+                        annual: form.querySelector('[data-plan="Pro"][data-cycle="annual"]').value,
+                    },
+                    Enterprise: {
+                        monthly: form.querySelector('[data-plan="Enterprise"][data-cycle="monthly"]').value,
+                        annual: form.querySelector('[data-plan="Enterprise"][data-cycle="annual"]').value,
+                    }
+                }
+            };
+            
+            try {
+                await setDoc(doc(db, 'configuration', 'stripe'), configData, { merge: true });
+                showToast('Payment configuration saved successfully!', 'success');
+            } catch (error) {
+                console.error("Error saving payment config:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
         function renderLoginForm() {
             authContainer.innerHTML = `
                 <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10">
@@ -1158,7 +885,7 @@
                     <form id="dev-login-form">
                         <div class="mb-4"><label for="dev-email" class="block text-gray-300 mb-2">Admin Email</label><input type="email" id="dev-email" class="w-full p-3 form-input" required></div>
                         <div class="mb-6"><label for="dev-password" class="block text-gray-300 mb-2">Admin Password</label><input type="password" id="dev-password" class="w-full p-3 form-input" required></div>
-                        <div class="text-center"><button type="submit" class="w-full cta-button">Authenticate</button></div>
+                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Authenticate</button></div>
                     </form>
                     <p id="dev-login-error" class="text-red-500 text-center mt-4"></p>
                 </div></section>
@@ -1177,18 +904,7 @@
         }
         
         devLogoutButton.addEventListener('click', () => signOut(auth));
-        
-        const showToast = (message, type = 'success') => {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            toastContainer.appendChild(toast);
-            setTimeout(() => { toast.classList.add('show'); }, 100);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => { toast.remove(); }, 300);
-            }, 3000);
-        };
+
     </script>
 </body>
 </html>

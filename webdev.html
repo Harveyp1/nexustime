@@ -99,8 +99,10 @@
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch, Timestamp, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+        // --- SECURITY: SUPER ADMIN UID ---
         const SUPER_ADMIN_UID = "JzCSorMPyVUR906kHTlDfhOa1Xg2";
 
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
             authDomain: "nexustime-e8b91.firebaseapp.com",
@@ -111,19 +113,31 @@
             measurementId: "G-QRSD6TYH86"
         };
 
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let allUsers = [], allWorkspaces = [], allCoupons = [], financialData = { mrr: 0, churn: 0, subscriptions: 0, transactions: [] };
-        let charts = {}, selectedItemId = null, userFilters = {}, customerFilters = {}, workspaceFilters = {};
+        // Global State
+        let allUsers = [];
+        let allWorkspaces = [];
+        let allCoupons = [];
+        let financialData = { mrr: 0, churn: 0, subscriptions: 0, transactions: [] };
+        let charts = {}; // Store all chart instances
+        let selectedItemId = null; 
+        let userFilters = {};
+        let customerFilters = {};
+        let workspaceFilters = {};
         
+        // DOM Elements
         const authContainer = document.getElementById('auth-container');
         const devPortalContainer = document.getElementById('dev-portal-container');
         const devNav = document.getElementById('dev-nav');
         const devPages = document.querySelectorAll('.dev-page');
         const devLogoutButton = document.getElementById('dev-logout-button');
         const toastContainer = document.getElementById('toast-container');
+        
+        // --- Core Portal Logic ---
         
         onAuthStateChanged(auth, async (user) => {
             if (user && user.uid === SUPER_ADMIN_UID) {
@@ -154,7 +168,7 @@
             }
         });
 
-        const showDevPage = (pageId) => {
+        const showDevPage = async (pageId) => {
             selectedItemId = null;
             devPages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(`dev-${pageId}`);
@@ -179,7 +193,9 @@
                 payments: renderPaymentsManagement,
                 explorer: renderDataExplorer,
             };
-            (renderMap[pageId] || renderDevDashboard)();
+            
+            const renderFunction = renderMap[pageId] || renderDevDashboard;
+            await renderFunction();
         };
         
         async function loadAllData() {
@@ -216,7 +232,7 @@
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => { toast.remove(); }, 300);
-            }, 3000);
+            }, 4000);
         };
         
         // --- RENDER FUNCTIONS ---
@@ -297,8 +313,6 @@
             financialData = { mrr, subscriptions, churn: (Math.random() * 5).toFixed(2), transactions: transactions.sort((a, b) => new Date(b.date) - new Date(a.date)) };
         }
 
-        // --- USER & CUSTOMER MANAGEMENT ---
-        
         function renderUserManagement() {
             const container = document.getElementById('dev-users');
             container.innerHTML = `<h1 class="text-3xl font-bold text-white mb-8">User Management</h1><p class="text-gray-400 mb-6 -mt-6">This tab lists all non-admin users. Admins are managed via the Customer Mgt. tab.</p><div id="user-filter-bar" class="card p-4 mb-6"></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div id="user-list-container" class="lg:col-span-2 card p-2"></div><div id="user-details-sidebar" class="lg:col-span-1 card p-6 h-fit sticky top-8"></div></div>`;
@@ -504,11 +518,16 @@
 
             try {
                 await batch.commit();
-                showToast('User updated successfully!', 'success');
                 await loadAllData();
-                if (document.getElementById('dev-users').classList.contains('active')) { renderUserList(); renderUserDetailsSidebar(); }
-                else if (document.getElementById('dev-customers').classList.contains('active')) { renderCustomerList(); renderCustomerDetailsSidebar(); }
+                showToast('User updated successfully!', 'success');
                 closeAllModals();
+                if (document.getElementById('dev-users')?.classList.contains('active')) {
+                    renderUserList();
+                    renderUserDetailsSidebar();
+                } else if (document.getElementById('dev-customers')?.classList.contains('active')) {
+                    renderCustomerList();
+                    renderCustomerDetailsSidebar();
+                }
             } catch (error) {
                 console.error("Error saving user:", error);
                 showToast(`Error: ${error.message}`, 'error');
@@ -541,7 +560,7 @@
             if (!email) { showToast('No email on file for this user.', 'error'); return; }
             try {
                 await sendPasswordResetEmail(auth, email);
-                showToast(`Password reset email sent to ${email}.`, 'success');
+                showToast(`Password reset email sent to ${email}`, 'success');
             } catch (error) {
                 console.error("Password reset error:", error);
                 showToast(`Error sending email: ${error.message}`, 'error');
@@ -568,8 +587,9 @@
                 } catch (error) {
                      console.error("Error deleting customer:", error);
                      showToast(`Error: ${error.message}`, 'error');
-                     button.disabled = false;
-                     button.textContent = 'Confirm';
+                } finally {
+                    button.disabled = false;
+                    button.textContent = 'Confirm';
                 }
             });
         }
@@ -618,7 +638,7 @@
                 await batch.commit();
                 showToast('Workspace created successfully!', 'success');
                 await loadAllData();
-                renderWorkspaceList();
+                renderWorkspaceManagement();
                 closeAllModals();
             } catch (error) {
                 console.error("Error creating workspace:", error);
@@ -696,6 +716,7 @@
                 } catch(error) {
                     console.error("Error deleting workspace:", error);
                     showToast(`Error: ${error.message}`, 'error');
+                } finally {
                     button.disabled = false;
                     button.textContent = 'Confirm';
                 }
@@ -720,7 +741,10 @@
             try {
                 const sourceWsDoc = await getDoc(doc(db, "workspaces", workspaceId));
                 const subcollectionNames = ["members", "projects", "timeEntries", "schedules", "tasks"];
-                const subcollectionSnapshots = await Promise.all(subcollectionNames.map(name => getDocs(collection(db, `workspaces/${workspaceId}/${name}`))));
+                
+                const subcollectionSnapshots = await Promise.all(
+                    subcollectionNames.map(name => getDocs(collection(db, `workspaces/${workspaceId}/${name}`)))
+                );
 
                 const batch = writeBatch(db);
                 const newWsRef = doc(collection(db, "workspaces"));
@@ -837,11 +861,9 @@
         async function renderPaymentsManagement() {
             const container = document.getElementById('dev-payments');
             container.innerHTML = `<div class="loader"></div>`;
-
             const configRef = doc(db, 'configuration', 'stripe');
             const configSnap = await getDoc(configRef);
             const config = configSnap.exists() ? configSnap.data() : { priceMap: { Starter:{}, Pro:{}, Enterprise:{} } };
-
             container.innerHTML = `<h1 class="text-3xl font-bold text-white mb-8">Payment & API Key Management</h1><form id="payments-config-form" class="space-y-8"><div class="card p-6"><h3 class="text-xl font-semibold mb-4">Stripe API Keys</h3><div class="space-y-4"><div><label class="block mb-1">Publishable Key (pk_...)</label><input type="text" data-key="publishableKey" class="form-input w-full" value="${config.publishableKey || ''}"></div><div><label class="block mb-1">Secret Key (sk_...)</label><input type="password" data-key="secretKey" class="form-input w-full" value="${config.secretKey || ''}"></div><div><label class="block mb-1">Webhook Signing Secret (whsec_...)</label><input type="password" data-key="webhookSecret" class="form-input w-full" value="${config.webhookSecret || ''}"></div></div></div><div class="card p-6"><h3 class="text-xl font-semibold mb-4">Stripe Price IDs</h3><div class="mb-6"><h4 class="font-bold text-lg text-emerald-400">Starter Plan</h4><div class="grid md:grid-cols-2 gap-4 mt-2"><div><label class="block mb-1">Monthly Price ID</label><input type="text" data-plan="Starter" data-cycle="monthly" class="form-input w-full" value="${config.priceMap?.Starter?.monthly || 'price_1RimnBCaLDv0y6ZNZMUUmXLh'}"></div><div><label class="block mb-1">Annual Price ID</label><input type="text" data-plan="Starter" data-cycle="annual" class="form-input w-full" value="${config.priceMap?.Starter?.annual || 'price_1Rip7YCaLDv0y6ZNpkocncl9'}"></div></div></div><div class="mb-6"><h4 class="font-bold text-lg text-emerald-400">Pro Plan</h4><div class="grid md:grid-cols-2 gap-4 mt-2"><div><label class="block mb-1">Monthly Price ID</label><input type="text" data-plan="Pro" data-cycle="monthly" class="form-input w-full" value="${config.priceMap?.Pro?.monthly || 'price_1Rip7YCaLDv0y6ZNAE5fFaZX'}"></div><div><label class="block mb-1">Annual Price ID</label><input type="text" data-plan="Pro" data-cycle="annual" class="form-input w-full" value="${config.priceMap?.Pro?.annual || 'price_1Rip7YCaLDv0y6ZNbIUCtzjp'}"></div></div></div><div><h4 class="font-bold text-lg text-emerald-400">Enterprise Plan</h4><div class="grid md:grid-cols-2 gap-4 mt-2"><div><label class="block mb-1">Monthly Price ID</label><input type="text" data-plan="Enterprise" data-cycle="monthly" class="form-input w-full" value="${config.priceMap?.Enterprise?.monthly || 'price_1Rip8SCaLDv0y6ZNYJ1QjrC9'}"></div><div><label class="block mb-1">Annual Price ID</label><input type="text" data-plan="Enterprise" data-cycle="annual" class="form-input w-full" value="${config.priceMap?.Enterprise?.annual || 'price_1Rip8fCaLDv0y6ZNRiirOvUE'}"></div></div></div></div><div class="flex justify-end"><button type="submit" class="cta-button">Save Payment Configuration</button></div></form>`;
             document.getElementById('payments-config-form').addEventListener('submit', handleSavePaymentsConfig);
         }

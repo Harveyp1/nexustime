@@ -132,9 +132,13 @@
             <p class="text-center text-gray-400">Loading Application...</p>
         </div>
 
-        <!-- Login Page -->
-        <div id="login" class="page">
-            <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10"><div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Welcome Back</h3><p class="text-gray-400 mt-2">Log in to manage your workspaces.</p></div><form id="login-form"><div class="mb-4"><label for="login-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="login-email" class="w-full p-3 form-input" required></div><div class="mb-6"><label for="login-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="login-password" class="w-full p-3 form-input" required></div><div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Log In</button></div></form><p id="login-error" class="text-red-500 text-center mt-4"></p></div></section>
+        <!-- Auth Page (Login/Signup) -->
+        <div id="auth" class="page">
+             <section class="py-20">
+                <div id="auth-container" class="max-w-md mx-auto card p-8 rounded-xl mt-10">
+                    <!-- Login or Signup form will be rendered here by JS -->
+                </div>
+            </section>
         </div>
 
         <!-- Onboarding Page -->
@@ -377,7 +381,7 @@
     <script type="module">
         // Firebase Imports
         import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, startAt, endAt, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Firebase Configuration
@@ -430,8 +434,7 @@
         
         // --- DOM ELEMENTS ---
         const pages = document.querySelectorAll('.page');
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
+        const authContainer = document.getElementById('auth-container');
         const workspaceListContainer = document.getElementById('workspace-list');
         const planStatCard = document.getElementById('plan-stat-card');
         const dashboardTitle = document.getElementById('dashboard-title');
@@ -448,20 +451,12 @@
         const employeeFilterBar = document.getElementById('employee-filter-bar');
         const addNewButton = document.getElementById('add-new-button');
         const punchModal = document.getElementById('punch-modal');
-        const closePunchModalButton = document.getElementById('close-punch-modal-button');
-        const addPunchForm = document.getElementById('add-punch-form');
         const addEmployeeModal = document.getElementById('add-employee-modal');
         const editEmployeeModal = document.getElementById('edit-employee-modal');
         const projectModal = document.getElementById('project-modal');
         const addShiftModal = document.getElementById('add-shift-modal');
         const createTaskModal = document.getElementById('create-task-modal');
         const requestTimeOffModal = document.getElementById('request-time-off-modal');
-        const addShiftForm = document.getElementById('add-shift-form');
-        const createTaskForm = document.getElementById('create-task-form');
-        const requestTimeOffForm = document.getElementById('request-time-off-form');
-        const addEmployeeForm = document.getElementById('add-employee-form');
-        const editEmployeeForm = document.getElementById('edit-employee-form');
-        const projectForm = document.getElementById('project-form');
         const toastContainer = document.getElementById('toast-container');
         const onboardingContainer = document.getElementById('onboarding-container');
         const settingsNav = document.getElementById('settings-nav');
@@ -601,7 +596,8 @@
                 currentUserData = null;
                 currentWorkspaceId = null;
                 currentWorkspaceData = null;
-                showPage('login');
+                showPage('auth');
+                renderAuthPage();
                 updateNav();
             }
             
@@ -622,7 +618,7 @@
                     currentWorkspaceId = currentUserData.activeWorkspaceId;
                 }
             } else {
-                console.log("No user document found. Creating one and directing to onboarding.");
+                console.log("No user document found. Creating one for new user.");
                 const newUserDoc = {
                     email: currentUser.email,
                     name: currentUser.displayName || currentUser.email.split('@')[0],
@@ -647,7 +643,8 @@
             } else {
                 console.error("Workspace not found!");
                 currentWorkspaceId = null;
-                showPage('company-selection');
+                await updateDoc(doc(db, 'users', currentUser.uid), { activeWorkspaceId: null });
+                window.location.reload();
                 return;
             }
 
@@ -705,7 +702,8 @@
             const hash = window.location.hash.substring(1) || (currentWorkspaceId ? 'dashboard' : 'company-selection');
             
             if (!currentUser) {
-                showPage('login');
+                showPage('auth');
+                renderAuthPage();
                 return;
             }
             if (!currentWorkspaceId && !['company-selection', 'onboarding'].includes(hash)) {
@@ -724,7 +722,8 @@
                 'manage': renderManagePage,
                 'settings': renderSettingsPage,
                 'company-selection': renderWorkspaceSelection,
-                'onboarding': renderOnboardingPage
+                'onboarding': renderOnboardingPage,
+                'auth': renderAuthPage,
             }[hash];
 
             if (pageFunction) {
@@ -783,23 +782,8 @@
             }
         }
         
-        // --- EVENT LISTENER SETUP (REVISED & FIXED) ---
-
+        // --- EVENT LISTENER SETUP ---
         function setupEventListeners() {
-            // Static listeners that can be attached on page load
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                loginError.textContent = '';
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-password').value;
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } catch (error) {
-                    loginError.textContent = `Login Failed: ${error.message}`;
-                    console.error("Login error:", error);
-                }
-            });
-
             document.getElementById('mobile-menu-button').addEventListener('click', () => {
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
@@ -807,7 +791,6 @@
             document.getElementById('logout-button-desktop').addEventListener('click', () => signOut(auth));
             document.getElementById('logout-button-mobile').addEventListener('click', () => signOut(auth));
             
-            // Delegated listener for dynamically created elements
             document.body.addEventListener('click', (e) => {
                 // Nav Links
                 const navLink = e.target.closest('.nav-link');
@@ -838,7 +821,95 @@
             setupEventListeners();
         });
 
-        // --- All other render and handler functions ---
+        // --- AUTH FORMS ---
+        function renderAuthPage(showLogin = true) {
+            if (showLogin) {
+                authContainer.innerHTML = `
+                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Welcome Back</h3><p class="text-gray-400 mt-2">Log in to manage your workspaces.</p></div>
+                    <form id="login-form">
+                        <div class="mb-4"><label for="login-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="login-email" class="w-full p-3 form-input" required></div>
+                        <div class="mb-6"><label for="login-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="login-password" class="w-full p-3 form-input" required></div>
+                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Log In</button></div>
+                    </form>
+                    <p id="auth-error" class="text-red-500 text-center mt-4"></p>
+                    <div class="text-center mt-4 text-sm">
+                        <a href="#" id="forgot-password-link" class="text-emerald-400 hover:underline">Forgot Password?</a>
+                        <p class="text-gray-400 mt-2">Don't have an account? <a href="#" id="toggle-to-signup" class="text-emerald-400 font-semibold hover:underline">Sign Up</a></p>
+                    </div>
+                `;
+                document.getElementById('login-form').addEventListener('submit', handleLogin);
+                document.getElementById('toggle-to-signup').addEventListener('click', (e) => { e.preventDefault(); renderAuthPage(false); });
+                document.getElementById('forgot-password-link').addEventListener('click', handleForgotPassword);
+            } else {
+                authContainer.innerHTML = `
+                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Create an Account</h3><p class="text-gray-400 mt-2">Start tracking time with NexusTime.</p></div>
+                    <form id="signup-form">
+                        <div class="mb-4"><label for="signup-name" class="block text-gray-300 mb-2">Full Name</label><input type="text" id="signup-name" class="w-full p-3 form-input" required></div>
+                        <div class="mb-4"><label for="signup-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="signup-email" class="w-full p-3 form-input" required></div>
+                        <div class="mb-4"><label for="signup-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="signup-password" class="w-full p-3 form-input" required minlength="6"></div>
+                        <div class="mb-6"><label for="signup-confirm-password" class="block text-gray-300 mb-2">Confirm Password</label><input type="password" id="signup-confirm-password" class="w-full p-3 form-input" required></div>
+                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Sign Up</button></div>
+                    </form>
+                    <p id="auth-error" class="text-red-500 text-center mt-4"></p>
+                    <div class="text-center mt-4 text-sm">
+                        <p class="text-gray-400">Already have an account? <a href="#" id="toggle-to-login" class="text-emerald-400 font-semibold hover:underline">Log In</a></p>
+                    </div>
+                `;
+                document.getElementById('signup-form').addEventListener('submit', handleSignup);
+                document.getElementById('toggle-to-login').addEventListener('click', (e) => { e.preventDefault(); renderAuthPage(true); });
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('auth-error');
+            errorEl.textContent = '';
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                errorEl.textContent = `Login Failed: ${error.message}`;
+            }
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm-password').value;
+            const errorEl = document.getElementById('auth-error');
+            errorEl.textContent = '';
+
+            if (password !== confirmPassword) {
+                errorEl.textContent = "Passwords do not match.";
+                return;
+            }
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: name });
+                // onAuthStateChanged will handle the rest, creating the user doc and redirecting to onboarding
+            } catch (error) {
+                errorEl.textContent = `Signup Failed: ${error.message}`;
+            }
+        }
+
+        async function handleForgotPassword(e) {
+            e.preventDefault();
+            const email = prompt("Please enter your email address to receive a password reset link:");
+            if (email) {
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    showToast("Password reset email sent. Please check your inbox.", "success");
+                } catch (error) {
+                    showToast(`Error: ${error.message}`, "error");
+                }
+            }
+        }
+
+        // --- ALL OTHER RENDER & HANDLER FUNCTIONS ---
 
         function renderDashboard() {
             if (!currentWorkspaceId) return;
@@ -1018,6 +1089,12 @@
                 employeeFilterBar.style.display = 'none';
                 renderManageDepartments();
             }
+
+            // Re-attach listeners for dynamically rendered content
+            manageTabs.addEventListener('click', (e) => {
+                if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab);
+            });
+            addNewButton.addEventListener('click', handleAddNew);
         }
 
         function renderEmployeeFilterBar() {
@@ -1173,8 +1250,6 @@
             }
         }
 
-        // --- Helper Functions (Dates, Calculations, etc.) ---
-        
         function calculateTaxes(grossPay, filingStatus = 'single', allowances = 0) {
             const socialSecurityRate = 0.062;
             const medicareRate = 0.0145;
@@ -1257,9 +1332,8 @@
             return date.toLocaleDateString('en-US', options);
         }
         
-        // --- Modals and Forms Logic ---
-        
         function openPunchModal(date = null) {
+            const addPunchForm = document.getElementById('add-punch-form');
             const employee = employees.find(e => e.id === activeEmployeeFilter);
             if (!employee) return;
             
@@ -1328,7 +1402,6 @@
             punchModal.style.display = 'flex';
         }
 
-        function closePunchModal() { punchModal.style.display = 'none'; }
         function closeAllModals() {
             punchModal.style.display = 'none';
             addEmployeeModal.style.display = 'none';
@@ -1369,7 +1442,7 @@
             await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeEntries"), punchData);
             
             showToast('Punch added successfully!', 'success');
-            closePunchModal();
+            closeAllModals();
             await loadWorkspaceData(currentWorkspaceId);
             renderSpreadsheet();
         }
@@ -1576,6 +1649,7 @@
         }
         
         function openAddEmployeeModal() {
+            const addEmployeeForm = document.getElementById('add-employee-form');
             addEmployeeForm.innerHTML = getEmployeeFormHtml();
             populateEmployeeFormDropdowns(addEmployeeForm);
             setupEmployeeModalTabs(addEmployeeModal);
@@ -1587,6 +1661,7 @@
             editingItemId = employeeId;
             const employee = employees.find(e => e.id === employeeId);
             if (!employee) return;
+            const editEmployeeForm = document.getElementById('edit-employee-form');
             editEmployeeForm.innerHTML = getEmployeeFormHtml(employee);
             setupEmployeeModalTabs(editEmployeeModal);
 
@@ -1811,6 +1886,7 @@
         function openProjectModal(projectId = null) {
             editingItemId = projectId;
             const project = projectId ? projects.find(p => p.id === projectId) : {};
+            const projectForm = document.getElementById('project-form');
             document.getElementById('project-modal-title-text').textContent = projectId ? 'Edit Project' : 'Add New Project';
             projectForm.innerHTML = getProjectFormHtml(project);
             projectForm.addEventListener('submit', handleProjectFormSubmit);
@@ -2229,6 +2305,7 @@
             
             try {
                 await updateDoc(userDocRef, updatedProfile);
+                await updateProfile(auth.currentUser, { displayName: form.name.value });
                 showToast('Profile settings saved successfully!', 'success');
                 await loadUserData(currentUser.uid);
             } catch (error) {
@@ -2301,8 +2378,9 @@
                     await batch.commit();
 
                     showToast('Workspace deletion initiated.', 'success');
-                    window.location.hash = 'company-selection';
                     closeAllModals();
+                    window.location.hash = 'company-selection';
+                    window.location.reload();
                 }
             );
         }
@@ -2445,6 +2523,7 @@
         }
         
         function openAddShiftModal(date = null) {
+            const addShiftForm = document.getElementById('add-shift-form');
             const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
             const today = new Date().toISOString().split('T')[0];
             
@@ -2550,6 +2629,7 @@
         }
 
         function openCreateTaskModal() {
+            const createTaskForm = document.getElementById('create-task-form');
             const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
             createTaskForm.innerHTML = `
                 <div><label class="block text-gray-300 mb-1">Task Title</label><input type="text" name="title" class="form-input w-full" required></div>
@@ -2729,6 +2809,7 @@
         }
 
         function openRequestTimeOffModal() {
+            const requestTimeOffForm = document.getElementById('request-time-off-form');
             requestTimeOffForm.innerHTML = `
                 <div>
                     <label class="block text-gray-300 mb-1">Leave Type</label>
@@ -3042,7 +3123,7 @@
             const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
             const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
 
-            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' }; // Placeholder YTD data
+            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' };
             
             contentEl.innerHTML = `
                 <style>

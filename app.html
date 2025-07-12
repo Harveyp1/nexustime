@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NexusTime App</title>
+    <script src="https://js.stripe.com/v3/"></script> <!-- STRIPE.JS SCRIPT -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -390,12 +391,15 @@
             measurementId: "G-QRSD6TYH86"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global State
+        // --- STRIPE & PAYMENT CONFIG ---
+        let stripe;
+        let stripeConfig;
+
+        // --- GLOBAL STATE ---
         let currentUser = null;
         let currentUserData = null;
         let currentWorkspaceId = null;
@@ -413,7 +417,7 @@
         let editingDayData = null;
         let projectChart = null;
         let employeeChart = null;
-        let editingItemId = null; // Used for both employee and project editing
+        let editingItemId = null;
         let selectedManageItem = null;
         let manageCurrentPage = 1;
         const MANAGE_ITEMS_PER_PAGE = 10;
@@ -424,7 +428,7 @@
         const PLAN_HIERARCHY = { Free: 0, Starter: 1, Pro: 2, Enterprise: 3 };
         let calendarDate = new Date();
         
-        // DOM Elements
+        // --- DOM ELEMENTS ---
         const pages = document.querySelectorAll('.page');
         const loginForm = document.getElementById('login-form');
         const loginError = document.getElementById('login-error');
@@ -463,7 +467,30 @@
         const settingsNav = document.getElementById('settings-nav');
         const settingsContentArea = document.getElementById('settings-content-area');
         
-        // --- Core App Logic ---
+        // --- CORE APP LOGIC ---
+        
+        async function getStripeConfig() {
+            if (stripeConfig) return stripeConfig;
+            try {
+                const configRef = doc(db, 'configuration', 'stripe');
+                const configSnap = await getDoc(configRef);
+                if (configSnap.exists()) {
+                    stripeConfig = configSnap.data();
+                    if (stripeConfig.publishableKey) {
+                        stripe = Stripe(stripeConfig.publishableKey);
+                    } else {
+                        console.error("Stripe Publishable Key is missing from configuration.");
+                    }
+                    return stripeConfig;
+                } else {
+                    throw new Error("Stripe configuration not found in database.");
+                }
+            } catch (error) {
+                console.error("Failed to load Stripe config:", error);
+                showToast("Payment system is currently unavailable.", "error");
+                return null;
+            }
+        }
 
         const checkPlanPermission = (requiredPlan) => {
             if (!currentWorkspaceData || !currentWorkspaceData.plan) return false;
@@ -478,8 +505,6 @@
             if (targetPage) {
                 targetPage.classList.add('active');
                 window.location.hash = pageId;
-
-                // Update active nav link
                 document.querySelectorAll('.nav-link').forEach(link => {
                     link.classList.toggle('active', link.dataset.page === pageId);
                 });
@@ -494,7 +519,7 @@
             const logoutButtonDesktop = document.getElementById('logout-button-desktop');
             const logoutButtonMobile = document.getElementById('logout-button-mobile');
             
-            if (currentUser) {
+            if (currentUser && currentWorkspaceData) {
                 mobileMenuButton.style.display = 'inline-flex';
                 logoutButtonDesktop.style.display = 'inline-flex';
 
@@ -539,29 +564,30 @@
             toast.className = `toast ${type}`;
             toast.textContent = message;
             toastContainer.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 100);
+            setTimeout(() => { toast.classList.add('show'); }, 100);
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
+                setTimeout(() => { toast.remove(); }, 300);
             }, 3000);
         };
 
-        // --- Authentication ---
+        // --- AUTHENTICATION & DATA LOADING ---
         onAuthStateChanged(auth, async (user) => {
+            document.getElementById('loading').classList.add('active');
             if (user) {
                 currentUser = user;
                 await loadUserData(user.uid);
                 
                 if (!currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
                     window.location.hash = 'onboarding';
+                    document.getElementById('loading').classList.remove('active');
+                    handleRouting();
+                    return;
                 }
 
                 if (currentWorkspaceId) {
                     await loadWorkspaceData(currentWorkspaceId);
+                    await getStripeConfig(); // Pre-load Stripe config on app load
                 }
                 
                 updateNav();
@@ -570,6 +596,7 @@
                 currentUser = null;
                 currentUserData = null;
                 currentWorkspaceId = null;
+                currentWorkspaceData = null;
                 showPage('login');
                 updateNav();
             }
@@ -617,7 +644,6 @@
             }
         });
 
-        // --- Routing ---
         function handleRouting() {
             const hash = window.location.hash.substring(1) || 'dashboard';
             if (!currentUser) {
@@ -654,8 +680,6 @@
         
         window.addEventListener('hashchange', handleRouting);
         
-        // --- Data Fetching & Rendering ---
-
         async function loadWorkspaceData(workspaceId) {
             if (!workspaceId) return;
             
@@ -671,7 +695,6 @@
                 return;
             }
 
-            // Fetch subcollections only if workspace exists
             const membersColRef = collection(db, "workspaces", workspaceId, "members");
             const projectsColRef = collection(db, "workspaces", workspaceId, "projects");
             const tasksColRef = collection(db, "workspaces", workspaceId, "tasks");
@@ -718,7 +741,7 @@
             verificationSnapshot.forEach(doc => {
                 verificationData[doc.id] = doc.data();
             });
-            updateNav(); // Re-run nav update after workspace data is loaded
+            updateNav();
         }
 
         async function renderWorkspaceSelection() {
@@ -1006,7 +1029,7 @@
             ['name-filter', 'department-filter', 'payType-filter', 'employeeType-filter', 'status-filter'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => {
                     employeeFilters[id.replace('-filter', '')] = document.getElementById(id).value;
-                    manageCurrentPage = 1; // Reset to first page on filter change
+                    manageCurrentPage = 1; 
                     renderManageEmployees();
                 });
             });
@@ -1140,44 +1163,19 @@
             }
         }
 
-        // --- Helper Functions (Dates, Calculations, etc.) ---
-        
-        /**
-         * Calculates estimated taxes based on gross pay.
-         * NOTE: This is a simplified model for demonstration purposes only.
-         * A real-world application must use a dedicated payroll tax API.
-         * @param {number} grossPay The gross pay for the period.
-         * @param {string} filingStatus 'single' or 'married'.
-         * @param {number} allowances The number of allowances claimed.
-         * @returns {object} An object containing the tax breakdown.
-         */
         function calculateTaxes(grossPay, filingStatus = 'single', allowances = 0) {
-            // FICA Taxes (Social Security & Medicare)
             const socialSecurityRate = 0.062;
             const medicareRate = 0.0145;
-            
-            // NOTE: In a real system, there's a wage base limit for Social Security. Ignored for simplicity.
             const socialSecurity = grossPay * socialSecurityRate;
             const medicare = grossPay * medicareRate;
-
-            // Simplified Federal Income Tax Calculation
-            // Using 2024 tax brackets and a very simplified standard deduction model.
-            // This is NOT accurate for real payroll but demonstrates the concept.
-            const annualGross = grossPay * 26; // Assuming bi-weekly pay period for annualization
-            const singleBrackets = {
-                0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37
-            };
-            const marriedBrackets = {
-                0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37
-            };
-            
+            const annualGross = grossPay * 26;
+            const singleBrackets = { 0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37 };
+            const marriedBrackets = { 0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37 };
             const brackets = (filingStatus === 'married') ? marriedBrackets : singleBrackets;
-            let taxableIncome = annualGross; // In a real system, subtract pre-tax deductions here.
+            let taxableIncome = annualGross;
             let annualFederalTax = 0;
             let remainingIncome = taxableIncome;
-            
             const sortedBrackets = Object.keys(brackets).map(Number).sort((a,b) => b-a);
-            
             for (const bracketStart of sortedBrackets) {
                 if (remainingIncome > bracketStart) {
                     const incomeInBracket = remainingIncome - bracketStart;
@@ -1185,17 +1183,9 @@
                     remainingIncome = bracketStart;
                 }
             }
-
-            const federal = annualFederalTax / 26; // De-annualize for the pay period
-
+            const federal = annualFederalTax / 26;
             const total = socialSecurity + medicare + (federal > 0 ? federal : 0);
-
-            return {
-                federal: federal > 0 ? federal : 0,
-                socialSecurity,
-                medicare,
-                total
-            };
+            return { federal: federal > 0 ? federal : 0, socialSecurity, medicare, total };
         }
         
         function processDayPunches(employeeId, day, punchesOverride = null) {
@@ -1206,31 +1196,18 @@
             const sortedPunches = [...punches].sort((a,b) => a.time.localeCompare(b.time));
             const pairs = [];
             let openIn = null;
-
             for (const punch of sortedPunches) {
                 if (punch.mode === 'in') {
-                    if (openIn) {
-                        // We have a dangling "in" punch. Close it without an "out".
-                        pairs.push({ in: openIn, out: '' });
-                    }
+                    if (openIn) pairs.push({ in: openIn, out: '' });
                     openIn = punch.time;
                 } else if (punch.mode === 'out') {
                     if (openIn) {
-                        // Found a pair
                         pairs.push({ in: openIn, out: punch.time });
                         openIn = null;
-                    } else {
-                        // This is a dangling "out" punch. We can ignore it or handle it.
-                        // For now, let's ignore it as it doesn't make sense without an "in".
                     }
                 }
             }
-
-            // If the loop ends and there's still an open "in" punch
-            if (openIn) {
-                pairs.push({ in: openIn, out: '' });
-            }
-            
+            if (openIn) pairs.push({ in: openIn, out: '' });
             const totalHours = calculateTotalHoursFromPairs(pairs);
             return { pairs, totalHours };
         }
@@ -1268,18 +1245,15 @@
             return date.toLocaleDateString('en-US', options);
         }
 
-        // --- Event Listeners & Handlers ---
-        
         function setupEventListeners() {
             document.getElementById('mobile-menu-button').addEventListener('click', () => {
-                const menu = document.getElementById('mobile-menu');
-                menu.classList.toggle('hidden');
+                document.getElementById('mobile-menu').classList.toggle('hidden');
             });
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', (e) => {
+            document.body.addEventListener('click', (e) => {
+                if(e.target.closest('.nav-link')) {
                     e.preventDefault();
-                    window.location.hash = e.currentTarget.dataset.page;
-                });
+                    window.location.hash = e.target.closest('.nav-link').dataset.page;
+                }
             });
             manageTabs.addEventListener('click', (e) => { if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab); });
             addNewButton.addEventListener('click', handleAddNew);
@@ -1291,13 +1265,11 @@
             requestTimeOffForm.addEventListener('submit', handleRequestTimeOff);
             addShiftForm.addEventListener('submit', handleAddShift);
             document.getElementById('enter-punch-btn')?.addEventListener('click', () => openPunchModal());
-            document.getElementById('prev-week-btn')?.addEventListener('click', () => { currentWeekOffset--; renderTimesheetPage(); });
-            document.getElementById('next-week-btn')?.addEventListener('click', () => { currentWeekOffset++; renderTimesheetPage(); });
+            prevWeekBtn?.addEventListener('click', () => { currentWeekOffset--; renderTimesheetPage(); });
+            nextWeekBtn?.addEventListener('click', () => { currentWeekOffset++; renderTimesheetPage(); });
             closePunchModalButton?.addEventListener('click', closePunchModal);
             addPunchForm?.addEventListener('submit', handleAddPunch);
         }
-        
-        // --- Modals and Forms Logic ---
         
         function openPunchModal(date = null) {
             const employee = employees.find(e => e.id === activeEmployeeFilter);
@@ -1370,6 +1342,7 @@
 
         function closePunchModal() { punchModal.style.display = 'none'; }
         function closeAllModals() {
+            punchModal.style.display = 'none';
             addEmployeeModal.style.display = 'none';
             editEmployeeModal.style.display = 'none';
             projectModal.style.display = 'none';
@@ -1395,8 +1368,8 @@
                 time: form.punchTime.value,
                 mode: form.punchMode.value,
                 type: form.punchType.value,
-                department: employee.department || '', // FIX: Fallback to empty string
-                job: employee.employeeType || '', // FIX: Fallback to empty string
+                department: employee.department || '',
+                job: employee.employeeType || '',
                 task: form.punchTask.value,
                 notes: form.punchNotes.value,
                 doNotRound: form.doNotRound.checked,
@@ -1681,17 +1654,14 @@
             const email = form.email.value;
             const password = form.password.value;
 
-            // 1. Create a temporary secondary Firebase app instance to create the user
             const tempAppName = `temp-app-${Date.now()}`;
             const tempApp = initializeApp(firebaseConfig, tempAppName);
             const tempAuth = getAuth(tempApp);
 
             try {
-                // 2. Create user in Firebase Auth
                 const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
                 const newUid = userCredential.user.uid;
 
-                // 3. Create the employee document in the 'members' subcollection with the new UID
                 const newEmployeeData = {
                     uid: newUid,
                     email: email,
@@ -1705,7 +1675,7 @@
                     employeeType: form.employeeType.value,
                     supervisor: form.supervisor.value,
                     cardNumber: form.cardNumber.value,
-                    hourlyRate: form.hourlyRate.value || 0,
+                    hourlyRate: Number(form.hourlyRate.value) || 0,
                     payroll: {
                         filingStatus: form.filingStatus.value,
                         allowances: Number(form.allowances.value) || 0,
@@ -1715,7 +1685,6 @@
                 };
                 await setDoc(doc(db, "workspaces", currentWorkspaceId, "members", newUid), newEmployeeData);
 
-                // 4. Create the main user document in the top-level 'users' collection
                 const userDocData = {
                     email: email,
                     name: newEmployeeData.name,
@@ -1726,18 +1695,17 @@
                 };
                 await setDoc(doc(db, "users", newUid), userDocData);
 
-                // 5. Send password reset email to force user to change temporary password
                 await sendPasswordResetEmail(auth, email);
 
                 showToast(`Employee ${newEmployeeData.name} created. A password reset email has been sent.`, 'success');
                 closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
                 renderManagePage('employees');
 
             } catch (error) {
                 console.error("Error creating employee:", error);
                 showToast(`Error: ${error.message}`, 'error');
             } finally {
-                // 6. Clean up the temporary app
                 await deleteApp(tempApp);
             }
         }
@@ -1746,7 +1714,6 @@
             e.preventDefault();
             const form = e.target;
             
-            // Collect assigned deductions from the form
             const assignedDeductions = [];
             const deductionListItems = form.querySelectorAll('#assigned-deductions-list > div');
             deductionListItems.forEach(item => {
@@ -1754,7 +1721,7 @@
                 const [name, valueStr] = text.split(': ');
                 const type = valueStr.includes('%') ? 'percent' : 'fixed';
                 const amount = parseFloat(valueStr.replace(/[$%]/g, ''));
-                assignedDeductions.push({ name, amount, type });
+                assignedDeductions.push({ name: name.trim(), amount, type });
             });
             
             const updatedData = {
@@ -1769,7 +1736,7 @@
                 employeeType: form.employeeType.value,
                 supervisor: form.supervisor.value,
                 cardNumber: form.cardNumber.value,
-                hourlyRate: form.hourlyRate.value || 0,
+                hourlyRate: Number(form.hourlyRate.value) || 0,
                  payroll: {
                     filingStatus: form.filingStatus.value,
                     allowances: Number(form.allowances.value) || 0,
@@ -1780,7 +1747,6 @@
             };
             await updateDoc(doc(db, "workspaces", currentWorkspaceId, "members", editingItemId), updatedData);
             
-            // Also update the role in the top-level user document
             const userDocRef = doc(db, "users", editingItemId);
             await updateDoc(userDocRef, {
                 [`workspaces.${currentWorkspaceId}`]: updatedData.role
@@ -1789,16 +1755,35 @@
             showToast('Employee updated successfully.', 'success');
             closeAllModals();
             editingItemId = null;
+            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('employees');
         }
 
         async function handleRemoveEmployee(employeeId) {
-            // In a real app, you'd also need a Firebase Function to delete the Auth user.
-            // This client-side code only removes the Firestore records.
-            await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "members", employeeId));
-            await deleteDoc(doc(db, "users", employeeId)); // Also remove from top-level users
-            showToast('Employee removed from workspace.', 'success');
-            renderManagePage('employees');
+            openConfirmationModal(
+                'Remove Employee',
+                'This will remove the employee from this workspace but will not delete their NexusTime account. Are you sure?',
+                async () => {
+                    const batch = writeBatch(db);
+                    
+                    const memberRef = doc(db, "workspaces", currentWorkspaceId, "members", employeeId);
+                    batch.delete(memberRef);
+
+                    const userRef = doc(db, "users", employeeId);
+                    const userData = (await getDoc(userRef)).data();
+                    if (userData && userData.workspaces) {
+                        delete userData.workspaces[currentWorkspaceId];
+                        batch.update(userRef, { workspaces: userData.workspaces });
+                    }
+                    
+                    await batch.commit();
+
+                    showToast('Employee removed from workspace.', 'success');
+                    closeAllModals();
+                    await loadWorkspaceData(currentWorkspaceId);
+                    renderManagePage('employees');
+                }
+            );
         }
 
         async function handleSendPasswordReset(email) {
@@ -1820,7 +1805,7 @@
             let customFieldsHtml = customFields.map(field => `
                 <div>
                     <label class="block text-gray-300 mb-2">${field}</label>
-                    <input type="text" name="${field}" class="w-full p-3 form-input" value="${project[field] || ''}">
+                    <input type="text" name="${field}" class="form-input w-full" value="${project[field] || ''}">
                 </div>
             `).join('');
 
@@ -1860,17 +1845,19 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "projects"), projectData);
             }
 
+            showToast('Project saved.', 'success');
             closeAllModals();
             editingItemId = null;
+            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('projects');
         }
 
         async function handleRemoveProject(projectId) {
             await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "projects", projectId));
+            showToast('Project removed.', 'success');
+            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('projects');
         }
-
-        // --- Settings Page ---
 
         async function renderSettingsPage() {
             const userRole = currentUserData.workspaces[currentWorkspaceId];
@@ -1884,70 +1871,50 @@
                 { id: 'danger', label: 'Danger Zone', visible: isAdmin }
             ];
 
-            // Render Nav
             settingsNav.innerHTML = tabs
                 .filter(tab => tab.visible)
                 .map(tab => `<button class="tab-button text-left p-3 rounded-lg hover:bg-gray-700 w-full" data-tab="${tab.id}">${tab.label}</button>`)
                 .join('');
 
-            // Render Content Area
             settingsContentArea.innerHTML = tabs
                 .filter(tab => tab.visible)
                 .map(tab => `<div id="${tab.id}-settings-tab" class="settings-tab-content"></div>`)
                 .join('');
             
-            // Activate first tab
             const firstVisibleTab = tabs.find(t => t.visible);
             if (firstVisibleTab) {
                 switchSettingsTab(firstVisibleTab.id);
             }
 
-            // Add event listeners
             settingsNav.querySelectorAll('.tab-button').forEach(button => {
                 button.addEventListener('click', () => switchSettingsTab(button.dataset.tab));
             });
         }
 
         function switchSettingsTab(tabId) {
-            // Update nav buttons
             settingsNav.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabId);
                 btn.classList.toggle('bg-gray-700', btn.dataset.tab === tabId);
             });
-            // Update content visibility
             settingsContentArea.querySelectorAll('.settings-tab-content').forEach(content => {
                 content.classList.toggle('active', content.id === `${tabId}-settings-tab`);
             });
 
-            // Render the content for the active tab
             switch (tabId) {
-                case 'profile':
-                    renderProfileSettings();
-                    break;
-                case 'workspace':
-                    renderWorkspaceSettings();
-                    break;
-                case 'payroll':
-                    renderPayrollSettingsTab();
-                    break;
-                case 'billing':
-                    renderBillingSettings();
-                    break;
-                case 'danger':
-                    renderDangerZoneSettings();
-                    break;
+                case 'profile': renderProfileSettings(); break;
+                case 'workspace': renderWorkspaceSettings(); break;
+                case 'payroll': renderPayrollSettingsTab(); break;
+                case 'billing': renderBillingSettings(); break;
+                case 'danger': renderDangerZoneSettings(); break;
             }
         }
         
-        // --- Settings Tab Renderers ---
-
         function renderProfileSettings() {
             const container = document.getElementById('profile-settings-tab');
             const prefs = currentUserData.preferences || {};
             const notifications = prefs.notifications || {};
             const integrationsHtml = checkPlanPermission('Starter') ? `
-                 <!-- Integrations -->
-                <div class="card p-8">
+                 <div class="card p-8">
                     <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
                     <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
                         <div>
@@ -1961,7 +1928,6 @@
 
             container.innerHTML = `
                 <form id="profile-settings-form" class="space-y-12">
-                    <!-- Personal Information -->
                     <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Personal Information</h3>
                         <div class="space-y-4">
@@ -1971,7 +1937,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Security -->
                     <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Change Password</h3>
                          <div class="space-y-4">
@@ -1980,7 +1945,6 @@
                             <div><label class="block text-gray-400">Confirm New Password</label><input type="password" name="confirmPassword" class="form-input w-full mt-1"></div>
                         </div>
                     </div>
-                    <!-- Preferences & Notifications -->
                     <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Preferences & Notifications</h3>
                         <div class="space-y-6">
@@ -2088,7 +2052,6 @@
             const container = document.getElementById('payroll-settings-tab');
             container.innerHTML = `<div class="loader"></div>`;
 
-            // Get deduction templates
             const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
             const templatesSnap = await getDoc(templatesRef);
             const deductionTemplates = templatesSnap.exists() ? templatesSnap.data().templates : [];
@@ -2178,12 +2141,12 @@
                 if (isCurrent) {
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" disabled>Current Plan</button>`;
                 } else {
-                    const actionText = (plans[planName].price > (plans[currentPlan]?.price || 0)) ? 'Upgrade' : 'Downgrade';
+                    const actionText = (PLAN_HIERARCHY[planName] > PLAN_HIERARCHY[currentPlan]) ? 'Upgrade' : 'Downgrade';
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}">${actionText} to ${planName}</button>`;
                 }
 
                 plansHtml += `
-                    <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''}">
+                    <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''} relative">
                          ${isCurrent ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
                         <p class="text-4xl font-extrabold my-4 text-white">$<span data-price-monthly="${planDetails.price}" data-price-annual="${planDetails.annual}">${planDetails.price}</span><span class="text-base font-medium text-gray-400">/user/month</span></p>
@@ -2231,8 +2194,6 @@
             document.getElementById('delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
         }
         
-        // --- Settings Form Handlers ---
-        
         async function handleSaveProfileSettings(e) {
             e.preventDefault();
             const form = e.target;
@@ -2240,7 +2201,6 @@
             const confirmPassword = form.confirmPassword.value;
             const currentPassword = form.currentPassword.value;
 
-            // --- Update Password Logic ---
             if (newPassword) {
                 if (!currentPassword) {
                     showToast('Please enter your current password to set a new one.', 'error');
@@ -2262,11 +2222,10 @@
                 } catch (error) {
                     console.error("Password update failed:", error);
                     showToast(`Password update failed: ${error.message}`, 'error');
-                    return; // Stop if password update fails
+                    return;
                 }
             }
 
-            // --- Update Profile and Preferences ---
             const userDocRef = doc(db, "users", currentUser.uid);
             const updatedProfile = {
                 name: form.name.value,
@@ -2282,7 +2241,6 @@
             try {
                 await updateDoc(userDocRef, updatedProfile);
                 showToast('Profile settings saved successfully!', 'success');
-                // Reload user data to reflect changes immediately
                 await loadUserData(currentUser.uid);
             } catch (error) {
                 console.error("Error saving profile:", error);
@@ -2338,8 +2296,6 @@
                 async () => {
                     const batch = writeBatch(db);
                     
-                    // Note: Deleting subcollections from the client is not recommended for production.
-                    // This should be handled by a Firebase Cloud Function. This is a simplified simulation.
                     console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
 
                     const userDocRef = doc(db, "users", currentUser.uid);
@@ -2351,7 +2307,6 @@
                         activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
                     });
                     
-                    // Mark the workspace for deletion instead of actually deleting it from client
                     batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
 
                     await batch.commit();
@@ -2371,7 +2326,6 @@
             const confirmBtn = document.getElementById('confirmation-confirm-btn');
             const cancelBtn = document.getElementById('confirmation-cancel-btn');
             
-            // Clone and replace to remove old event listeners
             const newConfirmBtn = confirmBtn.cloneNode(true);
             confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             
@@ -2424,7 +2378,7 @@
                 industry: form.industry.value,
                 companySize: form.companySize.value,
                 timezone: form.timezone.value,
-                plan: 'Free', // New workspaces start on Free plan
+                plan: 'Free',
                 ownerId: currentUser.uid,
                 createdAt: new Date(),
                 departments: ["General"],
@@ -2437,7 +2391,6 @@
                 const workspaceRef = await addDoc(collection(db, "workspaces"), workspaceData);
                 const workspaceId = workspaceRef.id;
 
-                // Add the creator as the first member of the new workspace
                 const memberData = {
                     uid: currentUser.uid,
                     email: currentUser.email,
@@ -2447,7 +2400,6 @@
                 };
                 await setDoc(doc(db, "workspaces", workspaceId, "members", currentUser.uid), memberData);
 
-                // Add workspace to user's map and set as active
                 await updateDoc(doc(db, "users", currentUser.uid), {
                     [`workspaces.${workspaceId}`]: 'Admin',
                     activeWorkspaceId: workspaceId
@@ -2462,7 +2414,6 @@
             }
         }
         
-        // --- Schedule Page Rendering ---
         async function renderSchedulePage() {
             if (!checkPlanPermission('Pro')) {
                 showPage('dashboard');
@@ -2522,12 +2473,10 @@
             </div>
             <div class="calendar-grid gap-px bg-gray-700">`;
 
-            // Blank cells for previous month
             for (let i = 0; i < startDayOfWeek; i++) {
                 gridHtml += `<div class="calendar-day other-month"></div>`;
             }
 
-            // Cells for current month
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const shiftsForDay = monthShifts.filter(s => s.start.startsWith(dateString));
@@ -2590,6 +2539,7 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "schedules"), shiftData);
                 showToast('Shift added successfully!', 'success');
                 closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
                 renderSchedulePage();
             } catch (error) {
                 console.error("Error adding shift:", error);
@@ -2597,7 +2547,6 @@
             }
         }
         
-        // --- Tasks Page Rendering ---
         async function renderTasksPage() {
             if (!checkPlanPermission('Pro')) {
                 showPage('dashboard');
@@ -2698,6 +2647,7 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "tasks"), taskData);
                 showToast('Task created successfully!', 'success');
                 closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
                 renderTasksPage();
             } catch (error) {
                 console.error("Error creating task:", error);
@@ -2711,14 +2661,14 @@
             try {
                 await updateDoc(taskRef, { status: newStatus });
                 showToast(`Task marked as ${newStatus}.`, 'success');
-                renderTasksPage(); // Re-render to reflect the change
+                await loadWorkspaceData(currentWorkspaceId);
+                renderTasksPage();
             } catch (error) {
                 console.error("Error updating task status:", error);
                 showToast(`Error: ${error.message}`, 'error');
             }
         }
 
-        // --- Time Off Page ---
         async function renderTimeOffPage() {
             if (!checkPlanPermission('Pro')) {
                 showPage('dashboard');
@@ -2754,7 +2704,6 @@
         function renderEmployeeTimeOffView() {
             const myRequests = timeOffRequests.filter(r => r.userId === currentUser.uid);
             
-            // Placeholder balances
             const balancesHtml = `
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div class="card p-4 text-center"><p class="text-gray-400">Vacation Balance</p><p class="text-2xl font-bold text-white">80 <span class="text-base font-normal">hours</span></p></div>
@@ -2878,6 +2827,7 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeOffRequests"), requestData);
                 showToast('Time off request submitted!', 'success');
                 closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
                 renderTimeOffPage();
             } catch (error) {
                 console.error("Error submitting request:", error);
@@ -2890,6 +2840,7 @@
             try {
                 await updateDoc(requestRef, { status: action });
                 showToast(`Request has been ${action}.`, 'success');
+                await loadWorkspaceData(currentWorkspaceId);
                 renderTimeOffPage();
             } catch (error) {
                  console.error("Error updating request:", error);
@@ -2897,7 +2848,6 @@
             }
         }
         
-        // --- Pay Stubs Page ---
         async function renderPayStubsPage() {
              if (!checkPlanPermission('Enterprise')) {
                 showPage('dashboard');
@@ -2947,7 +2897,6 @@
             });
         }
 
-        // --- Payroll Management ---
         function renderManagePayroll() {
             manageSidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Payroll Tools</h3>
@@ -2959,7 +2908,7 @@
             manageContent.innerHTML = '<div class="card p-6"><p class="text-gray-400">Select a tool from the sidebar to begin.</p></div>';
             
             document.getElementById('run-payroll-btn').addEventListener('click', renderRunPayroll);
-            document.getElementById('payroll-settings-btn').addEventListener('click', renderPayrollSettingsInManage);
+            document.getElementById('payroll-settings-btn').addEventListener('click', () => switchSettingsTab('payroll'));
         }
         
         async function renderPayrollSettingsInManage() {
@@ -2998,7 +2947,7 @@
                 
                 await updateDoc(doc(db, "workspaces", currentWorkspaceId), { payrollConfig: updatedConfig });
                 showToast('Payroll settings saved!', 'success');
-                await loadWorkspaceData(currentWorkspaceId); // reload data
+                await loadWorkspaceData(currentWorkspaceId);
             });
         }
 
@@ -3172,7 +3121,6 @@
             }
         }
 
-        
         function viewPayStub(stubId) {
             const stub = payStubs.find(s => s.id === stubId);
             if (!stub) return;
@@ -3186,7 +3134,7 @@
             const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
             const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
 
-            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' }; // Placeholder YTD data
+            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' };
             
             contentEl.innerHTML = `
                 <style>
@@ -3273,7 +3221,6 @@
             document.getElementById('print-pay-stub-btn').onclick = () => window.print();
         }
 
-        // --- MANAGE DEPARTMENTS ---
         function renderManageDepartments() {
             manageSidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Add Department</h3>
@@ -3309,6 +3256,7 @@
                 departments: arrayUnion(newDept)
             });
             showToast('Department added.', 'success');
+            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('departments');
         }
 
@@ -3318,6 +3266,7 @@
                     departments: arrayRemove(deptName)
                 });
                 showToast('Department removed.', 'success');
+                await loadWorkspaceData(currentWorkspaceId);
                 renderManagePage('departments');
             }
         }

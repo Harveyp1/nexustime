@@ -577,7 +577,6 @@
                 currentUser = user;
                 await loadUserData(user.uid);
                 
-                // Case 1: New user, needs onboarding
                 if (!currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
                     window.location.hash = 'onboarding';
                     handleRouting();
@@ -585,7 +584,6 @@
                     return;
                 }
 
-                // Case 2: Existing user, but no active workspace (needs to choose)
                 if (!currentWorkspaceId) {
                     window.location.hash = 'company-selection';
                     handleRouting();
@@ -593,14 +591,12 @@
                     return;
                 }
                 
-                // Case 3: Normal authenticated flow
                 await loadWorkspaceData(currentWorkspaceId);
                 await getStripeConfig();
                 updateNav();
                 handleRouting();
                 
             } else {
-                // Case 4: No user logged in
                 currentUser = null;
                 currentUserData = null;
                 currentWorkspaceId = null;
@@ -684,7 +680,8 @@
             schedules = schedulesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
             if (!activeEmployeeFilter && employees.length > 0) {
-               activeEmployeeFilter = employees[0].id;
+               const currentUserAsEmployee = employees.find(e => e.id === currentUser.uid);
+               activeEmployeeFilter = currentUserAsEmployee ? currentUser.uid : employees[0].id;
             }
 
             timesheets = {};
@@ -705,7 +702,8 @@
         }
 
         function handleRouting() {
-            const hash = window.location.hash.substring(1) || 'dashboard';
+            const hash = window.location.hash.substring(1) || (currentWorkspaceId ? 'dashboard' : 'company-selection');
+            
             if (!currentUser) {
                 showPage('login');
                 return;
@@ -733,8 +731,8 @@
                 showPage(hash);
                 pageFunction();
             } else {
-                showPage('dashboard');
-                renderDashboard();
+                showPage(currentWorkspaceId ? 'dashboard' : 'company-selection');
+                if (currentWorkspaceId) renderDashboard(); else renderWorkspaceSelection();
             }
         }
         
@@ -785,15 +783,6 @@
             }
         }
         
-        // --- ALL OTHER FUNCTIONS (render*, handle*, etc.) ---
-
-        // NOTE: All other functions from the provided file go here.
-        // I have reviewed them and ensured their logic is sound and event listeners
-        // are attached correctly within their respective render functions.
-        // For brevity, I will not paste all of them again, but the corrected, full file
-        // contains all the original functions (`renderDashboard`, `renderTimesheetPage`, etc.)
-        // with the fixes applied.
-        
         // --- EVENT LISTENER SETUP (REVISED & FIXED) ---
 
         function setupEventListeners() {
@@ -828,7 +817,7 @@
                 }
 
                 // Close Modals
-                if (e.target.closest('.close-modal-btn, #close-punch-modal-button')) {
+                if (e.target.closest('.close-modal-btn') || e.target.closest('#close-punch-modal-button')) {
                     closeAllModals();
                 }
 
@@ -849,36 +838,2346 @@
             setupEventListeners();
         });
 
-        // The rest of the functions from the original file (`renderDashboard`, `renderTimesheetPage`, etc.)
-        // are assumed to be here, with event listeners for dynamic elements attached within them.
-        // For the sake of this response, I'm including a few as examples of the correct pattern.
+        // --- All other render and handler functions ---
 
-        function renderOnboardingPage() {
-            // ... (rest of the renderOnboardingPage logic) ...
-            onboardingContainer.innerHTML = `...`;
-            // CORRECT: Attach listener after element is created
-            document.getElementById('onboarding-form').addEventListener('submit', handleCreateWorkspace);
+        function renderDashboard() {
+            if (!currentWorkspaceId) return;
+            dashboardTitle.textContent = `${currentWorkspaceData.name} Dashboard`;
+            let totalHours = 0;
+            let recentEntries = [];
+            Object.entries(timesheets).forEach(([employeeId, days]) => {
+                const employee = employees.find(e => e.id === employeeId);
+                if (!employee) return;
+                Object.entries(days).forEach(([date, dayData]) => {
+                    const hours = calculateTotalHoursFromPairs(processDayPunches(employeeId, new Date(date + 'T00:00:00')).pairs);
+                    totalHours += hours;
+                    if(hours > 0) recentEntries.push({employeeName: employee.name, date, hours});
+                });
+            });
+            dashboardWidgets.innerHTML = `<div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Employees</h3><p class="text-4xl font-bold text-white mt-2">${employees.length}</p></div><div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Projects</h3><p class="text-4xl font-bold text-white mt-2">${projects.length}</p></div><div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Hours This Period</h3><p class="text-4xl font-bold text-white mt-2">${totalHours.toFixed(1)}</p></div>`;
+            timesheetTableBody.innerHTML = '';
+             recentEntries.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5).forEach(entry => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-700';
+                row.innerHTML = `<td class="p-4">${entry.employeeName}</td><td class="p-4">${formatDate(new Date(entry.date + 'T00:00:00'))}</td><td class="p-4">${entry.hours.toFixed(2)}</td>`;
+                timesheetTableBody.appendChild(row);
+            });
+            renderCharts();
+        }
+        
+        function renderCharts() {
+            const employeeData = {};
+            employees.forEach(emp => {
+                const empTimesheets = timesheets[emp.id] || {};
+                employeeData[emp.name] = Object.values(empTimesheets).reduce((sum, day) => sum + calculateTotalHoursFromPairs(processDayPunches(emp.id, null, day.punches).pairs), 0);
+            });
+            if (employeeChart) employeeChart.destroy();
+            const employeeChartCtx = document.getElementById('employee-chart');
+            if(employeeChartCtx) employeeChart = new Chart(employeeChartCtx, { type: 'bar', data: { labels: Object.keys(employeeData), datasets: [{ label: 'Hours Logged', data: Object.values(employeeData), backgroundColor: '#34D399' }] }, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } }, x: { ticks: { color: '#9CA3AF' }, grid: { display: false } } }, plugins: { legend: { display: false } } } });
+            if (projectChart) projectChart.destroy();
         }
 
-        function renderManagePage(activeTab = 'employees') {
-            // ... (rest of the renderManagePage logic) ...
-            manageTabs.addEventListener('click', (e) => { if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab); });
-            addNewButton.addEventListener('click', handleAddNew);
+        function renderTimesheetPage() {
+            renderEmployeeFilter();
+            renderEmployeeDetails();
+            renderSpreadsheet();
+        }
 
-            // ... render the list of employees/projects ...
-            manageContent.querySelectorAll('.manage-list-item').forEach(item => {
-                // CORRECT: Attach listener after elements are created
-                item.addEventListener('click', (e) => {
-                    // ... handle item selection ...
-                    renderManageSidebar();
+        function renderEmployeeFilter() {
+            const container = document.getElementById('timesheet-filter-container');
+            if (!container) return;
+            const userRole = currentUserData.workspaces[currentWorkspaceId];
+            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
+
+            let filterHtml = `<h3 id="week-range-display" class="text-xl font-semibold text-white text-center"></h3>`;
+            if (isAdminOrManager) {
+                let options = employees.map(e => `<option value="${e.id}" ${activeEmployeeFilter === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
+                filterHtml += `<select id="employee-filter" class="form-select w-full md:w-64">${options}</select>`;
+            }
+            container.innerHTML = filterHtml;
+
+            const employeeFilterSelect = document.getElementById('employee-filter');
+            if (employeeFilterSelect) {
+                employeeFilterSelect.addEventListener('change', (e) => {
+                    activeEmployeeFilter = e.target.value;
+                    renderEmployeeDetails();
+                    renderSpreadsheet();
+                });
+            }
+        }
+        
+        function renderEmployeeDetails() {
+            if (!employeeDetailsContainer) return;
+            const employee = employees.find(e => e.id === activeEmployeeFilter);
+            if (!employee) {
+                employeeDetailsContainer.innerHTML = '<p>Select an employee to view details.</p>';
+                return;
+            };
+            employeeDetailsContainer.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-2 text-sm">
+                    <div><p class="text-2xl font-bold text-emerald-400">${employee.name}</p><p class="text-gray-400">Employee Id: ${employee.employeeId || 'N/A'} Status: <span class="text-white">${employee.status}</span></p></div>
+                    <div><p><span class="text-gray-400">Hire Date:</span> ${employee.hireDate}</p><p><span class="text-gray-400">Card Number:</span> ${employee.cardNumber || 'N/A'}</p></div>
+                    <div><p><span class="text-gray-400">Department:</span> ${employee.department}</p><p><span class="text-gray-400">Supervisor:</span> ${employee.supervisor || 'N/A'}</p></div>
+                    <div><p><span class="text-gray-400">Pay Type:</span> ${employee.payType}</p><p><span class="text-gray-400">Employee Type:</span> ${employee.employeeType}</p></div>
+                </div>`;
+        }
+        
+        function renderSpreadsheet() {
+            if (!spreadsheetContainer || !activeEmployeeFilter) return;
+            const { week, start: weekStart } = getWeek(currentWeekOffset);
+            document.getElementById('week-range-display').textContent = `Monday ${formatDate(week[0], true)} to Sunday ${formatDate(week[6], true)}`;
+            const weekData = week.map(day => processDayPunches(activeEmployeeFilter, day));
+            const maxRows = Math.max(1, ...weekData.map(d => d.pairs.length));
+            let dailyTotals = weekData.map(d => d.totalHours);
+            let weeklyTotal = dailyTotals.reduce((a, b) => a + b, 0);
+            const weekStartDateString = weekStart.toISOString().split('T')[0];
+            const verificationRecord = getWeekVerification(weekStartDateString);
+            const isWeekLocked = verificationRecord.isLocked;
+            let tableHtml = '<table class="w-full timesheet-table"><thead><tr><th class="row-header w-24">Date</th>';
+            week.forEach((day) => {
+                const dateString = day.toISOString().split('T')[0];
+                tableHtml += `<th class="day-header ${!isWeekLocked ? 'editable' : 'locked-day'}" data-date="${dateString}" data-locked="${isWeekLocked}">
+                                ${isWeekLocked ? '<span class="text-yellow-400 text-xs">Locked</span><br>' : ''}
+                                ${day.toLocaleDateString('en-US', { weekday: 'short' })} ${day.getDate()}
+                              </th>`;
+            });
+            tableHtml += '<th class="row-header">Total</th></tr></thead><tbody>';
+            for(let i = 0; i < maxRows; i++) {
+                tableHtml += '<tr><td class="row-header">In</td>';
+                weekData.forEach(day => { tableHtml += `<td>${day.pairs[i]?.in || ''}</td>`; });
+                tableHtml += '<td></td></tr>';
+                tableHtml += '<tr><td class="row-header">Out</td>';
+                weekData.forEach(day => { tableHtml += `<td>${day.pairs[i]?.out || ''}</td>`; });
+                tableHtml += '<td></td></tr>';
+            }
+            tableHtml += '</tbody><tfoot><tr class="bg-gray-800 font-bold"><td class="row-header">Total Hours</td>';
+            dailyTotals.forEach(total => { tableHtml += `<td>${total > 0 ? total.toFixed(2) : ''}</td>`; });
+            tableHtml += `<td class="text-emerald-400">${weeklyTotal.toFixed(2)}</td></tr>`;
+            tableHtml += '</tfoot></table>';
+            spreadsheetContainer.innerHTML = tableHtml;
+            
+            if (checkPlanPermission('Starter')) {
+                renderVerificationStatus(weekStartDateString);
+            } else {
+                const verificationSection = document.getElementById('verification-section');
+                if (verificationSection) verificationSection.innerHTML = '';
+            }
+        }
+
+        async function renderManagePage(activeTab = 'employees') {
+            const payrollTabEl = manageTabs.querySelector('[data-tab="payroll"]');
+            if (!checkPlanPermission('Enterprise')) {
+                if(payrollTabEl) payrollTabEl.style.display = 'none';
+                if (activeTab === 'payroll') activeTab = 'employees';
+            } else {
+                if(payrollTabEl) payrollTabEl.style.display = 'inline-block';
+            }
+
+            manageTabs.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            const activeTabEl = manageTabs.querySelector(`[data-tab="${activeTab}"]`);
+            if(activeTabEl) activeTabEl.classList.add('active');
+            
+            addNewButton.style.display = ['payroll', 'departments'].includes(activeTab) ? 'none' : 'inline-block';
+            
+            const plan = currentWorkspaceData.plan || 'Free';
+            const userLimit = PLAN_USER_LIMITS[plan];
+            const projectLimit = PLAN_PROJECT_LIMITS[plan];
+            const canAddEmployees = plan !== 'Free' || employees.length < userLimit;
+            const canAddProjects = plan !== 'Free' || projects.length < projectLimit;
+            let isLimitReached = false;
+
+            if (activeTab === 'employees') {
+                addNewButton.innerHTML = `Add New Employee`;
+                if (!canAddEmployees) isLimitReached = true;
+            } else if (activeTab === 'projects') {
+                addNewButton.innerHTML = `Add New Project`;
+                if (!canAddProjects) isLimitReached = true;
+            }
+            
+            addNewButton.disabled = isLimitReached;
+            addNewButton.title = isLimitReached ? `Upgrade your plan to add more ${activeTab}.` : '';
+            if (isLimitReached) {
+                addNewButton.innerHTML += ` <span class="text-xs font-normal">(Plan Limit Reached)</span>`;
+            }
+
+            selectedManageItem = null;
+            
+            if (activeTab === 'employees') {
+                employeeFilterBar.style.display = 'block';
+                renderEmployeeFilterBar();
+                renderManageEmployees();
+                renderManageSidebar();
+            } else if (activeTab === 'projects') {
+                employeeFilterBar.style.display = 'none';
+                renderManageProjects();
+                renderManageSidebar();
+            } else if (activeTab === 'payroll') {
+                employeeFilterBar.style.display = 'none';
+                renderManagePayroll();
+            } else if (activeTab === 'departments') {
+                employeeFilterBar.style.display = 'none';
+                renderManageDepartments();
+            }
+        }
+
+        function renderEmployeeFilterBar() {
+            const ws = currentWorkspaceData;
+            const departmentOptions = (ws.departments || []).map(d => `<option value="${d}">${d}</option>`).join('');
+            const payTypeOptions = (ws.payTypes || []).map(p => `<option value="${p}">${p}</option>`).join('');
+            const employeeTypeOptions = (ws.employeeTypes || []).map(e => `<option value="${e}">${e}</option>`).join('');
+
+            employeeFilterBar.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 card p-4">
+                    <input type="text" id="name-filter" class="form-input" placeholder="Search by Name/Email...">
+                    <select id="department-filter" class="form-select"><option value="">All Departments</option>${departmentOptions}</select>
+                    <select id="payType-filter" class="form-select"><option value="">All Pay Types</option>${payTypeOptions}</select>
+                    <select id="employeeType-filter" class="form-select"><option value="">All Employee Types</option>${employeeTypeOptions}</select>
+                    <select id="status-filter" class="form-select"><option value="">All Statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+                </div>
+            `;
+
+            ['name-filter', 'department-filter', 'payType-filter', 'employeeType-filter', 'status-filter'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    employeeFilters[id.replace('-filter', '')] = document.getElementById(id).value;
+                    manageCurrentPage = 1; 
+                    renderManageEmployees();
                 });
             });
         }
 
-        // [ALL OTHER FUNCTIONS FROM THE ORIGINAL FILE ARE HERE]
-        // This is a placeholder for the remaining 1000+ lines of JS code which I have reviewed
-        // and corrected according to the principles outlined above. The final file is complete.
+        function filterEmployees() {
+            return employees.filter(emp => {
+                const nameMatch = !employeeFilters.name || emp.name.toLowerCase().includes(employeeFilters.name.toLowerCase()) || (emp.email && emp.email.toLowerCase().includes(employeeFilters.name.toLowerCase()));
+                const departmentMatch = !employeeFilters.department || emp.department === employeeFilters.department;
+                const payTypeMatch = !employeeFilters.payType || emp.payType === employeeFilters.payType;
+                const employeeTypeMatch = !employeeFilters.employeeType || emp.employeeType === employeeFilters.employeeType;
+                const statusMatch = !employeeFilters.status || emp.status === employeeFilters.status;
+                return nameMatch && departmentMatch && payTypeMatch && employeeTypeMatch && statusMatch;
+            });
+        }
 
+        function renderManageEmployees() {
+            const filteredEmployees = filterEmployees();
+            const startIndex = (manageCurrentPage - 1) * MANAGE_ITEMS_PER_PAGE;
+            const endIndex = startIndex + MANAGE_ITEMS_PER_PAGE;
+            const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex);
+
+            let listHtml = paginatedEmployees.map((item) => `
+                <li class="flex justify-between items-center p-3 rounded-lg manage-list-item" data-id="${item.id}" data-type="employee">
+                    <div>
+                        <p class="font-semibold">${item.name}</p>
+                        <p class="text-sm text-gray-400">${item.email || 'No Email'}</p>
+                    </div>
+                    <span class="status-badge ${item.status === 'Active' ? 'status-active' : 'status-inactive'}">${item.status}</span>
+                </li>`).join('');
+
+            const totalPages = Math.ceil(filteredEmployees.length / MANAGE_ITEMS_PER_PAGE);
+            let paginationHtml = totalPages > 1 ? `
+                <div class="flex justify-between items-center mt-4">
+                    <button id="manage-prev-btn" class="secondary-button px-4 py-2 rounded-lg text-sm" ${manageCurrentPage === 1 ? 'disabled' : ''}>Previous</button>
+                    <span>Page ${manageCurrentPage} of ${totalPages}</span>
+                    <button id="manage-next-btn" class="secondary-button px-4 py-2 rounded-lg text-sm" ${manageCurrentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                </div>
+            ` : '';
+
+            manageContent.innerHTML = `<div class="card p-6"><ul class="space-y-2">${listHtml}</ul>${paginationHtml}</div>`;
+            
+            document.querySelectorAll('.manage-list-item').forEach(item => item.addEventListener('click', (e) => {
+                const id = e.currentTarget.dataset.id;
+                const type = e.currentTarget.dataset.type;
+                selectedManageItem = { type, data: employees.find(emp => emp.id === id) };
+                
+                document.querySelectorAll('.manage-list-item').forEach(i => i.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+
+                renderManageSidebar();
+            }));
+
+            const prevBtn = document.getElementById('manage-prev-btn');
+            const nextBtn = document.getElementById('manage-next-btn');
+            if (prevBtn) prevBtn.addEventListener('click', () => { if(manageCurrentPage > 1) { manageCurrentPage--; renderManageEmployees(); } });
+            if (nextBtn) nextBtn.addEventListener('click', () => { if(manageCurrentPage < totalPages) { manageCurrentPage++; renderManageEmployees(); } });
+        }
+
+        function renderManageProjects() {
+            let listHtml = projects.map((item) => `
+                <li class="flex justify-between items-center p-3 rounded-lg manage-list-item" data-id="${item.id}" data-type="project">
+                    <span>${item.name}</span>
+                </li>`).join('');
+            manageContent.innerHTML = `<div class="card p-6"><ul class="space-y-2">${listHtml}</ul></div>`;
+
+            document.querySelectorAll('.manage-list-item').forEach(item => item.addEventListener('click', (e) => {
+                const id = e.currentTarget.dataset.id;
+                const type = e.currentTarget.dataset.type;
+                selectedManageItem = { type, data: projects.find(p => p.id === id) };
+
+                document.querySelectorAll('.manage-list-item').forEach(i => i.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+
+                renderManageSidebar();
+            }));
+        }
+
+        function renderManageSidebar() {
+            if (!selectedManageItem) {
+                manageSidebar.innerHTML = '<p class="text-gray-400">Select an item from the list to see details.</p>';
+                return;
+            }
+
+            if (selectedManageItem.type === 'employee') {
+                const emp = selectedManageItem.data;
+                manageSidebar.innerHTML = `
+                    <h3 class="text-xl font-bold text-white mb-4">${emp.name}</h3>
+                    <div class="space-y-2 text-sm">
+                        <p><strong class="text-gray-400">Email:</strong> ${emp.email || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Role:</strong> ${emp.role || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Status:</strong> ${emp.status}</p>
+                        <p><strong class="text-gray-400">Employee ID:</strong> ${emp.employeeId || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Hourly Rate:</strong> $${(emp.hourlyRate || 0).toFixed(2)}</p>
+                        <p><strong class="text-gray-400">Department:</strong> ${emp.department || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Pay Type:</strong> ${emp.payType || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Employee Type:</strong> ${emp.employeeType || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Supervisor:</strong> ${emp.supervisor || 'N/A'}</p>
+                        <p><strong class="text-gray-400">Hire Date:</strong> ${emp.hireDate || 'N/A'}</p>
+                    </div>
+                    <div class="mt-6 space-y-2">
+                        <button class="w-full secondary-button px-4 py-2 rounded-lg text-sm edit-employee-btn" data-id="${emp.id}">Edit</button>
+                        <button class="w-full secondary-button px-4 py-2 rounded-lg text-sm send-password-reset-btn" data-email="${emp.email}">Send Password Reset</button>
+                        <button class="w-full danger-button mt-4 px-4 py-2 rounded-lg text-sm remove-employee-btn" data-id="${emp.id}">Remove</button>
+                    </div>
+                `;
+                manageSidebar.querySelector('.edit-employee-btn').addEventListener('click', (e) => openEditEmployeeModal(e.target.dataset.id));
+                manageSidebar.querySelector('.remove-employee-btn').addEventListener('click', (e) => handleRemoveEmployee(e.target.dataset.id));
+                manageSidebar.querySelector('.send-password-reset-btn').addEventListener('click', (e) => handleSendPasswordReset(e.target.dataset.email));
+
+            } else if (selectedManageItem.type === 'project') {
+                const proj = selectedManageItem.data;
+                let customFieldsHtml = '';
+                const customFields = currentWorkspaceData.projectCustomFields || [];
+                customFields.forEach(field => {
+                    customFieldsHtml += `<p><strong class="text-gray-400">${field}:</strong> ${proj[field] || 'N/A'}</p>`;
+                });
+
+                manageSidebar.innerHTML = `
+                    <h3 class="text-xl font-bold text-white mb-4">${proj.name}</h3>
+                    <div class="space-y-2 text-sm">
+                        ${customFieldsHtml}
+                    </div>
+                    <div class="mt-6 space-x-2">
+                        <button class="secondary-button px-4 py-2 rounded-lg text-sm edit-project-btn" data-id="${proj.id}">Edit</button>
+                        <button class="danger-button px-4 py-2 rounded-lg text-sm remove-project-btn" data-id="${proj.id}">Remove</button>
+                    </div>
+                `;
+                manageSidebar.querySelector('.edit-project-btn').addEventListener('click', (e) => openProjectModal(e.target.dataset.id));
+                manageSidebar.querySelector('.remove-project-btn').addEventListener('click', (e) => handleRemoveProject(e.target.dataset.id));
+            }
+        }
+
+        // --- Helper Functions (Dates, Calculations, etc.) ---
+        
+        function calculateTaxes(grossPay, filingStatus = 'single', allowances = 0) {
+            const socialSecurityRate = 0.062;
+            const medicareRate = 0.0145;
+            const socialSecurity = grossPay * socialSecurityRate;
+            const medicare = grossPay * medicareRate;
+            const annualGross = grossPay * 26;
+            const singleBrackets = { 0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37 };
+            const marriedBrackets = { 0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37 };
+            const brackets = (filingStatus === 'married') ? marriedBrackets : singleBrackets;
+            let taxableIncome = annualGross;
+            let annualFederalTax = 0;
+            let remainingIncome = taxableIncome;
+            const sortedBrackets = Object.keys(brackets).map(Number).sort((a,b) => b-a);
+            for (const bracketStart of sortedBrackets) {
+                if (remainingIncome > bracketStart) {
+                    const incomeInBracket = remainingIncome - bracketStart;
+                    annualFederalTax += incomeInBracket * brackets[bracketStart];
+                    remainingIncome = bracketStart;
+                }
+            }
+            const federal = annualFederalTax / 26;
+            const total = socialSecurity + medicare + (federal > 0 ? federal : 0);
+            return { federal: federal > 0 ? federal : 0, socialSecurity, medicare, total };
+        }
+        
+        function processDayPunches(employeeId, day, punchesOverride = null) {
+            const dateString = day ? day.toISOString().split('T')[0] : null;
+            const entry = employeeId && dateString ? timesheets[employeeId]?.[dateString] : null;
+            const punches = punchesOverride || (entry ? entry.punches : []);
+            if (!punches || punches.length === 0) return { pairs: [], totalHours: 0 };
+            const sortedPunches = [...punches].sort((a,b) => a.time.localeCompare(b.time));
+            const pairs = [];
+            let openIn = null;
+            for (const punch of sortedPunches) {
+                if (punch.mode === 'in') {
+                    if (openIn) pairs.push({ in: openIn, out: '' });
+                    openIn = punch.time;
+                } else if (punch.mode === 'out') {
+                    if (openIn) {
+                        pairs.push({ in: openIn, out: punch.time });
+                        openIn = null;
+                    }
+                }
+            }
+            if (openIn) pairs.push({ in: openIn, out: '' });
+            const totalHours = calculateTotalHoursFromPairs(pairs);
+            return { pairs, totalHours };
+        }
+        
+        function calculateTotalHoursFromPairs(pairs) {
+            let totalMinutes = 0;
+            pairs.forEach(pair => {
+                if (pair.in && pair.out) {
+                    const [inH, inM] = pair.in.split(':').map(Number);
+                    const [outH, outM] = pair.out.split(':').map(Number);
+                    totalMinutes += (outH * 60 + outM) - (inH * 60 + inM);
+                }
+            });
+            return totalMinutes / 60;
+        }
+
+        function getWeek(offset = 0) {
+            const now = new Date();
+            now.setDate(now.getDate() + (offset * 7));
+            const dayOfWeek = now.getDay();
+            const startDate = new Date(now);
+            startDate.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const week = Array.from({length: 7}, (_, i) => {
+                const day = new Date(startDate);
+                day.setDate(startDate.getDate() + i);
+                return day;
+            });
+            return { week, start: week[0] };
+        }
+
+        function formatDate(date, includeYear = false) {
+            if(!date) return '';
+            const options = { month: 'short', day: 'numeric' };
+            if (includeYear) options.year = 'numeric';
+            return date.toLocaleDateString('en-US', options);
+        }
+        
+        // --- Modals and Forms Logic ---
+        
+        function openPunchModal(date = null) {
+            const employee = employees.find(e => e.id === activeEmployeeFilter);
+            if (!employee) return;
+            
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().slice(0,5);
+
+            const taskOptions = projects.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+
+            addPunchForm.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Date</label>
+                        <input type="date" name="punchDate" class="w-full p-3 form-input" value="${date || today}" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Time</label>
+                        <input type="time" name="punchTime" class="w-full p-3 form-input" value="${currentTime}" required>
+                    </div>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Mode</label>
+                        <select name="punchMode" class="w-full p-3 form-select" required>
+                            <option value="in">Clock In</option>
+                            <option value="out">Clock Out</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Type</label>
+                        <select name="punchType" class="w-full p-3 form-select" required>
+                            <option value="Normal">Normal</option>
+                            <option value="Break">Break</option>
+                            <option value="Lunch">Lunch</option>
+                        </select>
+                    </div>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">Department</label>
+                        <input type="text" name="punchDepartment" class="w-full p-3 form-input" value="${employee.department || ''}" disabled>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">Job</label>
+                        <input type="text" name="punchJob" class="w-full p-3 form-input" value="${employee.employeeType || ''}" disabled>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Task</label>
+                    <select name="punchTask" class="w-full p-3 form-select">${taskOptions}</select>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Notes</label>
+                    <textarea name="punchNotes" class="w-full p-3 form-input" rows="3" maxlength="150"></textarea>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <label class="flex items-center"><input type="checkbox" name="doNotRound" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500"><span class="ml-2">Do Not Round</span></label>
+                    <label class="flex items-center"><input type="checkbox" name="transfer" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500"><span class="ml-2">Transfer</span></label>
+                    <label class="flex items-center"><input type="checkbox" name="override" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500"><span class="ml-2">Override</span></label>
+                </div>
+                <div class="text-right pt-4">
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">Add Punch</button>
+                </div>
+            `;
+            addPunchForm.addEventListener('submit', handleAddPunch);
+            punchModal.style.display = 'flex';
+        }
+
+        function closePunchModal() { punchModal.style.display = 'none'; }
+        function closeAllModals() {
+            punchModal.style.display = 'none';
+            addEmployeeModal.style.display = 'none';
+            editEmployeeModal.style.display = 'none';
+            projectModal.style.display = 'none';
+            addShiftModal.style.display = 'none';
+            createTaskModal.style.display = 'none';
+            requestTimeOffModal.style.display = 'none';
+            document.getElementById('confirmation-modal').style.display = 'none';
+            document.getElementById('pay-stub-modal').style.display = 'none';
+        }
+        
+        async function handleAddPunch(e) {
+            e.preventDefault();
+            const form = e.target;
+            const employee = employees.find(emp => emp.id === activeEmployeeFilter);
+            if (!employee) {
+                showToast('Could not find the selected employee.', 'error');
+                return;
+            }
+
+            const punchData = {
+                userId: activeEmployeeFilter,
+                date: form.punchDate.value,
+                time: form.punchTime.value,
+                mode: form.punchMode.value,
+                type: form.punchType.value,
+                department: employee.department || '',
+                job: employee.employeeType || '',
+                task: form.punchTask.value,
+                notes: form.punchNotes.value,
+                doNotRound: form.doNotRound.checked,
+                transfer: form.transfer.checked,
+                override: form.override.checked,
+                createdAt: new Date()
+            };
+            
+            await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeEntries"), punchData);
+            
+            showToast('Punch added successfully!', 'success');
+            closePunchModal();
+            await loadWorkspaceData(currentWorkspaceId);
+            renderSpreadsheet();
+        }
+
+        function getWeekVerification(weekStartDateString) {
+            const docId = `${activeEmployeeFilter}_${weekStartDateString}`;
+            const data = verificationData[docId] || { employeeVerified: false, supervisorVerified: false };
+            data.isLocked = data.employeeVerified && data.supervisorVerified;
+            return data;
+        }
+
+        function renderVerificationStatus(weekStartDateString) {
+            const verificationSection = document.getElementById('verification-section');
+            if (!verificationSection) return;
+            const verificationRecord = getWeekVerification(weekStartDateString);
+            const employee = employees.find(e => e.id === activeEmployeeFilter);
+            const supervisor = employees.find(e => e.id === employee.supervisorId) || { name: 'Supervisor' };
+            verificationSection.innerHTML = `
+                <h3 class="text-xl font-bold mb-4">Verification</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="flex items-center"><input type="checkbox" id="employee-verify-checkbox" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500" ${verificationRecord.employeeVerified ? 'checked' : ''} ${verificationRecord.supervisorVerified ? 'disabled' : ''}><span class="ml-3">Employee Verification</span></label>
+                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.employeeVerified ? `Verified by ${employee.name} on ${new Date(verificationRecord.employeeVerificationTimestamp?.toDate()).toLocaleString()}` : 'Pending'}</div>
+                    </div>
+                    <div>
+                        <label class="flex items-center"><input type="checkbox" id="supervisor-verify-checkbox" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500" ${verificationRecord.supervisorVerified ? 'checked' : ''} ${!verificationRecord.employeeVerified ? 'disabled' : ''}><span class="ml-3">Supervisor Verification</span></label>
+                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.supervisorVerified ? `Verified by ${supervisor.name} on ${new Date(verificationRecord.supervisorVerificationTimestamp?.toDate()).toLocaleString()}` : 'Pending'}</div>
+                    </div>
+                </div>`;
+            document.getElementById('employee-verify-checkbox').addEventListener('change', (e) => handleVerification('employee', e.target.checked, weekStartDateString));
+            document.getElementById('supervisor-verify-checkbox').addEventListener('change', (e) => handleVerification('supervisor', e.target.checked, weekStartDateString));
+        }
+
+        async function handleVerification(type, isChecked, weekStartDateString) {
+            const docId = `${activeEmployeeFilter}_${weekStartDateString}`;
+            const verificationRef = doc(db, "workspaces", currentWorkspaceId, "verifications", docId);
+            const updateData = {};
+            if (type === 'employee') {
+                updateData.employeeVerified = isChecked;
+                updateData.employeeVerificationTimestamp = isChecked ? new Date() : null;
+            } else if (type === 'supervisor') {
+                updateData.supervisorVerified = isChecked;
+                updateData.supervisorVerificationTimestamp = isChecked ? new Date() : null;
+            }
+            await setDoc(verificationRef, updateData, { merge: true });
+            await loadWorkspaceData(currentWorkspaceId);
+            renderSpreadsheet();
+        }
+        
+        function handleAddNew() {
+            const activeTab = manageTabs.querySelector('.active').dataset.tab;
+            if (activeTab === 'employees') openAddEmployeeModal();
+            else if (activeTab === 'projects') openProjectModal();
+        }
+
+        function getEmployeeFormHtml(employee = {}) {
+            const isEditing = !!employee.id;
+            const payroll = employee.payroll || {};
+            const assignedDeductionsHtml = (payroll.deductions || []).map((ded, index) => `
+                <div class="flex items-center justify-between p-2 bg-gray-700 rounded" data-index="${index}">
+                    <span>${ded.name}: ${ded.type === 'fixed' ? '$' : ''}${ded.amount}${ded.type === 'percent' ? '%' : ''}</span>
+                    <button type="button" class="text-red-400 text-xl font-bold remove-deduction-btn">&times;</button>
+                </div>
+            `).join('');
+
+            return `
+                <div class="border-b border-gray-700 mb-4">
+                    <nav class="flex space-x-8" id="employee-modal-tabs">
+                        <button type="button" data-tab="personal" class="tab-button py-3 px-1 font-medium active">Personal</button>
+                        <button type="button" data-tab="employment" class="tab-button py-3 px-1 font-medium">Employment</button>
+                        <button type="button" data-tab="payroll" class="tab-button py-3 px-1 font-medium">Payroll</button>
+                    </nav>
+                </div>
+
+                <div id="personal-tab-pane" class="modal-tab-pane active space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label class="block text-gray-300 mb-2">First Name</label><input type="text" name="firstName" class="w-full p-3 form-input" required value="${employee.firstName || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Middle Name</label><input type="text" name="middleName" class="w-full p-3 form-input" value="${employee.middleName || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Last Name</label><input type="text" name="lastName" class="w-full p-3 form-input" required value="${employee.lastName || ''}"></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Email</label><input type="email" name="email" class="w-full p-3 form-input" required value="${employee.email || ''}" ${isEditing ? 'disabled' : ''}></div>
+                        ${!isEditing ? `<div><label class="block text-gray-300 mb-2">Temporary Password</label><input type="password" name="password" class="w-full p-3 form-input" required></div>` : ''}
+                    </div>
+                </div>
+
+                <div id="employment-tab-pane" class="modal-tab-pane space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Employee ID</label><input type="text" name="employeeId" class="w-full p-3 form-input" required value="${employee.employeeId || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Card Number</label><input type="text" name="cardNumber" class="w-full p-3 form-input" value="${employee.cardNumber || ''}"></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Hire Date</label><input type="date" name="hireDate" class="w-full p-3 form-input" required value="${employee.hireDate || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Supervisor</label><select name="supervisor" class="w-full p-3 form-select"></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Department</label><select name="department" class="w-full p-3 form-select"></select></div>
+                        <div><label class="block text-gray-300 mb-2">Pay Type</label><select name="payType" class="w-full p-3 form-select"></select></div>
+                        <div><label class="block text-gray-300 mb-2">Employee Type</label><select name="employeeType" class="w-full p-3 form-select"></select></div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Role</label>
+                            <select name="role" class="w-full p-3 form-select" required>
+                                <option value="Employee" ${employee.role === 'Employee' ? 'selected' : ''}>Employee</option>
+                                <option value="Manager" ${employee.role === 'Manager' ? 'selected' : ''}>Manager</option>
+                                <option value="Admin" ${employee.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Status</label>
+                            <select name="status" class="w-full p-3 form-select">
+                                <option value="Active" ${employee.status === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Inactive" ${employee.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="payroll-tab-pane" class="modal-tab-pane space-y-6">
+                    <h4 class="text-lg font-semibold text-white">Payroll Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div><label class="block text-gray-300 mb-2">Hourly Rate ($)</label><input type="number" name="hourlyRate" class="w-full p-3 form-input" step="0.01" value="${employee.hourlyRate || ''}"></div>
+                         <div><label class="block text-gray-300 mb-2">Filing Status</label>
+                            <select name="filingStatus" class="w-full p-3 form-select">
+                                <option value="single" ${payroll.filingStatus === 'single' ? 'selected' : ''}>Single</option>
+                                <option value="married" ${payroll.filingStatus === 'married' ? 'selected' : ''}>Married</option>
+                            </select>
+                         </div>
+                         <div><label class="block text-gray-300 mb-2">Allowances</label><input type="number" name="allowances" class="w-full p-3 form-input" value="${payroll.allowances || 0}"></div>
+                    </div>
+                    <div class="border-t border-gray-700"></div>
+                    <h4 class="text-lg font-semibold text-white">Assigned Deductions</h4>
+                    <div class="space-y-4">
+                        <div id="assigned-deductions-list" class="space-y-2 mb-4">
+                            ${assignedDeductionsHtml || '<p class="text-gray-500">No deductions assigned.</p>'}
+                        </div>
+                        <div class="flex gap-4 items-end">
+                            <div class="flex-grow">
+                                <label class="block text-gray-300 mb-1">Add Deduction</label>
+                                <select id="new-deduction-template" class="form-select w-full"></select>
+                            </div>
+                             <div class="w-1/4">
+                                <label class="block text-gray-300 mb-1">Amount/Percent</label>
+                                <input type="number" id="new-deduction-amount" class="form-input w-full" step="0.01">
+                            </div>
+                             <div class="w-1/4">
+                                <label class="block text-gray-300 mb-1">Type</label>
+                                <select id="new-deduction-type" class="form-select w-full">
+                                    <option value="fixed">Fixed ($)</option>
+                                    <option value="percent">Percent (%)</option>
+                                </select>
+                            </div>
+                            <div>
+                                 <button type="button" id="add-deduction-btn" class="secondary-button px-4 py-2 rounded-lg">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-4 pt-6 border-t border-gray-700 mt-6">
+                    <button type="button" class="secondary-button px-6 py-2 rounded-lg close-modal-btn">Cancel</button>
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">${isEditing ? 'Save Changes' : 'Add Employee'}</button>
+                </div>
+            `;
+        }
+        
+        function setupEmployeeModalTabs(modal) {
+            const tabs = modal.querySelectorAll('#employee-modal-tabs .tab-button');
+            const panes = modal.querySelectorAll('.modal-tab-pane');
+            const payrollTab = modal.querySelector('[data-tab="payroll"]');
+            
+            if (payrollTab && !checkPlanPermission('Enterprise')) {
+                payrollTab.style.display = 'none';
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panes.forEach(p => p.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    modal.querySelector(`#${tab.dataset.tab}-tab-pane`).classList.add('active');
+                });
+            });
+        }
+        
+        function populateDropdown(select, optionsArray, selectedValue = null) {
+            if (!select || !optionsArray) {
+                if(select) select.innerHTML = '<option>No options available</option>';
+                return;
+            };
+            select.innerHTML = optionsArray.map(opt => `<option value="${opt}" ${selectedValue === opt ? 'selected' : ''}>${opt}</option>`).join('');
+        }
+
+        function populateEmployeeFormDropdowns(formElement, employee = {}) {
+            const ws = currentWorkspaceData;
+            populateDropdown(formElement.querySelector('select[name="department"]'), ws.departments, employee.department);
+            populateDropdown(formElement.querySelector('select[name="employeeType"]'), ws.employeeTypes, employee.employeeType);
+            populateDropdown(formElement.querySelector('select[name="payType"]'), ws.payTypes, employee.payType);
+            const supervisorOptions = employees.map(e => e.name);
+            populateDropdown(formElement.querySelector('select[name="supervisor"]'), supervisorOptions, employee.supervisor);
+            if(employee.status) formElement.querySelector('select[name="status"]').value = employee.status;
+            if(employee.role) formElement.querySelector('select[name="role"]').value = employee.role;
+        }
+        
+        function openAddEmployeeModal() {
+            addEmployeeForm.innerHTML = getEmployeeFormHtml();
+            populateEmployeeFormDropdowns(addEmployeeForm);
+            setupEmployeeModalTabs(addEmployeeModal);
+            addEmployeeForm.addEventListener('submit', handleAddEmployee);
+            addEmployeeModal.style.display = 'flex';
+        }
+
+        async function openEditEmployeeModal(employeeId) {
+            editingItemId = employeeId;
+            const employee = employees.find(e => e.id === employeeId);
+            if (!employee) return;
+            editEmployeeForm.innerHTML = getEmployeeFormHtml(employee);
+            setupEmployeeModalTabs(editEmployeeModal);
+
+            const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
+            const templatesSnap = await getDoc(templatesRef);
+            const deductionTemplates = templatesSnap.exists() ? templatesSnap.data().templates : [];
+            const newDeductionSelect = editEmployeeForm.querySelector('#new-deduction-template');
+            if(newDeductionSelect) newDeductionSelect.innerHTML = deductionTemplates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            
+            const addDeductionBtn = editEmployeeForm.querySelector('#add-deduction-btn');
+            if(addDeductionBtn) addDeductionBtn.addEventListener('click', () => {
+                const name = newDeductionSelect.value;
+                const amount = parseFloat(editEmployeeForm.querySelector('#new-deduction-amount').value);
+                const type = editEmployeeForm.querySelector('#new-deduction-type').value;
+
+                if (!name || isNaN(amount)) {
+                    showToast('Please select a deduction and enter a valid amount.', 'error');
+                    return;
+                }
+
+                const list = editEmployeeForm.querySelector('#assigned-deductions-list');
+                const newIndex = list.children.length;
+                const newDeductionEl = document.createElement('div');
+                newDeductionEl.className = 'flex items-center justify-between p-2 bg-gray-700 rounded';
+                newDeductionEl.dataset.index = newIndex;
+                newDeductionEl.innerHTML = `
+                    <span>${name}: ${type === 'fixed' ? '$' : ''}${amount}${type === 'percent' ? '%' : ''}</span>
+                    <button type="button" class="text-red-400 text-xl font-bold remove-deduction-btn">&times;</button>
+                `;
+                
+                if (list.querySelector('p')) list.innerHTML = '';
+                list.appendChild(newDeductionEl);
+                
+                newDeductionEl.querySelector('.remove-deduction-btn').addEventListener('click', (e) => e.target.parentElement.remove());
+                
+                editEmployeeForm.querySelector('#new-deduction-amount').value = '';
+            });
+
+            editEmployeeForm.querySelectorAll('.remove-deduction-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => e.target.parentElement.remove());
+            });
+            
+            populateEmployeeFormDropdowns(editEmployeeForm, employee);
+            editEmployeeForm.addEventListener('submit', handleEditEmployee);
+            editEmployeeModal.style.display = 'flex';
+        }
+        
+        async function handleAddEmployee(e) {
+            e.preventDefault();
+            const form = e.target;
+            const email = form.email.value;
+            const password = form.password.value;
+
+            const tempAppName = `temp-app-${Date.now()}`;
+            const tempApp = initializeApp(firebaseConfig, tempAppName);
+            const tempAuth = getAuth(tempApp);
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+                const newUid = userCredential.user.uid;
+
+                const newEmployeeData = {
+                    uid: newUid,
+                    email: email,
+                    employeeId: form.employeeId.value,
+                    name: `${form.firstName.value} ${form.lastName.value}`,
+                    firstName: form.firstName.value,
+                    lastName: form.lastName.value,
+                    hireDate: form.hireDate.value,
+                    department: form.department.value,
+                    payType: form.payType.value,
+                    employeeType: form.employeeType.value,
+                    supervisor: form.supervisor.value,
+                    cardNumber: form.cardNumber.value,
+                    hourlyRate: Number(form.hourlyRate.value) || 0,
+                    payroll: {
+                        filingStatus: form.filingStatus.value,
+                        allowances: Number(form.allowances.value) || 0,
+                    },
+                    role: form.role.value,
+                    status: 'Active'
+                };
+                await setDoc(doc(db, "workspaces", currentWorkspaceId, "members", newUid), newEmployeeData);
+
+                const userDocData = {
+                    email: email,
+                    name: newEmployeeData.name,
+                    activeWorkspaceId: currentWorkspaceId,
+                    workspaces: {
+                        [currentWorkspaceId]: newEmployeeData.role
+                    }
+                };
+                await setDoc(doc(db, "users", newUid), userDocData);
+
+                await sendPasswordResetEmail(auth, email);
+
+                showToast(`Employee ${newEmployeeData.name} created. A password reset email has been sent.`, 'success');
+                closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
+                renderManagePage('employees');
+
+            } catch (error) {
+                console.error("Error creating employee:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            } finally {
+                await deleteApp(tempApp);
+            }
+        }
+
+        async function handleEditEmployee(e) {
+            e.preventDefault();
+            const form = e.target;
+            
+            const assignedDeductions = [];
+            const deductionListItems = form.querySelectorAll('#assigned-deductions-list > div');
+            deductionListItems.forEach(item => {
+                const text = item.querySelector('span').textContent;
+                const [name, valueStr] = text.split(': ');
+                const type = valueStr.includes('%') ? 'percent' : 'fixed';
+                const amount = parseFloat(valueStr.replace(/[$%]/g, ''));
+                assignedDeductions.push({ name: name.trim(), amount, type });
+            });
+            
+            const updatedData = {
+                employeeId: form.employeeId.value,
+                name: `${form.firstName.value} ${form.lastName.value}`,
+                firstName: form.firstName.value,
+                middleName: form.middleName.value,
+                lastName: form.lastName.value,
+                hireDate: form.hireDate.value,
+                department: form.department.value,
+                payType: form.payType.value,
+                employeeType: form.employeeType.value,
+                supervisor: form.supervisor.value,
+                cardNumber: form.cardNumber.value,
+                hourlyRate: Number(form.hourlyRate.value) || 0,
+                 payroll: {
+                    filingStatus: form.filingStatus.value,
+                    allowances: Number(form.allowances.value) || 0,
+                    deductions: assignedDeductions
+                },
+                role: form.role.value,
+                status: form.status.value
+            };
+            await updateDoc(doc(db, "workspaces", currentWorkspaceId, "members", editingItemId), updatedData);
+            
+            const userDocRef = doc(db, "users", editingItemId);
+            await updateDoc(userDocRef, {
+                [`workspaces.${currentWorkspaceId}`]: updatedData.role
+            });
+
+            showToast('Employee updated successfully.', 'success');
+            closeAllModals();
+            editingItemId = null;
+            await loadWorkspaceData(currentWorkspaceId);
+            renderManagePage('employees');
+        }
+
+        async function handleRemoveEmployee(employeeId) {
+            openConfirmationModal(
+                'Remove Employee',
+                'This will remove the employee from this workspace but will not delete their NexusTime account. Are you sure?',
+                async () => {
+                    const batch = writeBatch(db);
+                    
+                    const memberRef = doc(db, "workspaces", currentWorkspaceId, "members", employeeId);
+                    batch.delete(memberRef);
+
+                    const userRef = doc(db, "users", employeeId);
+                    const userData = (await getDoc(userRef)).data();
+                    if (userData && userData.workspaces) {
+                        delete userData.workspaces[currentWorkspaceId];
+                        batch.update(userRef, { workspaces: userData.workspaces });
+                    }
+                    
+                    await batch.commit();
+
+                    showToast('Employee removed from workspace.', 'success');
+                    closeAllModals();
+                    await loadWorkspaceData(currentWorkspaceId);
+                    renderManagePage('employees');
+                }
+            );
+        }
+
+        async function handleSendPasswordReset(email) {
+            if (!email) {
+                showToast('No email on file for this user.', 'error');
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showToast(`Password reset email sent to ${email}.`, 'success');
+            } catch (error) {
+                console.error("Password reset error:", error);
+                showToast(`Error sending email: ${error.message}`, 'error');
+            }
+        }
+
+        function getProjectFormHtml(project = {}) {
+            const customFields = currentWorkspaceData.projectCustomFields || [];
+            let customFieldsHtml = customFields.map(field => `
+                <div>
+                    <label class="block text-gray-300 mb-2">${field}</label>
+                    <input type="text" name="${field}" class="form-input w-full" value="${project[field] || ''}">
+                </div>
+            `).join('');
+
+            return `
+                <div>
+                    <label class="block text-gray-300 mb-2">Project Name</label>
+                    <input type="text" name="name" class="w-full p-3 form-input" required value="${project.name || ''}">
+                </div>
+                ${customFieldsHtml}
+                <div class="flex justify-end gap-4 pt-4">
+                    <button type="button" class="secondary-button px-6 py-2 rounded-lg close-modal-btn">Cancel</button>
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">${project.id ? 'Save Changes' : 'Add Project'}</button>
+                </div>
+            `;
+        }
+
+        function openProjectModal(projectId = null) {
+            editingItemId = projectId;
+            const project = projectId ? projects.find(p => p.id === projectId) : {};
+            document.getElementById('project-modal-title-text').textContent = projectId ? 'Edit Project' : 'Add New Project';
+            projectForm.innerHTML = getProjectFormHtml(project);
+            projectForm.addEventListener('submit', handleProjectFormSubmit);
+            projectModal.style.display = 'flex';
+        }
+
+        async function handleProjectFormSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const projectData = {};
+            for (let [key, value] of formData.entries()) {
+                projectData[key] = value;
+            }
+
+            if (editingItemId) {
+                await updateDoc(doc(db, "workspaces", currentWorkspaceId, "projects", editingItemId), projectData);
+            } else {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "projects"), projectData);
+            }
+
+            showToast('Project saved.', 'success');
+            closeAllModals();
+            editingItemId = null;
+            await loadWorkspaceData(currentWorkspaceId);
+            renderManagePage('projects');
+        }
+
+        async function handleRemoveProject(projectId) {
+            await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "projects", projectId));
+            showToast('Project removed.', 'success');
+            await loadWorkspaceData(currentWorkspaceId);
+            renderManagePage('projects');
+        }
+
+        function renderSettingsPage() {
+            const userRole = currentUserData.workspaces[currentWorkspaceId];
+            const isAdmin = userRole === 'Admin';
+
+            const tabs = [
+                { id: 'profile', label: 'My Profile', visible: true },
+                { id: 'workspace', label: 'Workspace', visible: isAdmin },
+                { id: 'payroll', label: 'Payroll', visible: isAdmin && checkPlanPermission('Enterprise') },
+                { id: 'billing', label: 'Billing & Plan', visible: isAdmin },
+                { id: 'danger', label: 'Danger Zone', visible: isAdmin }
+            ];
+
+            settingsNav.innerHTML = tabs
+                .filter(tab => tab.visible)
+                .map(tab => `<button class="tab-button text-left p-3 rounded-lg hover:bg-gray-700 w-full" data-tab="${tab.id}">${tab.label}</button>`)
+                .join('');
+
+            settingsContentArea.innerHTML = tabs
+                .filter(tab => tab.visible)
+                .map(tab => `<div id="${tab.id}-settings-tab" class="settings-tab-content"></div>`)
+                .join('');
+            
+            const firstVisibleTab = tabs.find(t => t.visible);
+            if (firstVisibleTab) {
+                switchSettingsTab(firstVisibleTab.id);
+            }
+
+            settingsNav.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => switchSettingsTab(button.dataset.tab));
+            });
+        }
+
+        function switchSettingsTab(tabId) {
+            settingsNav.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabId);
+                btn.classList.toggle('bg-gray-700', btn.dataset.tab === tabId);
+            });
+            settingsContentArea.querySelectorAll('.settings-tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === `${tabId}-settings-tab`);
+            });
+
+            switch (tabId) {
+                case 'profile': renderProfileSettings(); break;
+                case 'workspace': renderWorkspaceSettings(); break;
+                case 'payroll': renderPayrollSettingsTab(); break;
+                case 'billing': renderBillingSettings(); break;
+                case 'danger': renderDangerZoneSettings(); break;
+            }
+        }
+        
+        function renderProfileSettings() {
+            const container = document.getElementById('profile-settings-tab');
+            const prefs = currentUserData.preferences || {};
+            const notifications = prefs.notifications || {};
+            const integrationsHtml = checkPlanPermission('Starter') ? `
+                 <div class="card p-8">
+                    <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
+                    <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                        <div>
+                            <h4 class="font-bold text-white">Google Calendar</h4>
+                            <p class="text-sm text-gray-400">Sync your NexusTime schedule with Google Calendar.</p>
+                        </div>
+                        <button type="button" id="connect-calendar-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
+                    </div>
+                </div>
+            ` : '';
+
+            container.innerHTML = `
+                <form id="profile-settings-form" class="space-y-12">
+                    <div class="card p-8">
+                        <h3 class="text-xl font-semibold text-white mb-6">Personal Information</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label class="block text-gray-400">Name</label><input type="text" name="name" class="form-input w-full mt-1" value="${currentUserData.name || ''}"></div>
+                                <div><label class="block text-gray-400">Email</label><input type="email" class="form-input w-full mt-1" value="${currentUser.email}" disabled></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-8">
+                        <h3 class="text-xl font-semibold text-white mb-6">Change Password</h3>
+                         <div class="space-y-4">
+                            <div><label class="block text-gray-400">Current Password</label><input type="password" name="currentPassword" class="form-input w-full mt-1" placeholder="Required to change password"></div>
+                            <div><label class="block text-gray-400">New Password</label><input type="password" name="newPassword" class="form-input w-full mt-1" placeholder="Leave blank to keep current"></div>
+                            <div><label class="block text-gray-400">Confirm New Password</label><input type="password" name="confirmPassword" class="form-input w-full mt-1"></div>
+                        </div>
+                    </div>
+                    <div class="card p-8">
+                        <h3 class="text-xl font-semibold text-white mb-6">Preferences & Notifications</h3>
+                        <div class="space-y-6">
+                           <div>
+                                <h4 class="font-medium text-white mb-2">Email Notifications</h4>
+                                <div class="space-y-2">
+                                    <label class="flex items-center"><input type="checkbox" name="notificationTimesheet" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 mr-2" ${notifications.timesheetReminders !== false ? 'checked' : ''}><span class="text-gray-300">Weekly Timesheet Reminders</span></label>
+                                    <label class="flex items-center"><input type="checkbox" name="notificationSchedule" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 mr-2" ${notifications.scheduleUpdates !== false ? 'checked' : ''}><span class="text-gray-300">Schedule Updates</span></label>
+                                    <label class="flex items-center"><input type="checkbox" name="notificationApprovals" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 mr-2" ${notifications.approvalConfirmations !== false ? 'checked' : ''}><span class="text-gray-300">Approval Confirmations</span></label>
+                                </div>
+                           </div>
+                        </div>
+                    </div>
+                    ${integrationsHtml}
+                    <div class="flex justify-end">
+                        <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Profile Settings</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('profile-settings-form').addEventListener('submit', handleSaveProfileSettings);
+            const connectCalendarBtn = document.getElementById('connect-calendar-btn');
+            if (connectCalendarBtn) {
+                connectCalendarBtn.addEventListener('click', () => {
+                    showToast('Calendar integration coming soon!', 'success');
+                });
+            }
+        }
+
+        function renderWorkspaceSettings() {
+            const container = document.getElementById('workspace-settings-tab');
+            const ws = currentWorkspaceData;
+            
+            const proFeaturesHtml = checkPlanPermission('Pro') ? `
+                 <div class="card p-8">
+                     <h3 class="text-xl font-semibold text-white mb-6">Security (Pro Feature)</h3>
+                     <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-white">Require Two-Factor Authentication</h4>
+                                <p class="text-sm text-gray-400">Force all members to use 2FA for enhanced security.</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" name="require2FA" ${ws.security?.require2FA ? 'checked' : ''}><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="border-t border-gray-700 my-2"></div>
+                         <div>
+                            <label class="block text-gray-400 mb-1">Session Timeout</label>
+                            <select name="sessionTimeout" class="form-select w-full md:w-1/2">
+                                <option value="30" ${ws.security?.sessionTimeout == 30 ? 'selected' : ''}>30 minutes</option>
+                                <option value="60" ${ws.security?.sessionTimeout == 60 ? 'selected' : ''}>1 hour</option>
+                                <option value="480" ${ws.security?.sessionTimeout == 480 ? 'selected' : ''}>8 hours</option>
+                                <option value="0" ${!ws.security?.sessionTimeout || ws.security?.sessionTimeout == 0 ? 'selected' : ''}>Never</option>
+                            </select>
+                            <p class="text-sm text-gray-400 mt-1">Automatically log out users after a period of inactivity.</p>
+                        </div>
+                     </div>
+                </div>
+                 <div class="card p-8">
+                     <h3 class="text-xl font-semibold text-white mb-6">Data & API (Pro Feature)</h3>
+                     <div class="space-y-6">
+                         <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-white">Export Workspace Data</h4>
+                                <p class="text-sm text-gray-400">Download all your workspace data as a CSV file.</p>
+                            </div>
+                            <button type="button" id="export-data-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
+                        </div>
+                         <div class="border-t border-gray-700 my-2"></div>
+                         <div>
+                            <h4 class="font-medium text-white">API Access</h4>
+                            <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
+                            <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
+                        </div>
+                     </div>
+                </div>
+            ` : `
+                <div class="card p-8 border border-dashed border-gray-600 text-center">
+                    <h3 class="text-lg font-semibold text-white">Unlock Advanced Settings</h3>
+                    <p class="text-gray-400 mt-2">Upgrade to the Pro plan to access advanced security, data exports, and API access.</p>
+                    <button type="button" id="upgrade-from-ws-settings-btn" class="mt-4 cta-button px-6 py-2 rounded-lg">Upgrade Plan</button>
+                </div>
+            `;
+
+            container.innerHTML = `
+                <form id="workspace-settings-form" class="space-y-12">
+                    <div class="card p-8">
+                         <h3 class="text-xl font-semibold text-white mb-6">General</h3>
+                         <div class="space-y-4">
+                            <div><label class="block text-gray-400">Workspace Name</label><input type="text" name="workspaceName" class="form-input w-full mt-1" value="${ws.name || ''}"></div>
+                         </div>
+                    </div>
+                    ${proFeaturesHtml}
+                    <div class="flex justify-end">
+                        <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Workspace Settings</button>
+                    </div>
+                </form>
+            `;
+            document.getElementById('workspace-settings-form').addEventListener('submit', handleSaveWorkspaceSettings);
+            const exportBtn = document.getElementById('export-data-btn');
+            if(exportBtn) exportBtn.addEventListener('click', () => { showToast('Data export feature coming soon!', 'success'); });
+            const upgradeBtn = document.getElementById('upgrade-from-ws-settings-btn');
+            if(upgradeBtn) upgradeBtn.addEventListener('click', () => switchSettingsTab('billing'));
+        }
+
+        async function renderPayrollSettingsTab() {
+            const container = document.getElementById('payroll-settings-tab');
+            container.innerHTML = `<div class="loader"></div>`;
+
+            const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
+            const templatesSnap = await getDoc(templatesRef);
+            const deductionTemplates = templatesSnap.exists() ? templatesSnap.data().templates : [];
+
+            let templatesHtml = deductionTemplates.map((template, index) => `
+                <li class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                    <div>
+                        <p class="font-semibold text-white">${template.name}</p>
+                        <p class="text-sm text-gray-400">Type: ${template.type}</p>
+                    </div>
+                    <div>
+                        <button class="text-red-400 hover:text-red-300 font-semibold remove-deduction-template-btn" data-index="${index}">Remove</button>
+                    </div>
+                </li>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="card p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-semibold text-white">Deduction & Benefit Templates</h3>
+                        <button id="add-deduction-template-btn" class="cta-button px-4 py-2 rounded-lg text-sm">Add Template</button>
+                    </div>
+                    <p class="text-gray-400 mb-4">Create templates for common deductions (e.g., Health Insurance, 401(k)). These will be available to assign to employees.</p>
+                    <ul id="deduction-templates-list" class="space-y-3">
+                        ${templatesHtml || '<p class="text-gray-500">No deduction templates created yet.</p>'}
+                    </ul>
+                </div>
+            `;
+
+            document.getElementById('add-deduction-template-btn').addEventListener('click', () => {
+                const name = prompt("Enter template name (e.g., Health Insurance):");
+                if (!name) return;
+                const type = prompt("Enter type ('pre-tax' or 'post-tax'):", "pre-tax");
+                if (type !== 'pre-tax' && type !== 'post-tax') {
+                    alert("Invalid type. Please enter 'pre-tax' or 'post-tax'.");
+                    return;
+                }
+                handleSaveDeductionTemplate({ name, type });
+            });
+            
+            container.querySelectorAll('.remove-deduction-template-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                     if (confirm('Are you sure you want to remove this template?')) {
+                        handleRemoveDeductionTemplate(parseInt(e.target.dataset.index));
+                    }
+                });
+            });
+        }
+        
+        async function handleSaveDeductionTemplate(newTemplate) {
+            const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
+            await setDoc(templatesRef, {
+                templates: arrayUnion(newTemplate)
+            }, { merge: true });
+
+            showToast('Deduction template saved!', 'success');
+            await loadWorkspaceData(currentWorkspaceId);
+            renderPayrollSettingsTab();
+        }
+
+        async function handleRemoveDeductionTemplate(indexToRemove) {
+            const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
+            const templatesSnap = await getDoc(templatesRef);
+            if (templatesSnap.exists()) {
+                const currentTemplates = templatesSnap.data().templates;
+                currentTemplates.splice(indexToRemove, 1);
+                await setDoc(templatesRef, { templates: currentTemplates });
+                showToast('Deduction template removed!', 'success');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderPayrollSettingsTab();
+            }
+        }
+
+        function renderBillingSettings() {
+            const container = document.getElementById('billing-settings-tab');
+            const currentPlan = currentWorkspaceData.plan || 'Free';
+            
+            const plans = {
+                Free: { price: 0, annual: 0, features: ["5 User Seats", "3 Active Projects", "Basic Time Tracking"] },
+                Starter: { price: 6, annual: 5, features: ["Unlimited Users", "Unlimited Projects", "Timesheet Approvals", "Team Reporting"] },
+                Pro: { price: 12, annual: 10, features: ["Everything in Starter", "Scheduling & Tasks", "Project Budgeting", "API & Integrations"] },
+                Enterprise: { price: 15, annual: 12, features: ["Everything in Pro", "Full Payroll Suite", "SAML SSO & Audit Logs", "Dedicated Support"] }
+            };
+            
+            let plansHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
+            for (const [planName, planDetails] of Object.entries(plans)) {
+                const isCurrent = planName === currentPlan;
+                let buttonHtml;
+                if (isCurrent) {
+                    buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" disabled>Current Plan</button>`;
+                } else {
+                    const actionText = (PLAN_HIERARCHY[planName] > PLAN_HIERARCHY[currentPlan]) ? 'Upgrade' : 'Downgrade';
+                    buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}">${actionText} to ${planName}</button>`;
+                }
+
+                plansHtml += `
+                    <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''} relative">
+                         ${isCurrent ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
+                        <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
+                        <p class="text-4xl font-extrabold my-4 text-white">$<span data-price-monthly="${planDetails.price}" data-price-annual="${planDetails.annual}">${planDetails.price}</span><span class="text-base font-medium text-gray-400">/user/month</span></p>
+                        <ul class="space-y-2 text-gray-300 flex-grow mb-6">
+                            ${planDetails.features.map(f => `
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-emerald-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>${f}</span>
+                                </li>`).join('')}
+                        </ul>
+                        <div class="mt-auto">
+                            ${buttonHtml}
+                        </div>
+                    </div>
+                `;
+            }
+            plansHtml += '</div>';
+
+            container.innerHTML = `
+                <h3 class="text-xl font-semibold text-white mb-2">Billing & Plan</h3>
+                <p class="text-gray-400 mb-6">Choose the plan that's right for your team.</p>
+                ${plansHtml}
+            `;
+            
+            container.querySelectorAll('button[data-plan]').forEach(button => {
+                button.addEventListener('click', () => handlePlanSelection(button.dataset.plan));
+            });
+        }
+
+        function renderDangerZoneSettings() {
+            const container = document.getElementById('danger-settings-tab');
+            container.innerHTML = `
+                 <div class="card p-8 border-red-500 border-2">
+                    <h3 class="text-xl font-semibold text-red-400 mb-2">Danger Zone</h3>
+                    <p class="text-gray-400 mb-6">These actions are permanent and cannot be undone.</p>
+                    <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
+                        <div>
+                            <h4 class="font-bold text-white">Delete this Workspace</h4>
+                            <p class="text-sm text-gray-400">All data, including employees, timesheets, and projects will be permanently deleted.</p>
+                        </div>
+                        <button id="delete-workspace-btn" class="danger-button px-4 py-2 rounded-lg font-semibold">Delete Workspace</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
+        }
+        
+        async function handleSaveProfileSettings(e) {
+            e.preventDefault();
+            const form = e.target;
+            const newPassword = form.newPassword.value;
+            const confirmPassword = form.confirmPassword.value;
+            const currentPassword = form.currentPassword.value;
+
+            if (newPassword) {
+                if (!currentPassword) {
+                    showToast('Please enter your current password to set a new one.', 'error');
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
+                    showToast('New passwords do not match.', 'error');
+                    return;
+                }
+                
+                try {
+                    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+                    await reauthenticateWithCredential(currentUser, credential);
+                    await updatePassword(currentUser, newPassword);
+                    showToast('Password updated successfully.', 'success');
+                    form.currentPassword.value = '';
+                    form.newPassword.value = '';
+                    form.confirmPassword.value = '';
+                } catch (error) {
+                    console.error("Password update failed:", error);
+                    showToast(`Password update failed: ${error.message}`, 'error');
+                    return;
+                }
+            }
+
+            const userDocRef = doc(db, "users", currentUser.uid);
+            const updatedProfile = {
+                name: form.name.value,
+                preferences: {
+                    notifications: {
+                        timesheetReminders: form.notificationTimesheet.checked,
+                        scheduleUpdates: form.notificationSchedule.checked,
+                        approvalConfirmations: form.notificationApprovals.checked
+                    }
+                }
+            };
+            
+            try {
+                await updateDoc(userDocRef, updatedProfile);
+                showToast('Profile settings saved successfully!', 'success');
+                await loadUserData(currentUser.uid);
+            } catch (error) {
+                console.error("Error saving profile:", error);
+                showToast(`Error saving profile: ${error.message}`, 'error');
+            }
+        }
+        
+        async function handleSaveWorkspaceSettings(e) {
+            e.preventDefault();
+            const form = e.target;
+            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
+            
+            const updatedSettings = {
+                name: form.workspaceName.value,
+            };
+
+            if (checkPlanPermission('Pro')) {
+                updatedSettings.security = {
+                    require2FA: form.require2FA.checked,
+                    sessionTimeout: Number(form.sessionTimeout.value)
+                }
+            }
+
+            try {
+                await updateDoc(workspaceDocRef, updatedSettings);
+                showToast('Workspace settings saved successfully!', 'success');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderWorkspaceSettings();
+            } catch (error) {
+                console.error("Error saving workspace settings:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function handlePlanSelection(newPlan) {
+            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
+            try {
+                await updateDoc(workspaceDocRef, { plan: newPlan });
+                showToast(`Successfully changed plan to ${newPlan}!`, 'success');
+                await loadWorkspaceData(currentWorkspaceId); 
+                renderBillingSettings(); 
+                updateNav();
+            } catch (error) {
+                console.error("Error changing plan:", error);
+                showToast(`Failed to change plan: ${error.message}`, 'error');
+            }
+        }
+
+        function handleDeleteWorkspace() {
+            openConfirmationModal(
+                'Delete Workspace',
+                `This will permanently delete the "${currentWorkspaceData.name}" workspace and all its data. This action cannot be undone.`,
+                async () => {
+                    const batch = writeBatch(db);
+                    
+                    console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
+
+                    const userDocRef = doc(db, "users", currentUser.uid);
+                    const newWorkspaces = { ...currentUserData.workspaces };
+                    delete newWorkspaces[currentWorkspaceId];
+                    
+                    batch.update(userDocRef, {
+                        workspaces: newWorkspaces,
+                        activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
+                    });
+                    
+                    batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
+
+                    await batch.commit();
+
+                    showToast('Workspace deletion initiated.', 'success');
+                    window.location.hash = 'company-selection';
+                    closeAllModals();
+                }
+            );
+        }
+
+        function openConfirmationModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirmation-modal');
+            document.getElementById('confirmation-modal-title').textContent = title;
+            document.getElementById('confirmation-modal-message').textContent = message;
+            
+            const confirmBtn = document.getElementById('confirmation-confirm-btn');
+            const cancelBtn = document.getElementById('confirmation-cancel-btn');
+            
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            
+            newConfirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', closeAllModals);
+
+            modal.style.display = 'flex';
+        }
+
+        function renderOnboardingPage() {
+            const userPlan = currentUserData.plan || 'Free';
+            const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
+            const existingWorkspaceCount = Object.keys(currentUserData.workspaces || {}).length;
+
+            if (existingWorkspaceCount >= workspaceLimit) {
+                onboardingContainer.innerHTML = `
+                    <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Cannot Create Workspace</h2>
+                    <p class="text-center text-gray-400">Your current plan (${userPlan}) allows for a maximum of ${workspaceLimit} workspace(s). Please upgrade your plan to create more.</p>
+                    <div class="text-center mt-6">
+                        <a href="#settings" data-page="settings" class="cta-button px-8 py-3 rounded-lg font-semibold">Go to Settings</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            const industries = ["Software", "Healthcare", "Retail", "Education", "Construction", "Finance", "Legal", "Hospitality", "Transportation", "Manufacturing", "Marketing", "Non-Profit", "Real Estate", "Telecommunications", "Government"];
+            const companySizes = ["1-10 employees", "11-50 employees", "51-200 employees", "201-500 employees", "500+ employees"];
+            const timezones = {"(GMT-12:00) International Date Line West": "Etc/GMT+12", "(GMT-11:00) Midway Island, Samoa": "Pacific/Samoa", "(GMT-10:00) Hawaii": "Pacific/Honolulu", "(GMT-09:00) Alaska": "America/Anchorage", "(GMT-08:00) Pacific Time (US & Canada)": "America/Los_Angeles", "(GMT-07:00) Mountain Time (US & Canada)": "America/Denver", "(GMT-06:00) Central Time (US & Canada)": "America/Chicago", "(GMT-05:00) Eastern Time (US & Canada)": "America/New_York", "(GMT-04:00) Atlantic Time (Canada)": "America/Halifax", "(GMT-03:00) Buenos Aires, Georgetown": "America/Argentina/Buenos_Aires", "(GMT-02:00) Mid-Atlantic": "Atlantic/South_Georgia", "(GMT-01:00) Cape Verde Is.": "Atlantic/Cape_Verde", "(GMT+00:00) London, Lisbon": "Europe/London", "(GMT+01:00) Amsterdam, Berlin, Rome": "Europe/Berlin", "(GMT+02:00) Athens, Jerusalem": "Europe/Athens", "(GMT+03:00) Moscow, St. Petersburg": "Europe/Moscow", "(GMT+04:00) Abu Dhabi, Muscat": "Asia/Dubai", "(GMT+05:00) Islamabad, Karachi, Tashkent": "Asia/Karachi", "(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi": "Asia/Kolkata", "(GMT+06:00) Almaty, Novosibirsk": "Asia/Almaty", "(GMT+07:00) Bangkok, Hanoi, Jakarta": "Asia/Bangkok", "(GMT+08:00) Beijing, Perth, Singapore, Hong Kong": "Asia/Hong_Kong", "(GMT+09:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk": "Asia/Tokyo", "(GMT+09:30) Adelaide, Darwin": "Australia/Darwin", "(GMT+10:00) Brisbane, Canberra, Melbourne, Sydney": "Australia/Sydney", "(GMT+11:00) Magadan, Solomon Is., New Caledonia": "Pacific/Guadalcanal", "(GMT+12:00) Auckland, Wellington, Fiji": "Pacific/Auckland"};
+
+            onboardingContainer.innerHTML = `
+                <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Create a New Workspace</h2>
+                <form id="onboarding-form" class="space-y-4">
+                    <div><label class="block text-gray-300 mb-1">Workspace Name</label><input type="text" name="workspaceName" class="w-full p-3 form-input" required></div>
+                    <div><label class="block text-gray-300 mb-1">Industry</label><select name="industry" class="w-full p-3 form-select">${industries.map(i => `<option value="${i}">${i}</option>`).join('')}</select></div>
+                    <div><label class="block text-gray-300 mb-1">Company Size</label><select name="companySize" class="w-full p-3 form-select">${companySizes.map(s => `<option value="${s}">${s}</option>`).join('')}</select></div>
+                    <div><label class="block text-gray-300 mb-1">Time Zone</label><select name="timezone" class="w-full p-3 form-select">${Object.entries(timezones).map(([name, value]) => `<option value="${value}">${name}</option>`).join('')}</select></div>
+                    <div class="text-center pt-4"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Create Workspace</button></div>
+                </form>
+            `;
+
+            document.getElementById('onboarding-form').addEventListener('submit', handleCreateWorkspace);
+        }
+        
+        async function renderSchedulePage() {
+            if (!checkPlanPermission('Pro')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Pro plan to access Scheduling.', 'error');
+                return;
+            }
+            const container = document.getElementById('schedule-container');
+            const userRole = currentUserData.workspaces[currentWorkspaceId];
+            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
+                    <div class="flex items-center gap-4">
+                        <button id="prev-month-btn" class="secondary-button p-2 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+                        <h2 id="calendar-header" class="text-3xl font-bold text-white text-center">
+                            ${monthNames[calendarDate.getMonth()]} ${calendarDate.getFullYear()}
+                        </h2>
+                        <button id="next-month-btn" class="secondary-button p-2 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                    </div>
+                    ${isAdminOrManager ? '<button id="add-shift-main-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Add Shift</button>' : ''}
+                </div>
+                <div id="calendar-grid-container" class="card p-4"></div>
+            `;
+
+            renderCalendarGrid();
+
+            document.getElementById('prev-month-btn').addEventListener('click', () => {
+                calendarDate.setMonth(calendarDate.getMonth() - 1);
+                renderSchedulePage();
+            });
+            document.getElementById('next-month-btn').addEventListener('click', () => {
+                calendarDate.setMonth(calendarDate.getMonth() + 1);
+                renderSchedulePage();
+            });
+            const addShiftBtn = document.getElementById('add-shift-main-btn');
+            if(addShiftBtn) addShiftBtn.addEventListener('click', () => openAddShiftModal());
+        }
+
+        function renderCalendarGrid() {
+            const gridContainer = document.getElementById('calendar-grid-container');
+            const month = calendarDate.getMonth();
+            const year = calendarDate.getFullYear();
+            
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const startDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon, ...
+
+            const monthShifts = schedules.filter(s => {
+                const shiftDate = new Date(s.start);
+                return shiftDate.getMonth() === month && shiftDate.getFullYear() === year;
+            });
+
+            let gridHtml = `<div class="grid grid-cols-7 text-center font-bold text-gray-400 border-b border-gray-700 mb-2 pb-2">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div class="calendar-grid gap-px bg-gray-700">`;
+
+            for (let i = 0; i < startDayOfWeek; i++) {
+                gridHtml += `<div class="calendar-day other-month"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const shiftsForDay = monthShifts.filter(s => s.start.startsWith(dateString));
+                
+                let shiftsHtml = shiftsForDay.map(shift => {
+                    const emp = employees.find(e => e.id === shift.userId);
+                    const startTime = new Date(shift.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    return `<div class="shift-badge" title="${emp?.name} - ${shift.title}">${startTime} ${emp?.name}</div>`
+                }).join('');
+
+                gridHtml += `<div class="calendar-day bg-gray-800 p-2" data-date="${dateString}">
+                                <div class="font-bold">${day}</div>
+                                <div class="mt-1 space-y-1">${shiftsHtml}</div>
+                             </div>`;
+            }
+            gridHtml += '</div>';
+            gridContainer.innerHTML = gridHtml;
+
+            gridContainer.querySelectorAll('.calendar-day:not(.other-month)').forEach(dayCell => {
+                dayCell.addEventListener('click', () => openAddShiftModal(dayCell.dataset.date));
+            });
+        }
+        
+        function openAddShiftModal(date = null) {
+            const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            const today = new Date().toISOString().split('T')[0];
+            
+            addShiftForm.innerHTML = `
+                <div><label class="block text-gray-300 mb-1">Employee</label><select name="userId" class="form-select w-full" required>${employeeOptions}</select></div>
+                <div><label class="block text-gray-300 mb-1">Shift Title (optional)</label><input type="text" name="title" class="form-input w-full"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-1">Start Time</label>
+                        <input type="datetime-local" name="start" class="form-input w-full" value="${date || today}T09:00" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-1">End Time</label>
+                        <input type="datetime-local" name="end" class="form-input w-full" value="${date || today}T17:00" required>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">Save Shift</button>
+                </div>
+            `;
+            addShiftForm.addEventListener('submit', handleAddShift);
+            addShiftModal.style.display = 'flex';
+        }
+
+        async function handleAddShift(e) {
+            e.preventDefault();
+            const form = e.target;
+            const shiftData = {
+                userId: form.userId.value,
+                title: form.title.value || 'Work Shift',
+                start: form.start.value,
+                end: form.end.value,
+                createdAt: new Date()
+            };
+
+            try {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "schedules"), shiftData);
+                showToast('Shift added successfully!', 'success');
+                closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
+                renderSchedulePage();
+            } catch (error) {
+                console.error("Error adding shift:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function renderTasksPage() {
+            if (!checkPlanPermission('Pro')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Pro plan to access Tasks.', 'error');
+                return;
+            }
+            const container = document.getElementById('tasks-container');
+            const userRole = currentUserData.workspaces[currentWorkspaceId];
+            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
+
+            let headerHtml = `
+                <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+                    <h2 class="text-3xl font-bold text-white">${isAdminOrManager ? 'Task Dashboard' : 'My Tasks'}</h2>
+                    ${isAdminOrManager ? '<button id="create-task-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Create New Task</button>' : ''}
+                </div>
+            `;
+
+            let tasksHtml;
+            const userTasks = isAdminOrManager ? tasks : tasks.filter(t => t.assigneeId === currentUser.uid);
+
+            if (userTasks.length === 0) {
+                tasksHtml = '<div class="card p-8 text-center"><p class="text-gray-400">No tasks found.</p></div>';
+            } else {
+                tasksHtml = '<div class="card p-6"><ul class="space-y-4">';
+                userTasks.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate)).forEach(task => {
+                    const assignee = employees.find(e => e.id === task.assigneeId);
+                    tasksHtml += `
+                        <li class="task-item ${task.status === 'completed' ? 'completed' : ''} bg-gray-800 p-4 rounded-lg flex items-center justify-between">
+                            <div class="flex items-center">
+                                ${!isAdminOrManager ? `<input type="checkbox" data-task-id="${task.id}" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 mr-4" ${task.status === 'completed' ? 'checked' : ''}>` : ''}
+                                <div>
+                                    <p class="font-semibold text-white">${task.title}</p>
+                                    <p class="text-sm text-gray-400">${task.description || 'No description'}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="status-badge ${task.status === 'completed' ? 'status-completed' : 'status-pending'}">${task.status}</span>
+                                <p class="text-sm text-gray-400 mt-1">Due: ${task.dueDate}</p>
+                                ${isAdminOrManager ? `<p class="text-sm text-gray-300">To: ${assignee?.name || 'Unassigned'}</p>` : ''}
+                            </div>
+                        </li>
+                    `;
+                });
+                tasksHtml += '</ul></div>';
+            }
+
+            container.innerHTML = headerHtml + tasksHtml;
+            
+            if (isAdminOrManager) {
+                document.getElementById('create-task-btn').addEventListener('click', openCreateTaskModal);
+            } else {
+                container.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => handleTaskStatusChange(e.target.dataset.taskId, e.target.checked));
+                });
+            }
+        }
+
+        function openCreateTaskModal() {
+            const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            createTaskForm.innerHTML = `
+                <div><label class="block text-gray-300 mb-1">Task Title</label><input type="text" name="title" class="form-input w-full" required></div>
+                <div><label class="block text-gray-300 mb-1">Description</label><textarea name="description" class="form-textarea w-full" rows="3"></textarea></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-300 mb-1">Assign To</label>
+                        <select name="assigneeId" class="form-select w-full" required>${employeeOptions}</select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-1">Due Date</label>
+                        <input type="date" name="dueDate" class="form-input w-full" required>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">Assign Task</button>
+                </div>
+            `;
+            createTaskForm.addEventListener('submit', handleCreateTask);
+            createTaskModal.style.display = 'flex';
+        }
+
+        async function handleCreateTask(e) {
+            e.preventDefault();
+            const form = e.target;
+            const assigneeId = form.assigneeId.value;
+            const assignee = employees.find(emp => emp.id === assigneeId);
+
+            const taskData = {
+                title: form.title.value,
+                description: form.description.value,
+                assigneeId: assigneeId,
+                assigneeName: assignee.name,
+                dueDate: form.dueDate.value,
+                status: 'pending',
+                creatorId: currentUser.uid,
+                createdAt: new Date()
+            };
+
+            try {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "tasks"), taskData);
+                showToast('Task created successfully!', 'success');
+                closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
+                renderTasksPage();
+            } catch (error) {
+                console.error("Error creating task:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function handleTaskStatusChange(taskId, isCompleted) {
+            const taskRef = doc(db, "workspaces", currentWorkspaceId, "tasks", taskId);
+            const newStatus = isCompleted ? 'completed' : 'pending';
+            try {
+                await updateDoc(taskRef, { status: newStatus });
+                showToast(`Task marked as ${newStatus}.`, 'success');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderTasksPage();
+            } catch (error) {
+                console.error("Error updating task status:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function renderTimeOffPage() {
+            if (!checkPlanPermission('Pro')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Pro plan to access Time Off management.', 'error');
+                return;
+            }
+            const container = document.getElementById('time-off-container');
+            const userRole = currentUserData.workspaces[currentWorkspaceId];
+            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
+
+            let headerHtml = `
+                <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+                    <h2 class="text-3xl font-bold text-white">${isAdminOrManager ? 'Time Off Dashboard' : 'My Time Off'}</h2>
+                    <button id="request-time-off-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Request Time Off</button>
+                </div>
+            `;
+            
+            let contentHtml = isAdminOrManager ? renderManagerTimeOffView() : renderEmployeeTimeOffView();
+            container.innerHTML = headerHtml + contentHtml;
+
+            document.getElementById('request-time-off-btn').addEventListener('click', openRequestTimeOffModal);
+            if (isAdminOrManager) {
+                 container.querySelectorAll('.approve-btn, .deny-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const requestId = e.target.dataset.id;
+                        const action = e.target.dataset.action;
+                        handleTimeOffApproval(requestId, action);
+                    });
+                });
+            }
+        }
+
+        function renderEmployeeTimeOffView() {
+            const myRequests = timeOffRequests.filter(r => r.userId === currentUser.uid);
+            
+            const balancesHtml = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="card p-4 text-center"><p class="text-gray-400">Vacation Balance</p><p class="text-2xl font-bold text-white">80 <span class="text-base font-normal">hours</span></p></div>
+                    <div class="card p-4 text-center"><p class="text-gray-400">Sick Leave Balance</p><p class="text-2xl font-bold text-white">40 <span class="text-base font-normal">hours</span></p></div>
+                    <div class="card p-4 text-center"><p class="text-gray-400">Personal Time</p><p class="text-2xl font-bold text-white">16 <span class="text-base font-normal">hours</span></p></div>
+                </div>
+            `;
+
+            let requestsHtml;
+            if (myRequests.length === 0) {
+                 requestsHtml = '<div class="card p-8 text-center"><p class="text-gray-400">You have not made any time off requests.</p></div>';
+            } else {
+                requestsHtml = `
+                    <h3 class="text-xl font-semibold text-white mb-4">My Requests</h3>
+                    <div class="card p-0 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-800"><tr>
+                                    <th class="p-4 font-semibold">Type</th>
+                                    <th class="p-4 font-semibold">Dates</th>
+                                    <th class="p-4 font-semibold">Status</th>
+                                </tr></thead>
+                                <tbody>
+                                ${myRequests.map(req => `
+                                    <tr class="border-b border-gray-700">
+                                        <td class="p-4">${req.type}</td>
+                                        <td class="p-4">${req.startDate} to ${req.endDate}</td>
+                                        <td class="p-4"><span class="status-badge status-${req.status}">${req.status}</span></td>
+                                    </tr>
+                                `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return balancesHtml + requestsHtml;
+        }
+
+        function renderManagerTimeOffView() {
+             const pendingRequests = timeOffRequests.filter(r => r.status === 'pending');
+             let requestsHtml;
+             if (pendingRequests.length === 0) {
+                 requestsHtml = '<div class="card p-8 text-center"><p class="text-gray-400">No pending time off requests.</p></div>';
+             } else {
+                 requestsHtml = `
+                    <h3 class="text-xl font-semibold text-white mb-4">Pending Requests</h3>
+                    <div class="card p-0 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-800"><tr>
+                                    <th class="p-4 font-semibold">Employee</th>
+                                    <th class="p-4 font-semibold">Type</th>
+                                    <th class="p-4 font-semibold">Dates</th>
+                                    <th class="p-4 font-semibold">Actions</th>
+                                </tr></thead>
+                                <tbody>
+                                ${pendingRequests.map(req => `
+                                    <tr class="border-b border-gray-700">
+                                        <td class="p-4">${employees.find(e => e.id === req.userId)?.name || 'Unknown'}</td>
+                                        <td class="p-4">${req.type}</td>
+                                        <td class="p-4">${req.startDate} to ${req.endDate}</td>
+                                        <td class="p-4">
+                                            <button data-id="${req.id}" data-action="approved" class="approve-btn text-green-400 hover:text-green-300 mr-2">Approve</button>
+                                            <button data-id="${req.id}" data-action="denied" class="deny-btn text-red-400 hover:text-red-300">Deny</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+             }
+             return requestsHtml;
+        }
+
+        function openRequestTimeOffModal() {
+            requestTimeOffForm.innerHTML = `
+                <div>
+                    <label class="block text-gray-300 mb-1">Leave Type</label>
+                    <select name="type" class="form-select w-full" required>
+                        <option value="Vacation">Vacation</option>
+                        <option value="Sick Leave">Sick Leave</option>
+                        <option value="Personal">Personal</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label class="block text-gray-300 mb-1">Start Date</label>
+                        <input type="date" name="startDate" class="form-input w-full" required>
+                    </div>
+                     <div>
+                        <label class="block text-gray-300 mb-1">End Date</label>
+                        <input type="date" name="endDate" class="form-input w-full" required>
+                    </div>
+                </div>
+                <div><label class="block text-gray-300 mb-1">Reason (optional)</label><textarea name="reason" class="form-textarea w-full" rows="3"></textarea></div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">Submit Request</button>
+                </div>
+            `;
+            requestTimeOffForm.addEventListener('submit', handleRequestTimeOff);
+            requestTimeOffModal.style.display = 'flex';
+        }
+
+        async function handleRequestTimeOff(e) {
+            e.preventDefault();
+            const form = e.target;
+            const requestData = {
+                userId: currentUser.uid,
+                type: form.type.value,
+                startDate: form.startDate.value,
+                endDate: form.endDate.value,
+                reason: form.reason.value,
+                status: 'pending',
+                requestedAt: new Date()
+            };
+            
+            try {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeOffRequests"), requestData);
+                showToast('Time off request submitted!', 'success');
+                closeAllModals();
+                await loadWorkspaceData(currentWorkspaceId);
+                renderTimeOffPage();
+            } catch (error) {
+                console.error("Error submitting request:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function handleTimeOffApproval(requestId, action) {
+            const requestRef = doc(db, "workspaces", currentWorkspaceId, "timeOffRequests", requestId);
+            try {
+                await updateDoc(requestRef, { status: action });
+                showToast(`Request has been ${action}.`, 'success');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderTimeOffPage();
+            } catch (error) {
+                 console.error("Error updating request:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function renderPayStubsPage() {
+             if (!checkPlanPermission('Enterprise')) {
+                showPage('dashboard');
+                showToast('Upgrade to the Enterprise plan to access Pay Stubs.', 'error');
+                return;
+            }
+            const container = document.getElementById('pay-stubs-container');
+            const myStubs = payStubs.filter(s => s.userId === currentUser.uid);
+
+            let stubsHtml;
+            if(myStubs.length === 0) {
+                stubsHtml = '<div class="card p-8 text-center"><p class="text-gray-400">No pay stubs are available.</p></div>';
+            } else {
+                stubsHtml = `
+                    <div class="card p-0 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-800"><tr>
+                                    <th class="p-4 font-semibold">Pay Period</th>
+                                    <th class="p-4 font-semibold">Pay Date</th>
+                                    <th class="p-4 font-semibold">Net Pay</th>
+                                    <th class="p-4 font-semibold">Actions</th>
+                                </tr></thead>
+                                <tbody>
+                                ${myStubs.map(stub => `
+                                    <tr class="border-b border-gray-700">
+                                        <td class="p-4">${stub.periodStart} - ${stub.periodEnd}</td>
+                                        <td class="p-4">${stub.payDate}</td>
+                                        <td class="p-4 font-semibold">$${stub.netPay.toFixed(2)}</td>
+                                        <td class="p-4"><button data-stub-id="${stub.id}" class="view-stub-btn secondary-button px-3 py-1 rounded-md text-sm">View</button></td>
+                                    </tr>
+                                `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <h2 class="text-3xl font-bold text-white mb-8">My Pay Stubs</h2>
+                ${stubsHtml}
+            `;
+            
+            container.querySelectorAll('.view-stub-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => viewPayStub(e.target.dataset.stubId));
+            });
+        }
+
+        function renderManagePayroll() {
+            manageSidebar.innerHTML = `
+                <h3 class="text-xl font-bold text-white mb-4">Payroll Tools</h3>
+                <div class="space-y-2">
+                    <button id="run-payroll-btn" class="w-full secondary-button px-4 py-2 rounded-lg text-sm">Run New Pay Run</button>
+                    <button id="payroll-settings-btn" class="w-full secondary-button px-4 py-2 rounded-lg text-sm">Payroll Settings</button>
+                </div>
+            `;
+            manageContent.innerHTML = '<div class="card p-6"><p class="text-gray-400">Select a tool from the sidebar to begin.</p></div>';
+            
+            document.getElementById('run-payroll-btn').addEventListener('click', renderRunPayroll);
+            document.getElementById('payroll-settings-btn').addEventListener('click', () => switchSettingsTab('payroll'));
+        }
+        
+        function renderRunPayroll() {
+            manageContent.innerHTML = `
+                <h3 class="text-xl font-semibold text-white mb-4">Run Payroll</h3>
+                <div class="card p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-400 mb-1">Pay Period Start</label>
+                            <input type="date" id="payroll-start-date" class="form-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-1">Pay Period End</label>
+                            <input type="date" id="payroll-end-date" class="form-input w-full">
+                        </div>
+                        <div class="self-end">
+                            <button id="generate-payroll-preview-btn" class="w-full cta-button px-4 py-2 rounded-lg">Generate Preview</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="payroll-preview-container" class="mt-8"></div>
+            `;
+            
+            document.getElementById('generate-payroll-preview-btn').addEventListener('click', renderPayrollPreview);
+        }
+
+        function renderPayrollPreview() {
+            const container = document.getElementById('payroll-preview-container');
+            let reportHtml = `
+                <h3 class="text-xl font-semibold text-white mb-4">Payroll Preview</h3>
+                 <div class="card p-0 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-800"><tr>
+                                <th class="p-4 font-semibold">Employee</th>
+                                <th class="p-4 font-semibold">Gross Pay</th>
+                                <th class="p-4 font-semibold">Taxes</th>
+                                <th class="p-4 font-semibold">Deductions</th>
+                                <th class="p-4 font-semibold">Net Pay</th>
+                            </tr></thead>
+                            <tbody>
+            `;
+            employees.forEach(emp => {
+                const empTimesheets = timesheets[emp.id] || {};
+                const overtimeRules = currentWorkspaceData.rules?.overtime || { enabled: false, weekly: 40 };
+                
+                let totalHours = 0;
+                Object.values(empTimesheets).forEach(day => {
+                   totalHours += calculateTotalHoursFromPairs(processDayPunches(emp.id, null, day.punches).pairs);
+                });
+
+                let regularHours = totalHours;
+                let overtimeHours = 0;
+                if (overtimeRules.enabled && totalHours > overtimeRules.weekly) {
+                    overtimeHours = totalHours - overtimeRules.weekly;
+                    regularHours = overtimeRules.weekly;
+                }
+
+                const grossPay = (regularHours * (emp.hourlyRate || 0)) + (overtimeHours * (emp.hourlyRate || 0) * 1.5);
+                
+                const payrollInfo = emp.payroll || {};
+                const taxes = calculateTaxes(grossPay, payrollInfo.filingStatus, payrollInfo.allowances);
+                
+                const empDeductions = payrollInfo.deductions || [];
+                let totalDeductions = 0;
+                empDeductions.forEach(ded => {
+                    if (ded.type === 'fixed') {
+                        totalDeductions += ded.amount;
+                    } else if (ded.type === 'percent') {
+                        totalDeductions += grossPay * (ded.amount / 100);
+                    }
+                });
+
+                const netPay = grossPay - taxes.total - totalDeductions;
+                
+                reportHtml += `
+                     <tr class="border-b border-gray-700">
+                        <td class="p-4">${emp.name}</td>
+                        <td class="p-4">$${grossPay.toFixed(2)}</td>
+                        <td class="p-4 text-red-400" title="Fed: $${taxes.federal.toFixed(2)}, SS: $${taxes.socialSecurity.toFixed(2)}, Med: $${taxes.medicare.toFixed(2)}">-$${taxes.total.toFixed(2)}</td>
+                        <td class="p-4 text-red-400">-$${totalDeductions.toFixed(2)}</td>
+                        <td class="p-4 font-bold text-emerald-400">$${netPay.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            reportHtml += '</tbody></table></div></div><div class="flex justify-end mt-6"><button id="finalize-payroll-btn" class="cta-button px-6 py-2 rounded-lg">Finalize Pay Run</button></div>';
+            container.innerHTML = reportHtml;
+            
+            document.getElementById('finalize-payroll-btn').addEventListener('click', handleFinalizePayRun);
+        }
+
+        async function handleFinalizePayRun() {
+            const startDate = document.getElementById('payroll-start-date').value;
+            const endDate = document.getElementById('payroll-end-date').value;
+
+            if (!startDate || !endDate) {
+                showToast('Please select a start and end date for the pay period.', 'error');
+                return;
+            }
+
+            const finalizeBtn = document.getElementById('finalize-payroll-btn');
+            finalizeBtn.disabled = true;
+            finalizeBtn.textContent = 'Finalizing...';
+
+            try {
+                const payStubsCollectionRef = collection(db, `workspaces/${currentWorkspaceId}/payStubs`);
+
+                for (const emp of employees) {
+                    const empTimesheets = timesheets[emp.id] || {};
+                    const overtimeRules = currentWorkspaceData.rules?.overtime || { enabled: false, weekly: 40 };
+                    
+                    let totalHours = 0;
+                     Object.values(empTimesheets).forEach(day => {
+                       totalHours += calculateTotalHoursFromPairs(processDayPunches(emp.id, null, day.punches).pairs);
+                    });
+
+                    let regularHours = totalHours;
+                    let overtimeHours = 0;
+                    if (overtimeRules.enabled && totalHours > overtimeRules.weekly) {
+                        overtimeHours = totalHours - overtimeRules.weekly;
+                        regularHours = overtimeRules.weekly;
+                    }
+
+                    const grossPay = (regularHours * (emp.hourlyRate || 0)) + (overtimeHours * (emp.hourlyRate || 0) * 1.5);
+                    const payrollInfo = emp.payroll || {};
+                    const taxes = calculateTaxes(grossPay, payrollInfo.filingStatus, payrollInfo.allowances);
+                    
+                    const empDeductions = payrollInfo.deductions || [];
+                    const calculatedDeductions = [];
+                    let totalDeductions = 0;
+                    empDeductions.forEach(ded => {
+                        let amount = 0;
+                        if (ded.type === 'fixed') {
+                            amount = ded.amount;
+                        } else if (ded.type === 'percent') {
+                            amount = grossPay * (ded.amount / 100);
+                        }
+                        totalDeductions += amount;
+                        calculatedDeductions.push({ name: ded.name, amount });
+                    });
+
+                    const netPay = grossPay - taxes.total - totalDeductions;
+
+                    const payStubData = {
+                        userId: emp.id,
+                        periodStart: startDate,
+                        periodEnd: endDate,
+                        payDate: new Date().toISOString().split('T')[0],
+                        grossPay,
+                        netPay,
+                        taxes,
+                        deductions: calculatedDeductions,
+                        hourlyRate: emp.hourlyRate || 0,
+                        regularHours,
+                        overtimeHours,
+                        totalHours,
+                        createdAt: new Date()
+                    };
+                    
+                    await addDoc(payStubsCollectionRef, payStubData);
+                }
+                showToast('Pay run finalized and all pay stubs have been generated!', 'success');
+                manageContent.innerHTML = '<div class="card p-6"><p>Pay run successfully finalized. Employees can now view their new pay stubs.</p></div>';
+            } catch (error) {
+                console.error("Error finalizing pay run:", error);
+                showToast(`Error: ${error.message}`, 'error');
+                finalizeBtn.disabled = false;
+                finalizeBtn.textContent = 'Finalize Pay Run';
+            }
+        }
+
+        
+        function viewPayStub(stubId) {
+            const stub = payStubs.find(s => s.id === stubId);
+            if (!stub) return;
+            
+            const employee = employees.find(e => e.id === stub.userId);
+            const contentEl = document.getElementById('pay-stub-content');
+            
+            const stubDeductions = stub.deductions || [];
+            const totalDeductions = stubDeductions.reduce((acc, d) => acc + d.amount, 0);
+            
+            const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
+            const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
+
+            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' }; // Placeholder YTD data
+            
+            contentEl.innerHTML = `
+                <style>
+                    #pay-stub-content { font-family: system-ui, -apple-system, sans-serif; }
+                    .stub-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+                    .stub-table th, .stub-table td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid #e2e8f0; }
+                    .stub-table th { color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+                    .stub-table .amount { text-align: right; }
+                    .stub-section { margin-bottom: 2rem; }
+                    .summary-box { background-color: #f1f5f9; border-radius: 0.5rem; padding: 1.5rem; margin-top: 2rem; }
+                    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+                    .summary-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0; }
+                    .summary-item.total { font-weight: bold; font-size: 1.1rem; border-top: 2px solid #94a3b8; margin-top: 0.5rem; }
+                </style>
+                <header class="flex justify-between items-start mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold">${currentWorkspaceData.name}</h1>
+                        <p class="text-gray-500">Pay Statement</p>
+                    </div>
+                    <div class="text-right">
+                        <p><strong>Pay Date:</strong> ${stub.payDate}</p>
+                        <p><strong>Pay Period:</strong> ${stub.periodStart} to ${stub.periodEnd}</p>
+                    </div>
+                </header>
+
+                <div class="mb-8 p-4 border rounded-lg">
+                    <h2 class="font-bold text-lg">${employee.name}</h2>
+                    <p class="text-gray-600">Employee ID: ${employee.employeeId}</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="stub-section">
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Earnings</h3>
+                        <table class="stub-table">
+                            <thead><tr><th>Description</th><th class="amount">Hours</th><th class="amount">Rate</th><th class="amount">Current</th><th class="amount">YTD</th></tr></thead>
+                            <tbody>
+                                <tr><td>Regular</td><td class="amount">${stub.regularHours.toFixed(2)}</td><td class="amount">$${stub.hourlyRate.toFixed(2)}</td><td class="amount">$${(stub.regularHours * stub.hourlyRate).toFixed(2)}</td><td class="amount">$${YTD.gross}</td></tr>
+                                ${stub.overtimeHours > 0 ? `<tr><td>Overtime</td><td class="amount">${stub.overtimeHours.toFixed(2)}</td><td class="amount">$${(stub.hourlyRate * 1.5).toFixed(2)}</td><td class="amount">$${(stub.overtimeHours * stub.hourlyRate * 1.5).toFixed(2)}</td><td class="amount">...</td></tr>` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="stub-section">
+                         <h3 class="text-xl font-semibold mb-4 border-b pb-2">Taxes</h3>
+                        <table class="stub-table">
+                            <thead><tr><th>Description</th><th class="amount">Current</th><th class="amount">YTD</th></tr></thead>
+                            <tbody>
+                                <tr><td>Federal Income Tax</td><td class="amount">-${(stubTaxes.federal).toFixed(2)}</td><td class="amount">...</td></tr>
+                                <tr><td>Social Security</td><td class="amount">-${(stubTaxes.socialSecurity).toFixed(2)}</td><td class="amount">...</td></tr>
+                                <tr><td>Medicare</td><td class="amount">-${(stubTaxes.medicare).toFixed(2)}</td><td class="amount">...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ${stubDeductions.length > 0 ? `
+                <div class="stub-section">
+                    <h3 class="text-xl font-semibold mb-4 border-b pb-2">Deductions</h3>
+                    <table class="stub-table">
+                        <thead><tr><th>Description</th><th class="amount">Current</th><th class="amount">YTD</th></tr></thead>
+                        <tbody>
+                            ${stubDeductions.map(d => `<tr><td>${d.name}</td><td class="amount">-${d.amount.toFixed(2)}</td><td class="amount">...</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>` : ''}
+
+                <div class="summary-box">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Summary</h3>
+                    <div class="summary-grid">
+                         <div>
+                            <div class="summary-item"><span>Gross Pay</span><span>$${stub.grossPay.toFixed(2)}</span></div>
+                            <div class="summary-item"><span>Total Taxes</span><span>-$${totalTaxes.toFixed(2)}</span></div>
+                            <div class="summary-item"><span>Total Deductions</span><span>-$${totalDeductions.toFixed(2)}</span></div>
+                         </div>
+                         <div>
+                            <div class="summary-item"><span>YTD Gross</span><span>$${YTD.gross}</span></div>
+                            <div class="summary-item"><span>YTD Taxes</span><span>-$${YTD.taxes}</span></div>
+                            <div class="summary-item"><span>YTD Deductions</span><span>-$${YTD.deductions}</span></div>
+                         </div>
+                    </div>
+                    <div class="summary-item total"><span>Net Pay</span><span>$${stub.netPay.toFixed(2)}</span></div>
+                </div>
+            `;
+            
+            document.getElementById('pay-stub-modal').style.display = 'flex';
+            document.getElementById('print-pay-stub-btn').onclick = () => window.print();
+        }
+
+        function renderManageDepartments() {
+            manageSidebar.innerHTML = `
+                <h3 class="text-xl font-bold text-white mb-4">Add Department</h3>
+                <form id="add-department-form" class="space-y-4">
+                    <div>
+                        <label for="new-department-name" class="block text-sm font-medium text-gray-300">Department Name</label>
+                        <input type="text" id="new-department-name" class="form-input w-full mt-1" required>
+                    </div>
+                    <button type="submit" class="w-full cta-button px-4 py-2 rounded-lg">Add Department</button>
+                </form>
+            `;
+            const departments = currentWorkspaceData.departments || [];
+            let listHtml = departments.map(dept => `
+                <li class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-800">
+                    <span>${dept}</span>
+                    <button class="text-red-400 hover:text-red-300 font-semibold" data-dept="${dept}">Remove</button>
+                </li>
+            `).join('');
+            
+            manageContent.innerHTML = `<div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Existing Departments</h3><ul class="space-y-2">${listHtml}</ul></div>`;
+
+            document.getElementById('add-department-form').addEventListener('submit', handleAddDepartment);
+            manageContent.querySelectorAll('button[data-dept]').forEach(btn => {
+                btn.addEventListener('click', () => handleRemoveDepartment(btn.dataset.dept));
+            });
+        }
+
+        async function handleAddDepartment(e) {
+            e.preventDefault();
+            const newDept = document.getElementById('new-department-name').value;
+            if (!newDept) return;
+            await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
+                departments: arrayUnion(newDept)
+            });
+            showToast('Department added.', 'success');
+            await loadWorkspaceData(currentWorkspaceId);
+            renderManagePage('departments');
+        }
+
+        async function handleRemoveDepartment(deptName) {
+            if (confirm(`Are you sure you want to remove the "${deptName}" department?`)) {
+                await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
+                    departments: arrayRemove(deptName)
+                });
+                showToast('Department removed.', 'success');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderManagePage('departments');
+            }
+        }
     </script>
 </body>
 </html>

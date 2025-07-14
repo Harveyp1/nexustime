@@ -169,7 +169,7 @@
         });
 
         const showDevPage = async (pageId) => {
-            selectedItemId = null; // Reset selection when changing pages
+            selectedItemId = null;
             devPages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(`dev-${pageId}`);
             if (targetPage) {
@@ -236,7 +236,6 @@
         };
         
         // --- RENDER FUNCTIONS ---
-
         function renderDevDashboard() {
             const container = document.getElementById('dev-dashboard');
             const totalUsers = allUsers.length;
@@ -302,23 +301,18 @@
         function simulateFinancialData() {
             const PLAN_PRICES = { Free: 0, Starter: 5, Pro: 10, Enterprise: 12 };
             let mrr = 0, subscriptions = 0, transactions = [];
-            allWorkspaces.forEach(ws => {
-                const plan = ws.plan || 'Free';
-                const price = (PLAN_PRICES[plan] || 0) * (ws.maxUsers || 1);
+            allUsers.forEach(user => {
+                const plan = user.plan || 'Free';
+                const price = PLAN_PRICES[plan] || 0;
                 if (price > 0) {
                     mrr += price;
                     subscriptions++;
-                    const owner = allUsers.find(u => u.id === ws.ownerId);
-                    if(owner) {
-                        transactions.push({ id: `txn_${Math.random().toString(36).substr(2, 9)}`, userEmail: owner.email, plan, amount: price, date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'succeeded' });
-                    }
+                    transactions.push({ id: `txn_${Math.random().toString(36).substr(2, 9)}`, userEmail: user.email, plan, amount: price, date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'succeeded' });
                 }
             });
             financialData = { mrr, subscriptions, churn: (Math.random() * 5).toFixed(2), transactions: transactions.sort((a, b) => new Date(b.date) - new Date(a.date)) };
         }
 
-        // --- USER & CUSTOMER MANAGEMENT ---
-        
         function renderUserManagement() {
             const container = document.getElementById('dev-users');
             container.innerHTML = `<h1 class="text-3xl font-bold text-white mb-8">User Management</h1><p class="text-gray-400 mb-6 -mt-6">This tab lists all non-admin users. Admins are managed via the Customer Mgt. tab.</p><div id="user-filter-bar" class="card p-4 mb-6"></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-8"><div id="user-list-container" class="lg:col-span-2 card p-2"></div><div id="user-details-sidebar" class="lg:col-span-1 card p-6 h-fit sticky top-8"></div></div>`;
@@ -403,23 +397,20 @@
         }
 
         function renderWorkspaceFilters() {
-             document.getElementById('workspace-filter-bar').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4"><input type="text" id="workspace-name-filter" class="form-input" placeholder="Filter by name or owner email..." value="${workspaceFilters.name || ''}"><select id="workspace-plan-filter" class="form-select"><option value="">All Plans</option><option value="Free">Free</option><option value="Starter">Starter</option><option value="Pro">Pro</option><option value="Enterprise">Enterprise</option></select></div>`;
+             document.getElementById('workspace-filter-bar').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4"><input type="text" id="workspace-name-filter" class="form-input" placeholder="Filter by name or owner email..." value="${workspaceFilters.name || ''}"><select id="workspace-plan-filter" class="form-select"><option value="">All Plans</option><option value="Free" ${workspaceFilters.plan === 'Free' ? 'selected' : ''}>Free</option><option value="Starter" ${workspaceFilters.plan === 'Starter' ? 'selected' : ''}>Starter</option><option value="Pro" ${workspaceFilters.plan === 'Pro' ? 'selected' : ''}>Pro</option><option value="Enterprise" ${workspaceFilters.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option></select></div>`;
             document.getElementById('workspace-name-filter').addEventListener('input', (e) => { workspaceFilters.name = e.target.value.toLowerCase(); renderWorkspaceList(); });
             document.getElementById('workspace-plan-filter').addEventListener('change', (e) => { workspaceFilters.plan = e.target.value; renderWorkspaceList(); });
         }
 
-        async function renderWorkspaceList() {
+        function renderWorkspaceList() {
             let filteredWorkspaces = allWorkspaces;
             if (workspaceFilters.name) filteredWorkspaces = filteredWorkspaces.filter(ws => { const owner = allUsers.find(u => u.id === ws.ownerId); return ws.name.toLowerCase().includes(workspaceFilters.name) || (owner && owner.email.toLowerCase().includes(workspaceFilters.name)); });
             if (workspaceFilters.plan) filteredWorkspaces = filteredWorkspaces.filter(ws => (ws.plan || 'Free') === workspaceFilters.plan);
             
-            const memberCounts = {};
-            for (const ws of filteredWorkspaces) {
-                const membersSnapshot = await getDocs(query(collection(db, `workspaces/${ws.id}/members`)));
-                memberCounts[ws.id] = membersSnapshot.size;
-            }
-
-            const listHtml = filteredWorkspaces.map(ws => `<div class="list-item p-4 border-b border-gray-700 flex justify-between items-center rounded-lg ${selectedItemId === ws.id ? 'selected' : ''}" data-id="${ws.id}"><div><p class="font-semibold text-white">${ws.name}</p><p class="text-sm text-gray-400">Owner: ${allUsers.find(u => u.id === ws.ownerId)?.email || 'N/A'}</p></div><span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300">${memberCounts[ws.id] || 0} / ${ws.maxUsers || 1} Users</span></div>`).join('');
+            const listHtml = filteredWorkspaces.map(ws => {
+                const memberCount = allUsers.filter(u => u.workspaces && u.workspaces[ws.id]).length;
+                return `<div class="list-item p-4 border-b border-gray-700 flex justify-between items-center rounded-lg ${selectedItemId === ws.id ? 'selected' : ''}" data-id="${ws.id}"><div><p class="font-semibold text-white">${ws.name}</p><p class="text-sm text-gray-400">Owner: ${allUsers.find(u => u.id === ws.ownerId)?.email || 'N/A'}</p></div><span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300">${memberCount} Users</span></div>`;
+            }).join('');
             document.getElementById('workspace-list-container').innerHTML = listHtml || '<p class="text-center text-gray-500 p-8">No workspaces found matching filters.</p>';
             document.querySelectorAll('#workspace-list-container .list-item').forEach(item => item.addEventListener('click', () => { selectedItemId = item.dataset.id; renderWorkspaceList(); renderWorkspaceDetailsSidebar(); }));
         }
@@ -433,7 +424,7 @@
             sidebar.innerHTML = `<div class="loader"></div>`;
             const membersSnapshot = await getDocs(collection(db, `workspaces/${workspace.id}/members`));
 
-            sidebar.innerHTML = `<h3 class="text-xl font-bold text-white mb-4">${workspace.name}</h3><div class="space-y-3 text-sm"><p><strong class="text-gray-400">Workspace ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${workspace.id}</code></p><p><strong class="text-gray-400">Owner:</strong> ${owner?.name || 'N/A'} (${owner?.email || 'N/A'})</p><p><strong class="text-gray-400">Plan:</strong> ${workspace.plan || 'Free'}</p><p><strong class="text-gray-400">Usage:</strong> ${membersSnapshot.size} / ${workspace.maxUsers || 1} Users</p><p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt?.toDate().toLocaleString() || 'N/A'}</p></div><div class="mt-6 space-y-2 border-t border-gray-700 pt-4"><button data-id="${workspace.id}" class="w-full cta-button edit-workspace-btn">Edit Workspace</button><button data-id="${workspace.id}" class="w-full secondary-button clone-workspace-btn">Clone/Backup Workspace</button><button data-id="${workspace.id}" class="w-full danger-button delete-workspace-btn">Delete Workspace</button></div>`;
+            sidebar.innerHTML = `<h3 class="text-xl font-bold text-white mb-4">${workspace.name}</h3><div class="space-y-3 text-sm"><p><strong class="text-gray-400">Workspace ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${workspace.id}</code></p><p><strong class="text-gray-400">Owner:</strong> ${owner?.name || 'N/A'} (${owner?.email || 'N/A'})</p><p><strong class="text-gray-400">Plan:</strong> ${workspace.plan || 'Free'}</p><p><strong class="text-gray-400">Members:</strong> ${membersSnapshot.size}</p><p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt?.toDate().toLocaleString() || 'N/A'}</p></div><div class="mt-6 space-y-2 border-t border-gray-700 pt-4"><button data-id="${workspace.id}" class="w-full cta-button edit-workspace-btn">Edit Workspace</button><button data-id="${workspace.id}" class="w-full secondary-button clone-workspace-btn">Clone/Backup Workspace</button><button data-id="${workspace.id}" class="w-full danger-button delete-workspace-btn">Delete Workspace</button></div>`;
             sidebar.querySelector('.edit-workspace-btn').addEventListener('click', openEditWorkspaceModal);
             sidebar.querySelector('.clone-workspace-btn').addEventListener('click', handleCloneWorkspace);
             sidebar.querySelector('.delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
@@ -444,18 +435,37 @@
             const user = allUsers.find(u => u.id === userId);
             const isCustomer = allWorkspaces.some(ws => ws.ownerId === userId);
             const modalContent = document.getElementById('edit-modal-content');
+
             const userWorkspaces = user.workspaces ? Object.entries(user.workspaces).map(([id, role]) => ({ id, name: allWorkspaces.find(w => w.id === id)?.name || id, role })) : [];
             const availableWorkspaces = allWorkspaces.filter(ws => !(user.workspaces && user.workspaces[ws.id]));
+
             modalContent.innerHTML = `
                 <form id="edit-user-form" data-id="${userId}">
                     <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit ${isCustomer ? 'Customer' : 'User'}: ${user.name}</h3></div>
                     <div class="p-6 space-y-6 overflow-y-auto">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label class="block mb-1 text-gray-400">Name</label><input type="text" name="name" class="form-input w-full" value="${user.name || ''}"></div>
-                            ${isCustomer ? `<div><label class="block mb-1 text-gray-400">Master Plan</label><select name="plan" class="form-select w-full"><option value="Free" ${!user.plan || user.plan === 'Free' ? 'selected' : ''}>Free</option><option value="Starter" ${user.plan === 'Starter' ? 'selected' : ''}>Starter</option><option value="Pro" ${user.plan === 'Pro' ? 'selected' : ''}>Pro</option><option value="Enterprise" ${user.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option></select></div>` : ''}
+                            ${isCustomer ? `<div><label class="block mb-1 text-gray-400">Master Plan</label><select name="plan" class="form-select w-full">
+                                <option value="Free" ${!user.plan || user.plan === 'Free' ? 'selected' : ''}>Free</option>
+                                <option value="Starter" ${user.plan === 'Starter' ? 'selected' : ''}>Starter</option>
+                                <option value="Pro" ${user.plan === 'Pro' ? 'selected' : ''}>Pro</option>
+                                <option value="Enterprise" ${user.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option>
+                            </select></div>` : ''}
                         </div>
-                        <div><h4 class="text-lg font-semibold text-white mb-2">Workspace Memberships</h4><div id="user-workspaces-list" class="space-y-2">${userWorkspaces.map(ws => `<div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}"><span class="flex-grow">${ws.name}</span><select class="form-select text-sm py-1 role-selector"><option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option><option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option><option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">×</button></div>`).join('') || '<p class="text-gray-500">No current memberships.</p>'}</div></div>
-                        <div><h4 class="text-lg font-semibold text-white mb-2">Add to New Workspace</h4><input type="search" id="add-ws-search" class="form-input w-full mb-2" placeholder="Search available workspaces..."><div class="flex gap-2"><select id="add-ws-select" class="form-select flex-grow"><option value="">Select a workspace...</option>${availableWorkspaces.map(ws => `<option value="${ws.id}">${ws.name}</option>`).join('')}</select><button type="button" id="add-user-to-ws-btn" class="secondary-button text-sm">Add</button></div></div>
+                        <div>
+                            <h4 class="text-lg font-semibold text-white mb-2">Workspace Memberships</h4>
+                            <div id="user-workspaces-list" class="space-y-2">
+                                ${userWorkspaces.map(ws => `<div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}"><span class="flex-grow">${ws.name}</span><select class="form-select text-sm py-1 role-selector"><option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option><option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option><option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button></div>`).join('') || '<p class="text-gray-500">No current memberships.</p>'}
+                            </div>
+                        </div>
+                        <div>
+                             <h4 class="text-lg font-semibold text-white mb-2">Add to New Workspace</h4>
+                             <input type="search" id="add-ws-search" class="form-input w-full mb-2" placeholder="Search available workspaces...">
+                             <div class="flex gap-2">
+                                <select id="add-ws-select" class="form-select flex-grow"><option value="">Select a workspace...</option>${availableWorkspaces.map(ws => `<option value="${ws.id}">${ws.name}</option>`).join('')}</select>
+                                <button type="button" id="add-user-to-ws-btn" class="secondary-button text-sm">Add</button>
+                             </div>
+                        </div>
                     </div>
                     <div class="p-4 bg-gray-800 flex justify-end gap-4 mt-auto">
                         <button type="button" class="secondary-button close-modal-btn">Cancel</button>
@@ -471,7 +481,9 @@
             modalContent.querySelector('#add-ws-search').addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase();
                 const select = modalContent.querySelector('#add-ws-select');
-                for (const option of select.options) { if (option.value) option.hidden = !option.text.toLowerCase().includes(searchTerm); }
+                for (const option of select.options) {
+                    if (option.value) option.hidden = !option.text.toLowerCase().includes(searchTerm);
+                }
             });
         }
 
@@ -481,28 +493,41 @@
             const button = form.querySelector('button[type="submit"]');
             button.disabled = true;
             button.textContent = 'Saving...';
-            try {
-                const userId = form.dataset.id;
-                const newWorkspacesMap = {};
-                form.querySelectorAll('#user-workspaces-list > div').forEach(div => { newWorkspacesMap[div.dataset.wsId] = div.querySelector('.role-selector').value; });
-                const updatedUserData = { name: form.name.value, workspaces: newWorkspacesMap };
-                if (form.plan) updatedUserData.plan = form.plan.value;
 
-                const batch = writeBatch(db);
-                batch.update(doc(db, 'users', userId), updatedUserData);
-                const originalUser = allUsers.find(u => u.id === userId);
-                const originalWorkspaces = originalUser.workspaces || {};
-                for (const wsId in originalWorkspaces) { if (!newWorkspacesMap[wsId]) batch.delete(doc(db, `workspaces/${wsId}/members/${userId}`)); }
-                for (const wsId in newWorkspacesMap) {
-                    const ownerData = allUsers.find(u => u.id === userId);
-                    batch.set(doc(db, `workspaces/${wsId}/members/${userId}`), { uid: userId, email: ownerData.email, name: ownerData.name, role: newWorkspacesMap[wsId] }, { merge: true });
-                }
+            const userId = form.dataset.id;
+            const newWorkspacesMap = {};
+            form.querySelectorAll('#user-workspaces-list > div').forEach(div => {
+                newWorkspacesMap[div.dataset.wsId] = div.querySelector('.role-selector').value;
+            });
+            const updatedUserData = { name: form.name.value, workspaces: newWorkspacesMap };
+            if (form.plan) updatedUserData.plan = form.plan.value;
+
+            const batch = writeBatch(db);
+            batch.update(doc(db, 'users', userId), updatedUserData);
+
+            const originalUser = allUsers.find(u => u.id === userId);
+            const originalWorkspaces = originalUser.workspaces || {};
+
+            for (const wsId in originalWorkspaces) {
+                if (!newWorkspacesMap[wsId]) batch.delete(doc(db, `workspaces/${wsId}/members/${userId}`));
+            }
+            for (const wsId in newWorkspacesMap) {
+                 const ownerData = allUsers.find(u => u.id === userId);
+                 batch.set(doc(db, `workspaces/${wsId}/members/${userId}`), { uid: userId, email: ownerData.email, name: ownerData.name, role: newWorkspacesMap[wsId] }, { merge: true });
+            }
+
+            try {
                 await batch.commit();
-                showToast('User updated successfully!', 'success');
                 await loadAllData();
-                if (document.getElementById('dev-users').classList.contains('active')) { renderUserList(); renderUserDetailsSidebar(); } 
-                else if (document.getElementById('dev-customers').classList.contains('active')) { renderCustomerList(); renderCustomerDetailsSidebar(); }
+                showToast('User updated successfully!', 'success');
                 closeAllModals();
+                if (document.getElementById('dev-users')?.classList.contains('active')) {
+                    renderUserList();
+                    renderUserDetailsSidebar();
+                } else if (document.getElementById('dev-customers')?.classList.contains('active')) {
+                    renderCustomerList();
+                    renderCustomerDetailsSidebar();
+                }
             } catch (error) {
                 console.error("Error saving user:", error);
                 showToast(`Error: ${error.message}`, 'error');
@@ -517,12 +542,14 @@
             const wsId = addSelect.value;
             if (!wsId) return;
             const wsName = addSelect.options[addSelect.selectedIndex].text;
+            
             const list = document.getElementById('user-workspaces-list');
             if (list.querySelector('p')) list.innerHTML = '';
+
             const newEntry = document.createElement('div');
             newEntry.className = 'flex items-center gap-2 bg-gray-800 p-2 rounded-lg';
             newEntry.dataset.wsId = wsId;
-            newEntry.innerHTML = `<span class="flex-grow">${wsName}</span><select class="form-select text-sm py-1 role-selector"><option value="Employee" selected>Employee</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">×</button>`;
+            newEntry.innerHTML = `<span class="flex-grow">${wsName}</span><select class="form-select text-sm py-1 role-selector"><option value="Employee" selected>Employee</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button>`;
             list.appendChild(newEntry);
             newEntry.querySelector('.remove-ws-btn').addEventListener('click', (e) => e.target.closest('.flex').remove());
             addSelect.remove(addSelect.selectedIndex);
@@ -577,7 +604,7 @@
                     <div class="p-6 space-y-4">
                         <div><label class="block mb-1">Workspace Name</label><input type="text" name="name" class="form-input w-full" required></div>
                         <div><label class="block mb-1">Owner</label><select name="ownerId" class="form-select w-full" required>${userOptions}</select></div>
-                        <div><label class="block mb-1">User Seats (Max Users)</label><input type="number" name="maxUsers" class="form-input w-full" value="1" min="1" required></div>
+                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full" required><option value="Free">Free</option><option value="Starter">Starter</option><option value="Pro">Pro</option><option value="Enterprise">Enterprise</option></select></div>
                     </div>
                     <div class="p-4 bg-gray-800 flex justify-end gap-4">
                         <button type="button" class="secondary-button close-modal-btn">Cancel</button>
@@ -597,20 +624,17 @@
             button.disabled = true;
             button.textContent = 'Creating...';
             
+            const ownerId = form.ownerId.value;
+            const ownerData = allUsers.find(u => u.id === ownerId);
+            if (!ownerData) { showToast("Selected owner not found.", "error"); return; }
+
+            const batch = writeBatch(db);
+            const newWorkspaceRef = doc(collection(db, 'workspaces'));
+            batch.set(newWorkspaceRef, { name: form.name.value, plan: form.plan.value, ownerId: ownerId, createdAt: Timestamp.now(), departments: ["General"], payTypes: ["Hourly", "Salary"], employeeTypes: ["Full-time", "Part-time"], projectCustomFields: ["Client Name", "Budget"] });
+            batch.set(doc(db, 'workspaces', newWorkspaceRef.id, 'members', ownerId), { uid: ownerId, email: ownerData.email, name: ownerData.name, role: 'Admin', status: 'Active' });
+            batch.update(doc(db, 'users', ownerId), { [`workspaces.${newWorkspaceRef.id}`]: 'Admin' });
+
             try {
-                const ownerId = form.ownerId.value;
-                const ownerData = allUsers.find(u => u.id === ownerId);
-                if (!ownerData) { throw new Error("Selected owner not found."); }
-                
-                const newMaxUsers = Number(form.maxUsers.value);
-                const newPlan = getPlanFromUserCount(newMaxUsers);
-
-                const batch = writeBatch(db);
-                const newWorkspaceRef = doc(collection(db, 'workspaces'));
-                batch.set(newWorkspaceRef, { name: form.name.value, plan: newPlan, maxUsers: newMaxUsers, ownerId: ownerId, createdAt: Timestamp.now(), departments: ["General"], payTypes: ["Hourly", "Salary"], employeeTypes: ["Full-time", "Part-time"], projectCustomFields: ["Client Name", "Budget"] });
-                batch.set(doc(db, 'workspaces', newWorkspaceRef.id, 'members', ownerId), { uid: ownerId, email: ownerData.email, name: ownerData.name, role: 'Admin', status: 'Active' });
-                batch.update(doc(db, 'users', ownerId), { [`workspaces.${newWorkspaceRef.id}`]: 'Admin' });
-
                 await batch.commit();
                 showToast('Workspace created successfully!', 'success');
                 await loadAllData();
@@ -637,7 +661,7 @@
                     <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit Workspace: ${workspace.name}</h3></div>
                     <div class="p-6 space-y-4">
                         <div><label class="block mb-1 text-gray-400">Workspace Name</label><input type="text" name="name" class="form-input w-full" value="${workspace.name}"></div>
-                        <div><label class="block mb-1 text-gray-400">User Seats (Max Users)</label><input type="number" name="maxUsers" class="form-input w-full" min="1" value="${workspace.maxUsers || 1}"></div>
+                        <div><label class="block mb-1 text-gray-400">Plan</label><select name="plan" class="form-select w-full"><option value="Free" ${!workspace.plan || workspace.plan === 'Free' ? 'selected' : ''}>Free</option><option value="Starter" ${workspace.plan === 'Starter' ? 'selected' : ''}>Starter</option><option value="Pro" ${workspace.plan === 'Pro' ? 'selected' : ''}>Pro</option><option value="Enterprise" ${workspace.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option></select></div>
                         <div><label class="block mb-1 text-gray-400">Owner</label><select name="ownerId" class="form-select w-full">${ownerOptions}</select></div>
                     </div>
                     <div class="p-4 bg-gray-800 flex justify-end gap-4">
@@ -650,12 +674,6 @@
             modalContent.querySelector('.close-modal-btn').addEventListener('click', closeAllModals);
             modalContent.querySelector('form').addEventListener('submit', handleSaveWorkspace);
         }
-        
-        function getPlanFromUserCount(count) {
-            if (count <= 5) return 'Free';
-            if (count <= 15) return 'Starter';
-            return 'Pro'; // Or Enterprise based on other factors
-        }
 
         async function handleSaveWorkspace(e) {
             e.preventDefault();
@@ -664,17 +682,14 @@
             button.disabled = true;
             button.textContent = 'Saving...';
             
+            const workspaceId = form.dataset.id;
+            const updatedData = { name: form.name.value, plan: form.plan.value, ownerId: form.ownerId.value };
             try {
-                const workspaceId = form.dataset.id;
-                const newMaxUsers = Number(form.maxUsers.value);
-                const newPlan = getPlanFromUserCount(newMaxUsers);
-                
-                const updatedData = { name: form.name.value, plan: newPlan, maxUsers: newMaxUsers, ownerId: form.ownerId.value };
-                
                 await updateDoc(doc(db, 'workspaces', workspaceId), updatedData);
                 showToast('Workspace updated successfully!', 'success');
                 await loadAllData();
-                renderWorkspaceManagement();
+                renderWorkspaceList();
+                renderWorkspaceDetailsSidebar();
                 closeAllModals();
             } catch(error) {
                 console.error("Error saving workspace:", error);

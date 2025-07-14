@@ -455,7 +455,7 @@
                         <div>
                             <h4 class="text-lg font-semibold text-white mb-2">Workspace Memberships</h4>
                             <div id="user-workspaces-list" class="space-y-2">
-                                ${userWorkspaces.map(ws => `<div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}"><span class="flex-grow">${ws.name}</span><select class="form-select text-sm py-1 role-selector"><option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option><option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option><option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">×</button></div>`).join('') || '<p class="text-gray-500">No current memberships.</p>'}
+                                ${userWorkspaces.map(ws => `<div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}"><span class="flex-grow">${ws.name}</span><select class="form-select text-sm py-1 role-selector"><option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option><option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option><option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button></div>`).join('') || '<p class="text-gray-500">No current memberships.</p>'}
                             </div>
                         </div>
                         <div>
@@ -549,7 +549,7 @@
             const newEntry = document.createElement('div');
             newEntry.className = 'flex items-center gap-2 bg-gray-800 p-2 rounded-lg';
             newEntry.dataset.wsId = wsId;
-            newEntry.innerHTML = `<span class="flex-grow">${wsName}</span><select class="form-select text-sm py-1 role-selector"><option value="Employee" selected>Employee</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">×</button>`;
+            newEntry.innerHTML = `<span class="flex-grow">${wsName}</span><select class="form-select text-sm py-1 role-selector"><option value="Employee" selected>Employee</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button>`;
             list.appendChild(newEntry);
             newEntry.querySelector('.remove-ws-btn').addEventListener('click', (e) => e.target.closest('.flex').remove());
             addSelect.remove(addSelect.selectedIndex);

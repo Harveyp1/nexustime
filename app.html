@@ -442,8 +442,6 @@
         const timesheetTableBody = document.getElementById('timesheet-table-body');
         const spreadsheetContainer = document.getElementById('spreadsheet-container');
         const weekRangeDisplay = document.getElementById('week-range-display');
-        const prevWeekBtn = document.getElementById('prev-week-btn');
-        const nextWeekBtn = document.getElementById('next-week-btn');
         const employeeDetailsContainer = document.getElementById('employee-details-container');
         const manageTabs = document.getElementById('manage-tabs');
         const manageContent = document.getElementById('manage-content');
@@ -792,19 +790,16 @@
             document.getElementById('logout-button-mobile').addEventListener('click', () => signOut(auth));
             
             document.body.addEventListener('click', (e) => {
-                // Nav Links
                 const navLink = e.target.closest('.nav-link');
                 if (navLink && navLink.dataset.page) {
                     e.preventDefault();
                     window.location.hash = navLink.dataset.page;
                 }
 
-                // Close Modals
                 if (e.target.closest('.close-modal-btn') || e.target.closest('#close-punch-modal-button')) {
                     closeAllModals();
                 }
 
-                // Timesheet Navigation & Actions
                 if (e.target.closest('#prev-week-btn')) { currentWeekOffset--; renderTimesheetPage(); }
                 if (e.target.closest('#next-week-btn')) { currentWeekOffset++; renderTimesheetPage(); }
                 if (e.target.closest('#enter-punch-btn')) { openPunchModal(); }
@@ -823,6 +818,7 @@
 
         // --- AUTH FORMS ---
         function renderAuthPage(showLogin = true) {
+            showPage('auth');
             if (showLogin) {
                 authContainer.innerHTML = `
                     <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Welcome Back</h3><p class="text-gray-400 mt-2">Log in to manage your workspaces.</p></div>
@@ -908,8 +904,104 @@
                 }
             }
         }
+        
+        // --- All other render and handler functions ---
+        
+        async function renderWorkspaceSelection() {
+            await loadUserData(currentUser.uid);
+            
+            await renderPlanStatCard();
 
-        // --- ALL OTHER RENDER & HANDLER FUNCTIONS ---
+            if (!currentUserData || !currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
+                workspaceListContainer.innerHTML = '<p class="text-center text-gray-400">You are not a member of any workspaces.</p>';
+            } else {
+                workspaceListContainer.innerHTML = '<div class="loader"></div>';
+                const workspaceIds = Object.keys(currentUserData.workspaces);
+                const workspaceDocs = await Promise.all(workspaceIds.map(id => getDoc(doc(db, "workspaces", id))));
+                
+                workspaceListContainer.innerHTML = '';
+                workspaceDocs.forEach(async (wsDoc) => {
+                    if (wsDoc.exists()) {
+                        const ws = {id: wsDoc.id, ...wsDoc.data()};
+                        
+                        const membersColRef = collection(db, "workspaces", ws.id, "members");
+                        const projectsColRef = collection(db, "workspaces", ws.id, "projects");
+                        const [membersSnapshot, projectsSnapshot] = await Promise.all([
+                            getDocs(query(membersColRef)),
+                            getDocs(query(projectsColRef))
+                        ]);
+                        const memberCount = membersSnapshot.size;
+                        const projectCount = projectsSnapshot.size;
+
+                        const card = document.createElement('div');
+                        const isActive = ws.id === currentWorkspaceId;
+                        card.className = `card workspace-card p-6 text-center hover:border-emerald-400 cursor-pointer relative flex flex-col justify-between ${isActive ? 'active-workspace' : ''}`;
+                        card.innerHTML = `
+                            <div>
+                                ${isActive ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
+                                <h3 class="text-xl font-bold text-white mb-2">${ws.name}</h3>
+                                <p class="text-sm font-semibold text-emerald-400">${ws.plan || 'Free'} Plan</p>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
+                                <p>${memberCount} Members</p>
+                                <p>${projectCount} Projects</p>
+                            </div>
+                        `;
+                        card.addEventListener('click', async () => {
+                            if (isActive) return;
+                            currentWorkspaceId = ws.id;
+                            await updateDoc(doc(db, "users", currentUser.uid), { activeWorkspaceId: ws.id });
+                            window.location.hash = 'dashboard';
+                            window.location.reload();
+                        });
+                        workspaceListContainer.appendChild(card);
+                    }
+                });
+            }
+
+            const userPlan = currentUserData.plan || 'Free';
+            const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
+            const canCreateWorkspace = Object.keys(currentUserData.workspaces || {}).length < workspaceLimit;
+            
+            const createCard = document.createElement('div');
+            createCard.className = `card p-8 text-center flex flex-col items-center justify-center border-2 border-dashed border-gray-600 min-h-[180px] ${canCreateWorkspace ? 'hover:border-emerald-400 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`;
+            createCard.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <h3 class="text-xl font-bold text-white">Create New Workspace</h3>
+                ${!canCreateWorkspace ? '<p class="text-sm text-gray-400 mt-2">Upgrade your plan to create more workspaces.</p>' : ''}
+            `;
+            if (canCreateWorkspace) {
+                createCard.addEventListener('click', () => window.location.hash = 'onboarding');
+            }
+            workspaceListContainer.appendChild(createCard);
+        }
+
+        async function renderPlanStatCard() {
+            const userPlan = currentUserData.plan || 'Free';
+            const userLimit = PLAN_USER_LIMITS[userPlan] || 0;
+            
+            let totalActiveUsers = 0;
+            const workspaceIds = Object.keys(currentUserData.workspaces || {});
+            
+            if (workspaceIds.length > 0) {
+                const memberQueries = workspaceIds.map(id => getDocs(query(collection(db, `workspaces/${id}/members`), where("status", "==", "Active"))));
+                const memberSnapshots = await Promise.all(memberQueries);
+                totalActiveUsers = memberSnapshots.reduce((acc, snapshot) => acc + snapshot.size, 0);
+            }
+
+            planStatCard.innerHTML = `
+                <h4 class="font-semibold text-white">${userPlan} Plan</h4>
+                <p class="text-sm text-gray-400 mt-1">
+                    Users: ${totalActiveUsers} / ${userLimit === Infinity ? 'Unlimited' : userLimit}
+                </p>
+                <div class="mt-4 space-y-2">
+                    <a href="#manage" data-page="manage" class="block w-full text-center cta-button px-4 py-2 rounded-lg text-sm">Add Users</a>
+                    <a href="#settings" data-page="settings" class="block w-full text-center secondary-button px-4 py-2 rounded-lg text-sm">Upgrade Plan</a>
+                </div>
+            `;
+        }
 
         function renderDashboard() {
             if (!currentWorkspaceId) return;
@@ -1090,7 +1182,6 @@
                 renderManageDepartments();
             }
 
-            // Re-attach listeners for dynamically rendered content
             manageTabs.addEventListener('click', (e) => {
                 if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab);
             });
@@ -1332,6 +1423,8 @@
             return date.toLocaleDateString('en-US', options);
         }
         
+        // --- Modals and Forms Logic ---
+        
         function openPunchModal(date = null) {
             const addPunchForm = document.getElementById('add-punch-form');
             const employee = employees.find(e => e.id === activeEmployeeFilter);
@@ -1459,13 +1552,13 @@
             if (!verificationSection) return;
             const verificationRecord = getWeekVerification(weekStartDateString);
             const employee = employees.find(e => e.id === activeEmployeeFilter);
-            const supervisor = employees.find(e => e.id === employee.supervisorId) || { name: 'Supervisor' };
+            const supervisor = employees.find(e => e.id === employee?.supervisorId) || { name: 'Supervisor' };
             verificationSection.innerHTML = `
                 <h3 class="text-xl font-bold mb-4">Verification</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <label class="flex items-center"><input type="checkbox" id="employee-verify-checkbox" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500" ${verificationRecord.employeeVerified ? 'checked' : ''} ${verificationRecord.supervisorVerified ? 'disabled' : ''}><span class="ml-3">Employee Verification</span></label>
-                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.employeeVerified ? `Verified by ${employee.name} on ${new Date(verificationRecord.employeeVerificationTimestamp?.toDate()).toLocaleString()}` : 'Pending'}</div>
+                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.employeeVerified ? `Verified by ${employee?.name} on ${new Date(verificationRecord.employeeVerificationTimestamp?.toDate()).toLocaleString()}` : 'Pending'}</div>
                     </div>
                     <div>
                         <label class="flex items-center"><input type="checkbox" id="supervisor-verify-checkbox" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500" ${verificationRecord.supervisorVerified ? 'checked' : ''} ${!verificationRecord.employeeVerified ? 'disabled' : ''}><span class="ml-3">Supervisor Verification</span></label>
@@ -2388,7 +2481,7 @@
         function openConfirmationModal(title, message, onConfirm) {
             const modal = document.getElementById('confirmation-modal');
             document.getElementById('confirmation-modal-title').textContent = title;
-            document.getElementById('confirmation-modal-message').textContent = message;
+            document.getElementById('confirmation-modal-message').innerHTML = message;
             
             const confirmBtn = document.getElementById('confirmation-confirm-btn');
             const cancelBtn = document.getElementById('confirmation-cancel-btn');
@@ -3108,7 +3201,6 @@
                 finalizeBtn.textContent = 'Finalize Pay Run';
             }
         }
-
         
         function viewPayStub(stubId) {
             const stub = payStubs.find(s => s.id === stubId);

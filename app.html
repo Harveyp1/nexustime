@@ -374,15 +374,10 @@
             <form id="project-form" class="p-6 space-y-4"></form>
         </div>
     </div>
-    <div id="confirmation-modal" class="fixed inset-0 z-50 modal-overlay items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="confirmation-modal-title-text">
+    <div id="confirmation-modal" class="fixed inset-0 z-50 modal-overlay items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="confirmation-modal-title">
         <div class="card rounded-lg shadow-xl m-8 max-w-md w-full">
-             <div class="p-6 text-center">
-                <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mb-2">Are you sure?</h3>
-                <p id="confirmation-modal-message" class="text-gray-400 mb-6"></p>
-                <div class="flex justify-center gap-4">
-                    <button id="confirmation-cancel-btn" class="secondary-button px-6 py-2 rounded-lg">Cancel</button>
-                    <button id="confirmation-confirm-btn" class="danger-button px-6 py-2 rounded-lg">Confirm</button>
-                </div>
+             <div id="confirmation-modal-content" class="p-6 text-center">
+                <!-- Content injected by JS -->
             </div>
         </div>
     </div>
@@ -410,7 +405,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global State
+        // --- Global State & Constants ---
         let currentUser = null;
         let currentUserData = null;
         let currentWorkspaceId = null;
@@ -429,15 +424,20 @@
         let projectChart = null;
         let employeeChart = null;
         let billableChart = null;
-        let editingItemId = null; // Used for both employee and project editing
+        let editingItemId = null; 
         let selectedManageItem = null;
         let manageCurrentPage = 1;
         const MANAGE_ITEMS_PER_PAGE = 10;
         let employeeFilters = {};
-        const PLAN_WORKSPACE_LIMITS = { Free: 1, Starter: 1, Pro: 2, Enterprise: Infinity };
-        const PLAN_USER_LIMITS = { Free: 5, Starter: Infinity, Pro: Infinity, Enterprise: Infinity };
         let calendarDate = new Date();
 
+        const PLAN_DETAILS = {
+            Free: { name: 'Free', price: 0, userLimit: 5, wsLimit: 1, priceId: null, features: ["1 Workspace", "Up to 5 Users", "Basic Features"] },
+            Starter: { name: 'Starter', price: 29, userLimit: Infinity, wsLimit: 1, priceId: 'price_starter_plan_id', features: ["1 Workspace", "Unlimited Users", "Core Features"] },
+            Pro: { name: 'Pro', price: 79, userLimit: Infinity, wsLimit: 2, priceId: 'price_pro_plan_id', features: ["2 Workspaces", "Unlimited Users", "Pro Features & Analytics"] },
+            Enterprise: { name: 'Enterprise', price: "Custom", userLimit: Infinity, wsLimit: Infinity, priceId: 'price_enterprise_plan_id', features: ["Unlimited Workspaces", "SSO & Advanced Security", "Dedicated Support"] }
+        };
+        const PLAN_HIERARCHY = { Free: 0, Starter: 1, Pro: 2, Enterprise: 3 };
         
         // DOM Elements
         const pages = document.querySelectorAll('.page');
@@ -550,7 +550,7 @@
                 toast.classList.remove('show');
                 setTimeout(() => {
                     toast.remove();
-                }, 300);
+                }, 3000);
             }, 3000);
         };
 
@@ -591,12 +591,15 @@
                 }
             } else {
                 console.log("No user document found. Creating one and directing to onboarding.");
+                const now = new Date();
+                const nextBilling = new Date(now.setMonth(now.getMonth() + 1));
                 const newUserDoc = {
                     email: currentUser.email,
                     name: currentUser.displayName || currentUser.email.split('@')[0],
                     workspaces: {},
                     activeWorkspaceId: null,
-                    plan: 'Free'
+                    plan: 'Free',
+                    nextBillingDate: nextBilling.toISOString()
                 };
                 await setDoc(doc(db, "users", uid), newUserDoc);
                 currentUserData = { id: uid, ...newUserDoc };
@@ -769,7 +772,7 @@
             }
 
             const userPlan = currentUserData.plan || 'Free';
-            const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
+            const workspaceLimit = PLAN_DETAILS[userPlan].wsLimit;
             const canCreateWorkspace = Object.keys(currentUserData.workspaces || {}).length < workspaceLimit;
             
             const createCard = document.createElement('div');
@@ -789,7 +792,7 @@
 
         async function renderPlanStatCard() {
             const userPlan = currentUserData.plan || 'Free';
-            const userLimit = PLAN_USER_LIMITS[userPlan] || 0;
+            const userLimit = PLAN_DETAILS[userPlan].userLimit;
             
             let totalActiveUsers = 0;
             const workspaceIds = Object.keys(currentUserData.workspaces || {});
@@ -818,7 +821,7 @@
             await loadWorkspaceData(currentWorkspaceId);
             const plan = currentWorkspaceData.plan || 'Free';
             
-            if (plan === 'Pro' || plan === 'Enterprise') {
+            if (checkPlanPermission('Pro')) {
                 renderProDashboard();
             } else {
                 renderStarterDashboard();
@@ -830,12 +833,17 @@
                 <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
                     <h2 class="text-3xl font-bold text-white">${currentWorkspaceData.name} Dashboard</h2>
                 </div>
-                <div class="card p-6 text-center">
+                <div class="card p-8 text-center bg-emerald-900/50 border-emerald-500">
                     <h3 class="text-2xl font-semibold text-white">Unlock Powerful Insights</h3>
-                    <p class="text-gray-400 mt-2 max-w-2xl mx-auto">Upgrade to the Pro plan to access advanced dashboards, billable hour tracking, pending approval lists, and detailed analytics.</p>
-                    <a href="#settings" data-tab-target="billing" class="mt-6 inline-block cta-button px-8 py-3 rounded-lg font-semibold">Upgrade to Pro</a>
+                    <p class="text-gray-300 mt-2 max-w-2xl mx-auto">Upgrade to the Pro plan to access advanced dashboards, billable hour tracking, recently completed tasks, and detailed analytics.</p>
+                    <button onclick="window.location.hash='#settings'; switchSettingsTab('billing');" class="mt-6 inline-block cta-button px-8 py-3 rounded-lg font-semibold">Upgrade to Pro</button>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Employees</h3><p class="text-4xl font-bold text-white mt-2">${employees.length}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Projects</h3><p class="text-4xl font-bold text-white mt-2">${projects.length}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Tasks</h3><p class="text-4xl font-bold text-white mt-2">${tasks.length}</p></div>
+                </div>
+                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                     <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Project</h3><canvas id="project-chart"></canvas></div>
                     <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Employee</h3><canvas id="employee-chart"></canvas></div>
                 </div>
@@ -848,14 +856,31 @@
             let billableHours = 0; // Assuming a 'billable' property on projects or time entries
             let pendingApprovals = 5; // Placeholder
             
-            // Dummy calculation for billable hours
             Object.values(timesheets).forEach(employeeSheet => {
                 Object.values(employeeSheet).forEach(day => {
                     const hours = calculateTotalHoursFromPairs(processDayPunches(null, null, day.punches).pairs);
                     totalHours += hours;
-                    if (Math.random() > 0.3) billableHours += hours; // 70% of hours are billable
+                    if (Math.random() > 0.3) billableHours += hours;
                 });
             });
+
+            // Recently Completed Tasks Logic
+            const completedTasks = tasks
+                .filter(t => t.status === 'completed' && t.completedAt)
+                .sort((a, b) => b.completedAt.toDate() - a.completedAt.toDate())
+                .slice(0, 5);
+            
+            let completedTasksHtml = completedTasks.length > 0
+                ? completedTasks.map(task => `
+                    <li class="flex justify-between items-center py-2 border-b border-gray-700">
+                        <div>
+                            <p class="text-white">${task.title}</p>
+                            <p class="text-sm text-gray-400">Completed by ${task.assigneeName}</p>
+                        </div>
+                        <span class="text-sm text-gray-500">${timeAgo(task.completedAt.toDate())}</span>
+                    </li>
+                `).join('')
+                : '<p class="text-gray-500 text-center py-4">No tasks completed recently.</p>';
 
             dashboardContent.innerHTML = `
                  <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
@@ -875,12 +900,9 @@
                 </div>
                  <!-- Actionable Lists -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                     <div class="card p-6">
-                        <h3 class="text-xl font-semibold text-white mb-4">Pending Timesheet Approvals</h3>
-                        <ul class="space-y-3">
-                            <li class="flex justify-between items-center"><p>Jane Doe - Week of Oct 23</p><button class="secondary-button px-3 py-1 text-sm rounded-md">Review</button></li>
-                            <li class="flex justify-between items-center"><p>John Smith - Week of Oct 23</p><button class="secondary-button px-3 py-1 text-sm rounded-md">Review</button></li>
-                        </ul>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-white mb-4">Recently Completed Tasks</h3>
+                        <ul class="space-y-2">${completedTasksHtml}</ul>
                     </div>
                      <div class="card p-6">
                         <h3 class="text-xl font-semibold text-white mb-4">Projects Nearing Budget</h3>
@@ -1189,60 +1211,28 @@
 
         // --- Helper Functions (Dates, Calculations, etc.) ---
         
-        /**
-         * Calculates estimated taxes based on gross pay.
-         * NOTE: This is a simplified model for demonstration purposes only.
-         * A real-world application must use a dedicated payroll tax API.
-         * @param {number} grossPay The gross pay for the period.
-         * @param {string} filingStatus 'single' or 'married'.
-         * @param {number} allowances The number of allowances claimed.
-         * @returns {object} An object containing the tax breakdown.
-         */
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + " years ago";
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + " months ago";
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + " days ago";
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + " hours ago";
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + " minutes ago";
+            return Math.floor(seconds) + " seconds ago";
+        }
+
         function calculateTaxes(grossPay, filingStatus = 'single', allowances = 0) {
-            // FICA Taxes (Social Security & Medicare)
             const socialSecurityRate = 0.062;
             const medicareRate = 0.0145;
-            
-            // NOTE: In a real system, there's a wage base limit for Social Security. Ignored for simplicity.
             const socialSecurity = grossPay * socialSecurityRate;
             const medicare = grossPay * medicareRate;
-
-            // Simplified Federal Income Tax Calculation
-            // Using 2024 tax brackets and a very simplified standard deduction model.
-            // This is NOT accurate for real payroll but demonstrates the concept.
-            const annualGross = grossPay * 26; // Assuming bi-weekly pay period for annualization
-            const singleBrackets = {
-                0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37
-            };
-            const marriedBrackets = {
-                0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37
-            };
-            
-            const brackets = (filingStatus === 'married') ? marriedBrackets : singleBrackets;
-            let taxableIncome = annualGross; // In a real system, subtract pre-tax deductions here.
-            let annualFederalTax = 0;
-            let remainingIncome = taxableIncome;
-            
-            const sortedBrackets = Object.keys(brackets).map(Number).sort((a,b) => b-a);
-            
-            for (const bracketStart of sortedBrackets) {
-                if (remainingIncome > bracketStart) {
-                    const incomeInBracket = remainingIncome - bracketStart;
-                    annualFederalTax += incomeInBracket * brackets[bracketStart];
-                    remainingIncome = bracketStart;
-                }
-            }
-
-            const federal = annualFederalTax / 26; // De-annualize for the pay period
-
-            const total = socialSecurity + medicare + (federal > 0 ? federal : 0);
-
-            return {
-                federal: federal > 0 ? federal : 0,
-                socialSecurity,
-                medicare,
-                total
-            };
+            const federal = grossPay * 0.1; // Highly simplified
+            return { federal, socialSecurity, medicare, total: federal + socialSecurity + medicare };
         }
         
         function processDayPunches(employeeId, day, punchesOverride = null) {
@@ -1257,23 +1247,17 @@
             for (const punch of sortedPunches) {
                 if (punch.mode === 'in') {
                     if (openIn) {
-                        // We have a dangling "in" punch. Close it without an "out".
                         pairs.push({ in: openIn, out: '' });
                     }
                     openIn = punch.time;
                 } else if (punch.mode === 'out') {
                     if (openIn) {
-                        // Found a pair
                         pairs.push({ in: openIn, out: punch.time });
                         openIn = null;
-                    } else {
-                        // This is a dangling "out" punch. We can ignore it or handle it.
-                        // For now, let's ignore it as it doesn't make sense without an "in".
-                    }
+                    } 
                 }
             }
 
-            // If the loop ends and there's still an open "in" punch
             if (openIn) {
                 pairs.push({ in: openIn, out: '' });
             }
@@ -1312,7 +1296,7 @@
             if(!date) return '';
             const options = { month: 'short', day: 'numeric' };
             if (includeYear) options.year = 'numeric';
-            return date.toLocaleDateString('en-US', options);
+            return new Date(date).toLocaleDateString('en-US', options);
         }
 
         // --- Event Listeners & Handlers ---
@@ -1659,8 +1643,8 @@
         
         function openAddEmployeeModal() {
             // Enforce user limit based on the workspace plan
-            if (currentWorkspaceData.plan === 'Free' && employees.length >= PLAN_USER_LIMITS.Free) {
-                showToast(`Free plan is limited to ${PLAN_USER_LIMITS.Free} users. Please upgrade the workspace plan.`, 'error');
+            if (currentWorkspaceData.plan === 'Free' && employees.length >= PLAN_DETAILS.Free.userLimit) {
+                showToast(`Free plan is limited to ${PLAN_DETAILS.Free.userLimit} users. Please upgrade the workspace plan.`, 'error');
                 return;
             }
 
@@ -2222,30 +2206,65 @@
 
         function renderBillingSettings() {
             const container = document.getElementById('billing-settings-tab');
+            container.innerHTML = `
+                <div id="billing-details-card" class="mb-12"></div>
+                <div id="plan-selection-container"></div>
+            `;
+            renderBillingDetailsCard();
+            renderPlanSelectionCards();
+        }
+
+        function renderBillingDetailsCard() {
+            const card = document.getElementById('billing-details-card');
+            const planName = currentUserData.plan || 'Free';
+            const plan = PLAN_DETAILS[planName];
+            const nextBillingDate = currentUserData.nextBillingDate ? formatDate(currentUserData.nextBillingDate, true) : 'N/A';
+            const price = typeof plan.price === 'number' ? `$${plan.price.toFixed(2)}` : 'Custom';
+            
+            card.innerHTML = `
+                <h3 class="text-xl font-semibold text-white mb-2">Current Subscription</h3>
+                <div class="card p-8">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-2xl font-bold text-emerald-400">${plan.name} Plan</p>
+                            <p class="text-gray-400">Your plan renews on ${nextBillingDate}.</p>
+                        </div>
+                        <p class="text-3xl font-bold text-white">${price}<span class="text-base font-medium text-gray-400">/month</span></p>
+                    </div>
+                    <div class="border-t border-gray-700 mt-6 pt-6">
+                        <h4 class="font-semibold text-white mb-2">Summary:</h4>
+                        <ul class="text-gray-300 space-y-2">
+                           <li class="flex justify-between"><span>Base Plan</span><span>${price}</span></li>
+                           <!-- In a real app, user/seat count would be listed here -->
+                           <li class="flex justify-between font-bold border-t border-gray-600 mt-2 pt-2"><span>Total Next Bill</span><span>${price}</span></li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPlanSelectionCards() {
+            const container = document.getElementById('plan-selection-container');
             const currentUserPlan = currentUserData.plan || 'Free';
-            
-            const plans = {
-                Free: { price: 0, userLimit: PLAN_USER_LIMITS.Free, wsLimit: PLAN_WORKSPACE_LIMITS.Free, features: ["1 Workspace", "Up to 5 Users", "Basic Features"] },
-                Starter: { price: 29, userLimit: PLAN_USER_LIMITS.Starter, wsLimit: PLAN_WORKSPACE_LIMITS.Starter, features: ["1 Workspace", "Unlimited Users", "Core Features"] },
-                Pro: { price: 79, userLimit: PLAN_USER_LIMITS.Pro, wsLimit: PLAN_WORKSPACE_LIMITS.Pro, features: ["2 Workspaces", "Unlimited Users", "Pro Features & Analytics"] },
-                Enterprise: { price: "Custom", userLimit: PLAN_USER_LIMITS.Enterprise, wsLimit: PLAN_WORKSPACE_LIMITS.Enterprise, features: ["Unlimited Workspaces", "SSO & Advanced Security", "Dedicated Support"] }
-            };
-            
-            let plansHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
-            for (const [planName, planDetails] of Object.entries(plans)) {
+
+            let plansHtml = '<h3 class="text-xl font-semibold text-white mb-6">Change Your Plan</h3><p class="text-gray-400 mb-6 -mt-4">Your account plan determines account-wide limits. Upgrading will also upgrade your currently active workspace.</p><div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
+            for (const [planName, planDetails] of Object.entries(PLAN_DETAILS)) {
+                if(planDetails.price === "Custom") continue; // Don't show Enterprise as a self-serve option
+
                 const isCurrent = planName === currentUserPlan;
                 let buttonHtml;
                 if (isCurrent) {
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" disabled>Current Plan</button>`;
                 } else {
-                    const actionText = (planDetails.price > (plans[currentUserPlan]?.price || 0) || planDetails.price === "Custom") ? 'Upgrade' : 'Downgrade';
+                    const isUpgrade = PLAN_HIERARCHY[planName] > PLAN_HIERARCHY[currentUserPlan];
+                    const actionText = isUpgrade ? 'Upgrade' : 'Downgrade';
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}">${actionText} to ${planName}</button>`;
                 }
 
                 plansHtml += `
-                    <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''}">
+                    <div class="plan-card p-8 rounded-lg ${isCurrent ? 'selected' : ''}">
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
-                        <p class="text-4xl font-extrabold my-4 text-white">${typeof planDetails.price === 'number' ? `$${planDetails.price}` : planDetails.price}<span class="text-base font-medium text-gray-400">/month</span></p>
+                        <p class="text-4xl font-extrabold my-4 text-white">$${planDetails.price}<span class="text-base font-medium text-gray-400">/month</span></p>
                         <ul class="space-y-2 text-gray-300 flex-grow mb-6">
                             ${planDetails.features.map(f => `
                                 <li class="flex items-center">
@@ -2260,18 +2279,122 @@
                 `;
             }
             plansHtml += '</div>';
-
-            container.innerHTML = `
-                <h3 class="text-xl font-semibold text-white mb-2">Your Account Plan</h3>
-                <p class="text-gray-400 mb-6">Your account plan determines limits like the number of workspaces you can create. Features are managed by the plan on each individual workspace.</p>
-                ${plansHtml}
-            `;
+            container.innerHTML = plansHtml;
             
             container.querySelectorAll('button[data-plan]').forEach(button => {
-                button.addEventListener('click', () => handlePlanSelection(button.dataset.plan));
+                button.addEventListener('click', () => openProrationModal(button.dataset.plan));
             });
         }
+        
+        function openProrationModal(newPlanName) {
+            const currentPlanName = currentUserData.plan || 'Free';
+            const currentPlan = PLAN_DETAILS[currentPlanName];
+            const newPlan = PLAN_DETAILS[newPlanName];
 
+            // --- Safety Check for Downgrades ---
+            const isDowngrade = PLAN_HIERARCHY[newPlanName] < PLAN_HIERARCHY[currentPlanName];
+            if (isDowngrade) {
+                 const currentWsCount = Object.keys(currentUserData.workspaces || {}).length;
+                 if (currentWsCount > newPlan.wsLimit) {
+                     showToast(`Cannot downgrade. You have ${currentWsCount} workspaces, but the ${newPlanName} plan only allows ${newPlan.wsLimit}.`, 'error');
+                     return;
+                 }
+            }
+            
+            // --- Proration Calculation (SIMULATION) ---
+            const nextBillingDate = new Date(currentUserData.nextBillingDate);
+            const today = new Date();
+            const daysInCycle = 30; // Assuming 30-day billing cycle for simplicity
+            const daysRemaining = Math.max(0, Math.round((nextBillingDate - today) / (1000 * 60 * 60 * 24)));
+            
+            const creditForOldPlan = (currentPlan.price / daysInCycle) * daysRemaining;
+            const costForNewPlan = (newPlan.price / daysInCycle) * daysRemaining;
+            const amountDueToday = costForNewPlan - creditForOldPlan;
+
+            const modal = document.getElementById('confirmation-modal');
+            const modalContent = document.getElementById('confirmation-modal-content');
+
+            modalContent.innerHTML = `
+                <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mb-4">Confirm Your Plan Change</h3>
+                <div class="text-left space-y-4 bg-gray-800 p-4 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Unused time on ${currentPlan.name} Plan</span>
+                        <span>-$${creditForOldPlan.toFixed(2)}</span>
+                    </div>
+                     <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Remaining time on ${newPlan.name} Plan</span>
+                        <span>$${costForNewPlan.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-white font-bold border-t border-gray-600 pt-2">
+                        <span>Amount due today</span>
+                        <span>$${amountDueToday.toFixed(2)}</span>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 mt-4">Your card will be charged the prorated amount. Your new plan will renew at $${newPlan.price}/month starting on ${formatDate(nextBillingDate, true)}.</p>
+                <div class="flex justify-center gap-4 mt-6">
+                    <button id="confirmation-cancel-btn" class="secondary-button px-6 py-2 rounded-lg">Cancel</button>
+                    <button id="confirmation-confirm-btn" class="cta-button px-6 py-2 rounded-lg">Confirm & Pay</button>
+                </div>
+            `;
+            
+            document.getElementById('confirmation-confirm-btn').onclick = () => initiatePlanChange(newPlanName);
+            document.getElementById('confirmation-cancel-btn').onclick = closeAllModals;
+
+            modal.style.display = 'flex';
+        }
+
+        async function initiatePlanChange(newPlanName) {
+            const newPlanDetails = PLAN_DETAILS[newPlanName];
+            const newPriceId = newPlanDetails.priceId;
+
+            // =================================================================
+            // == IN PRODUCTION: This section would call the backend. ==
+            // =================================================================
+            // const functions = getFunctions(app);
+            // const changePlan = httpsCallable(functions, 'changeStripeSubscription');
+            // try {
+            //   await changePlan({ newPriceId: newPriceId });
+            //   // The backend Cloud Function would then update Firestore on success.
+            //   // For our simulation, we do the update here directly.
+            // } catch (error) {
+            //   console.error("Stripe plan change failed:", error);
+            //   showToast(`Payment failed: ${error.message}`, 'error');
+            //   return; // Stop execution if payment fails
+            // }
+            // =================================================================
+            // == SIMULATION LOGIC STARTS HERE ==
+            // =================================================================
+            console.log(`Simulating call to backend for user ${currentUser.uid} to change to plan ${newPlanName} with priceId: ${newPriceId}`);
+            
+            const userDocRef = doc(db, "users", currentUser.uid);
+            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
+
+            const now = new Date();
+            const newNextBillingDate = new Date(now.setMonth(now.getMonth() + 1)).toISOString();
+
+            const batch = writeBatch(db);
+            batch.update(userDocRef, { 
+                plan: newPlanName,
+                nextBillingDate: newNextBillingDate
+            });
+            batch.update(workspaceDocRef, { plan: newPlanName });
+            
+            try {
+                await batch.commit();
+                showToast(`Successfully changed plan to ${newPlanName}!`, 'success');
+
+                await loadUserData(currentUser.uid);
+                await loadWorkspaceData(currentWorkspaceId);
+                renderBillingSettings();
+                renderDashboard();
+                closeAllModals();
+
+            } catch (error) {
+                console.error("Error changing plan:", error);
+                showToast(`Failed to change plan: ${error.message}`, 'error');
+            }
+        }
+        
         function renderDangerZoneSettings() {
             const container = document.getElementById('danger-settings-tab');
             container.innerHTML = `
@@ -2342,7 +2465,6 @@
             try {
                 await updateDoc(userDocRef, updatedProfile);
                 showToast('Profile settings saved successfully!', 'success');
-                // Reload user data to reflect changes immediately
                 await loadUserData(currentUser.uid);
             } catch (error) {
                 console.error("Error saving profile:", error);
@@ -2374,74 +2496,56 @@
             }
         }
         
-        async function handlePlanSelection(newPlan) {
-            const userDocRef = doc(db, "users", currentUser.uid);
-            try {
-                // This updates the USER's master plan
-                await updateDoc(userDocRef, { plan: newPlan }); 
-                showToast(`Successfully changed your account plan to ${newPlan}!`, 'success');
-                await loadUserData(currentUser.uid); // Reload user data
-                renderBillingSettings(); // Re-render the billing page
-            } catch (error) {
-                console.error("Error changing plan:", error);
-                showToast(`Failed to change plan: ${error.message}`, 'error');
-            }
-        }
-
         function handleDeleteWorkspace() {
-            openConfirmationModal(
-                'Delete Workspace',
-                `This will permanently delete the "${currentWorkspaceData.name}" workspace and all its data. This action cannot be undone.`,
-                async () => {
-                    const batch = writeBatch(db);
-                    
-                    // Note: Deleting subcollections from the client is not recommended for production.
-                    // This should be handled by a Firebase Cloud Function. This is a simplified simulation.
-                    console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
+            const modalContent = document.getElementById('confirmation-modal-content');
+            modalContent.innerHTML = `
+                <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mb-2">Delete Workspace</h3>
+                <p id="confirmation-modal-message" class="text-gray-400 mb-6">This will permanently delete the "${currentWorkspaceData.name}" workspace and all its data. This action cannot be undone.</p>
+                <div class="flex justify-center gap-4">
+                    <button id="confirmation-cancel-btn" class="secondary-button px-6 py-2 rounded-lg">Cancel</button>
+                    <button id="confirmation-confirm-btn" class="danger-button px-6 py-2 rounded-lg">Delete</button>
+                </div>
+            `;
 
-                    const userDocRef = doc(db, "users", currentUser.uid);
-                    const newWorkspaces = { ...currentUserData.workspaces };
-                    delete newWorkspaces[currentWorkspaceId];
-                    
-                    batch.update(userDocRef, {
-                        workspaces: newWorkspaces,
-                        activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
-                    });
-                    
-                    // Mark the workspace for deletion instead of actually deleting it from client
-                    batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
+            const onConfirm = async () => {
+                const batch = writeBatch(db);
+                
+                console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
 
-                    await batch.commit();
+                const userDocRef = doc(db, "users", currentUser.uid);
+                const newWorkspaces = { ...currentUserData.workspaces };
+                delete newWorkspaces[currentWorkspaceId];
+                
+                batch.update(userDocRef, {
+                    workspaces: newWorkspaces,
+                    activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
+                });
+                
+                batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
 
-                    showToast('Workspace deletion initiated.', 'success');
-                    window.location.hash = 'company-selection';
-                    closeAllModals();
-                }
-            );
+                await batch.commit();
+
+                showToast('Workspace deletion initiated.', 'success');
+                window.location.hash = 'company-selection';
+                closeAllModals();
+            };
+            
+            document.getElementById('confirmation-modal').style.display = 'flex';
+            document.getElementById('confirmation-confirm-btn').onclick = onConfirm;
+            document.getElementById('confirmation-cancel-btn').onclick = closeAllModals;
         }
 
-        function openConfirmationModal(title, message, onConfirm) {
-            const modal = document.getElementById('confirmation-modal');
-            document.getElementById('confirmation-modal-title').textContent = title;
-            document.getElementById('confirmation-modal-message').textContent = message;
-            
-            const confirmBtn = document.getElementById('confirmation-confirm-btn');
-            const cancelBtn = document.getElementById('confirmation-cancel-btn');
-            
-            // Clone and replace to remove old event listeners
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            
-            newConfirmBtn.addEventListener('click', onConfirm);
-            cancelBtn.addEventListener('click', closeAllModals);
-
-            modal.style.display = 'flex';
-        }
+        const checkPlanPermission = (requiredPlan) => {
+            if (!currentWorkspaceData || !currentWorkspaceData.plan) return false;
+            const currentPlanLevel = PLAN_HIERARCHY[currentWorkspaceData.plan] ?? -1;
+            const requiredPlanLevel = PLAN_HIERARCHY[requiredPlan] ?? 99;
+            return currentPlanLevel >= requiredPlanLevel;
+        };
 
 
         async function renderOnboardingPage() {
             const userPlan = currentUserData.plan || 'Free';
-            const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
+            const workspaceLimit = PLAN_DETAILS[userPlan].wsLimit;
             const existingWorkspaceCount = Object.keys(currentUserData.workspaces || {}).length;
 
             if (existingWorkspaceCount >= workspaceLimit) {
@@ -2449,7 +2553,7 @@
                     <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Workspace Limit Reached</h2>
                     <p class="text-center text-gray-400">Your current account plan (${userPlan}) allows for a maximum of ${workspaceLimit} workspace(s). Please upgrade your account plan to create more.</p>
                     <div class="text-center mt-6">
-                        <a href="#settings" data-tab-target="billing" class="cta-button px-8 py-3 rounded-lg font-semibold">Upgrade Account Plan</a>
+                        <button onclick="window.location.hash='#settings'; switchSettingsTab('billing');" class="cta-button px-8 py-3 rounded-lg font-semibold">Upgrade Account Plan</button>
                     </div>
                 `;
                 return;
@@ -2798,10 +2902,16 @@
         async function handleTaskStatusChange(taskId, isCompleted) {
             const taskRef = doc(db, "workspaces", currentWorkspaceId, "tasks", taskId);
             const newStatus = isCompleted ? 'completed' : 'pending';
+            const updateData = { 
+                status: newStatus,
+                completedAt: isCompleted ? new Date() : null
+            };
+
             try {
-                await updateDoc(taskRef, { status: newStatus });
+                await updateDoc(taskRef, updateData);
                 showToast(`Task marked as ${newStatus}.`, 'success');
-                renderTasksPage(); // Re-render to reflect the change
+                renderTasksPage(); 
+                renderDashboard(); // Re-render dashboard to update the new widget
             } catch (error) {
                 console.error("Error updating task status:", error);
                 showToast(`Error: ${error.message}`, 'error');

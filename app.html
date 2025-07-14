@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NexusTime App</title>
-    <script src="https://js.stripe.com/v3/"></script> <!-- STRIPE.JS SCRIPT -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -132,13 +131,9 @@
             <p class="text-center text-gray-400">Loading Application...</p>
         </div>
 
-        <!-- Auth Page (Login/Signup) -->
-        <div id="auth" class="page">
-             <section class="py-20">
-                <div id="auth-container" class="max-w-md mx-auto card p-8 rounded-xl mt-10">
-                    <!-- Login or Signup form will be rendered here by JS -->
-                </div>
-            </section>
+        <!-- Login Page -->
+        <div id="login" class="page">
+            <section class="py-20"><div class="max-w-md mx-auto card p-8 rounded-xl mt-10"><div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Welcome Back</h3><p class="text-gray-400 mt-2">Log in to manage your workspaces.</p></div><form id="login-form"><div class="mb-4"><label for="login-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="login-email" class="w-full p-3 form-input" required></div><div class="mb-6"><label for="login-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="login-password" class="w-full p-3 form-input" required></div><div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Log In</button></div></form><p id="login-error" class="text-red-500 text-center mt-4"></p></div></section>
         </div>
 
         <!-- Onboarding Page -->
@@ -381,7 +376,7 @@
     <script type="module">
         // Firebase Imports
         import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, startAt, endAt, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Firebase Configuration
@@ -395,15 +390,12 @@
             measurementId: "G-QRSD6TYH86"
         };
 
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- STRIPE & PAYMENT CONFIG ---
-        let stripe;
-        let stripeConfig;
-
-        // --- GLOBAL STATE ---
+        // Global State
         let currentUser = null;
         let currentUserData = null;
         let currentWorkspaceId = null;
@@ -421,20 +413,20 @@
         let editingDayData = null;
         let projectChart = null;
         let employeeChart = null;
-        let editingItemId = null;
+        let editingItemId = null; // Used for both employee and project editing
         let selectedManageItem = null;
         let manageCurrentPage = 1;
         const MANAGE_ITEMS_PER_PAGE = 10;
         let employeeFilters = {};
-        const PLAN_WORKSPACE_LIMITS = { Free: 1, Starter: 1, Pro: 3, Enterprise: Infinity };
+        const PLAN_WORKSPACE_LIMITS = { Free: 1, Starter: 1, Pro: 2, Enterprise: Infinity };
         const PLAN_USER_LIMITS = { Free: 5, Starter: Infinity, Pro: Infinity, Enterprise: Infinity };
-        const PLAN_PROJECT_LIMITS = { Free: 3, Starter: Infinity, Pro: Infinity, Enterprise: Infinity };
-        const PLAN_HIERARCHY = { Free: 0, Starter: 1, Pro: 2, Enterprise: 3 };
         let calendarDate = new Date();
+
         
-        // --- DOM ELEMENTS ---
+        // DOM Elements
         const pages = document.querySelectorAll('.page');
-        const authContainer = document.getElementById('auth-container');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
         const workspaceListContainer = document.getElementById('workspace-list');
         const planStatCard = document.getElementById('plan-stat-card');
         const dashboardTitle = document.getElementById('dashboard-title');
@@ -442,6 +434,8 @@
         const timesheetTableBody = document.getElementById('timesheet-table-body');
         const spreadsheetContainer = document.getElementById('spreadsheet-container');
         const weekRangeDisplay = document.getElementById('week-range-display');
+        const prevWeekBtn = document.getElementById('prev-week-btn');
+        const nextWeekBtn = document.getElementById('next-week-btn');
         const employeeDetailsContainer = document.getElementById('employee-details-container');
         const manageTabs = document.getElementById('manage-tabs');
         const manageContent = document.getElementById('manage-content');
@@ -449,57 +443,35 @@
         const employeeFilterBar = document.getElementById('employee-filter-bar');
         const addNewButton = document.getElementById('add-new-button');
         const punchModal = document.getElementById('punch-modal');
+        const closePunchModalButton = document.getElementById('close-punch-modal-button');
+        const addPunchForm = document.getElementById('add-punch-form');
         const addEmployeeModal = document.getElementById('add-employee-modal');
         const editEmployeeModal = document.getElementById('edit-employee-modal');
         const projectModal = document.getElementById('project-modal');
         const addShiftModal = document.getElementById('add-shift-modal');
         const createTaskModal = document.getElementById('create-task-modal');
         const requestTimeOffModal = document.getElementById('request-time-off-modal');
+        const addShiftForm = document.getElementById('add-shift-form');
+        const createTaskForm = document.getElementById('create-task-form');
+        const requestTimeOffForm = document.getElementById('request-time-off-form');
+        const addEmployeeForm = document.getElementById('add-employee-form');
+        const editEmployeeForm = document.getElementById('edit-employee-form');
+        const projectForm = document.getElementById('project-form');
         const toastContainer = document.getElementById('toast-container');
         const onboardingContainer = document.getElementById('onboarding-container');
         const settingsNav = document.getElementById('settings-nav');
         const settingsContentArea = document.getElementById('settings-content-area');
         
-        // --- CORE APP LOGIC ---
-        
-        async function getStripeConfig() {
-            if (stripeConfig) return stripeConfig;
-            try {
-                const configRef = doc(db, 'configuration', 'stripe');
-                const configSnap = await getDoc(configRef);
-                if (configSnap.exists()) {
-                    stripeConfig = configSnap.data();
-                    if (stripeConfig.publishableKey) {
-                        stripe = Stripe(stripeConfig.publishableKey);
-                    } else {
-                        console.error("Stripe Publishable Key is missing from configuration.");
-                    }
-                    return stripeConfig;
-                } else {
-                    throw new Error("Stripe configuration not found in database.");
-                }
-            } catch (error) {
-                console.error("Failed to load Stripe config:", error);
-                showToast("Payment system is currently unavailable.", "error");
-                return null;
-            }
-        }
-
-        const checkPlanPermission = (requiredPlan) => {
-            if (!currentWorkspaceData || !currentWorkspaceData.plan) return false;
-            const currentPlanLevel = PLAN_HIERARCHY[currentWorkspaceData.plan] ?? -1;
-            const requiredPlanLevel = PLAN_HIERARCHY[requiredPlan] ?? 99;
-            return currentPlanLevel >= requiredPlanLevel;
-        };
+        // --- Core App Logic ---
 
         const showPage = (pageId) => {
             pages.forEach(page => page.classList.remove('active'));
             const targetPage = document.getElementById(pageId);
             if (targetPage) {
                 targetPage.classList.add('active');
-                if(window.location.hash !== `#${pageId}`) {
-                    window.location.hash = pageId;
-                }
+                window.location.hash = pageId;
+
+                // Update active nav link
                 document.querySelectorAll('.nav-link').forEach(link => {
                     link.classList.toggle('active', link.dataset.page === pageId);
                 });
@@ -512,26 +484,25 @@
             const mobileMenu = document.getElementById('mobile-menu');
             const mobileMenuButton = document.getElementById('mobile-menu-button');
             const logoutButtonDesktop = document.getElementById('logout-button-desktop');
+            const logoutButtonMobile = document.getElementById('logout-button-mobile');
             
-            if (currentUser && currentWorkspaceData) {
+            if (currentUser) {
                 mobileMenuButton.style.display = 'inline-flex';
                 logoutButtonDesktop.style.display = 'inline-flex';
 
-                let navLinks = [
+                const navLinks = [
                     { page: 'dashboard', label: 'Dashboard', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>' },
                     { page: 'timesheet', label: 'Timesheets', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
-                    { page: 'schedule', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>', requiredPlan: 'Pro' },
-                    { page: 'time-off', label: 'Time Off', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>', requiredPlan: 'Pro' },
-                    { page: 'pay-stubs', label: 'Pay Stubs', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2H8a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>', requiredPlan: 'Enterprise' },
-                    { page: 'tasks', label: 'Tasks', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>', requiredPlan: 'Pro' },
+                    { page: 'schedule', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
+                    { page: 'time-off', label: 'Time Off', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>' },
+                    { page: 'pay-stubs', label: 'Pay Stubs', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2H8a1 1 0 01-1-1zm3 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>' },
+                    { page: 'tasks', label: 'Tasks', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>' },
                     { page: 'manage', label: 'Manage', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>' },
                     { page: 'settings', label: 'Settings', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>' },
                     { page: 'company-selection', label: 'Switch Workspace', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 2zM5.404 4.343a.75.75 0 010 1.06l-1.47 1.47a.75.75 0 11-1.06-1.06l1.47-1.47a.75.75 0 011.06 0zm9.192 0a.75.75 0 011.06 0l1.47 1.47a.75.75 0 11-1.06 1.06l-1.47-1.47a.75.75 0 010-1.06zM10 4a6 6 0 100 12 6 6 0 000-12zM10 16a4 4 0 100-8 4 4 0 000 8z" clip-rule="evenodd" /></svg>' },
                 ];
-
-                const visibleNavLinks = navLinks.filter(link => !link.requiredPlan || checkPlanPermission(link.requiredPlan));
                 
-                const linksHtml = visibleNavLinks.map(link => `
+                const linksHtml = navLinks.map(link => `
                     <a href="#${link.page}" data-page="${link.page}" class="nav-link text-gray-300 hover:text-white">
                         ${link.icon}
                         <span>${link.label}</span>
@@ -540,6 +511,10 @@
 
                 navContainerDesktop.innerHTML = linksHtml;
                 navContainerMobile.innerHTML = linksHtml;
+                
+                logoutButtonDesktop.addEventListener('click', () => signOut(auth));
+                logoutButtonMobile.addEventListener('click', () => signOut(auth));
+
             } else {
                 navContainerDesktop.innerHTML = '';
                 navContainerMobile.innerHTML = '';
@@ -554,52 +529,37 @@
             toast.className = `toast ${type}`;
             toast.textContent = message;
             toastContainer.appendChild(toast);
-            setTimeout(() => { toast.classList.add('show'); }, 100);
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => { toast.remove(); }, 300);
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
             }, 3000);
         };
 
-        // --- AUTHENTICATION & DATA LOADING (REVISED & FIXED) ---
+        // --- Authentication ---
         onAuthStateChanged(auth, async (user) => {
-            const loadingScreen = document.getElementById('loading');
-            loadingScreen.classList.add('active');
-
             if (user) {
                 currentUser = user;
                 await loadUserData(user.uid);
-                
+                updateNav();
+
                 if (!currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
                     window.location.hash = 'onboarding';
-                    handleRouting();
-                    loadingScreen.classList.remove('active');
-                    return;
                 }
 
-                if (!currentWorkspaceId) {
-                    window.location.hash = 'company-selection';
-                    handleRouting();
-                    loadingScreen.classList.remove('active');
-                    return;
-                }
-                
-                await loadWorkspaceData(currentWorkspaceId);
-                await getStripeConfig();
-                updateNav();
-                handleRouting();
-                
+                handleRouting(); 
             } else {
                 currentUser = null;
                 currentUserData = null;
                 currentWorkspaceId = null;
-                currentWorkspaceData = null;
-                showPage('auth');
-                renderAuthPage();
+                showPage('login');
                 updateNav();
             }
-            
-            loadingScreen.classList.remove('active');
+            document.getElementById('loading').classList.remove('active');
         });
 
         async function loadUserData(uid) {
@@ -616,7 +576,7 @@
                     currentWorkspaceId = currentUserData.activeWorkspaceId;
                 }
             } else {
-                console.log("No user document found. Creating one for new user.");
+                console.log("No user document found. Creating one and directing to onboarding.");
                 const newUserDoc = {
                     email: currentUser.email,
                     name: currentUser.displayName || currentUser.email.split('@')[0],
@@ -630,68 +590,24 @@
             }
         }
 
-        async function loadWorkspaceData(workspaceId) {
-            if (!workspaceId) return;
-            
-            const wsDocRef = doc(db, "workspaces", workspaceId);
-            
-            const [wsDocSnap, membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
-                getDoc(wsDocRef),
-                getDocs(query(collection(db, "workspaces", workspaceId, "members"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "projects"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "tasks"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "timeOffRequests"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "payStubs"), orderBy("payDate", "desc"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "timeEntries"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "verifications"))),
-                getDocs(query(collection(db, "workspaces", workspaceId, "schedules")))
-            ]);
-
-            if (wsDocSnap.exists()) {
-                currentWorkspaceData = { id: wsDocSnap.id, ...wsDocSnap.data() };
-            } else {
-                console.error("Workspace not found!");
-                currentWorkspaceId = null;
-                await updateDoc(doc(db, 'users', currentUser.uid), { activeWorkspaceId: null });
-                window.location.reload();
-                return;
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginError.textContent = '';
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                loginError.textContent = `Login Failed: ${error.message}`;
+                console.error("Login error:", error);
             }
+        });
 
-            employees = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            projects = projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            tasks = tasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            timeOffRequests = timeOffSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            payStubs = payStubsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            schedules = schedulesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            if (!activeEmployeeFilter && employees.length > 0) {
-               const currentUserAsEmployee = employees.find(e => e.id === currentUser.uid);
-               activeEmployeeFilter = currentUserAsEmployee ? currentUser.uid : employees[0].id;
-            }
-
-            timesheets = {};
-            timesheetsSnapshot.forEach(doc => {
-                const entry = doc.data();
-                const employeeId = entry.userId;
-                const date = entry.date;
-                if (!timesheets[employeeId]) timesheets[employeeId] = {};
-                if (!timesheets[employeeId][date]) timesheets[employeeId][date] = { punches: [] };
-                timesheets[employeeId][date].punches.push({ time: entry.time, mode: entry.mode, type: entry.type });
-            });
-            
-            verificationData = {};
-            verificationSnapshot.forEach(doc => {
-                verificationData[doc.id] = doc.data();
-            });
-            updateNav();
-        }
-
+        // --- Routing ---
         function handleRouting() {
-            const hash = window.location.hash.substring(1) || (currentWorkspaceId ? 'dashboard' : 'company-selection');
-            
+            const hash = window.location.hash.substring(1) || 'dashboard';
             if (!currentUser) {
-                showPage('auth');
-                renderAuthPage();
+                showPage('login');
                 return;
             }
             if (!currentWorkspaceId && !['company-selection', 'onboarding'].includes(hash)) {
@@ -710,193 +626,84 @@
                 'manage': renderManagePage,
                 'settings': renderSettingsPage,
                 'company-selection': renderWorkspaceSelection,
-                'onboarding': renderOnboardingPage,
-                'auth': renderAuthPage,
+                'onboarding': renderOnboardingPage
             }[hash];
 
             if (pageFunction) {
                 showPage(hash);
                 pageFunction();
             } else {
-                showPage(currentWorkspaceId ? 'dashboard' : 'company-selection');
-                if (currentWorkspaceId) renderDashboard(); else renderWorkspaceSelection();
+                showPage('dashboard');
+                renderDashboard();
             }
         }
         
-        async function handleCreateWorkspace(e) {
-            e.preventDefault();
-            const form = e.target;
-            const workspaceData = {
-                name: form.workspaceName.value,
-                industry: form.industry.value,
-                companySize: form.companySize.value,
-                timezone: form.timezone.value,
-                plan: 'Free',
-                ownerId: currentUser.uid,
-                createdAt: new Date(),
-                departments: ["General"],
-                payTypes: ["Hourly", "Salary"],
-                employeeTypes: ["Full-time", "Part-time"],
-                projectCustomFields: ["Client Name", "Budget"]
-            };
-
-            try {
-                const workspaceRef = await addDoc(collection(db, "workspaces"), workspaceData);
-                const workspaceId = workspaceRef.id;
-
-                const memberData = {
-                    uid: currentUser.uid,
-                    email: currentUser.email,
-                    name: currentUserData.name || 'Admin',
-                    role: 'Admin',
-                    status: 'Active'
-                };
-                await setDoc(doc(db, "workspaces", workspaceId, "members", currentUser.uid), memberData);
-
-                await updateDoc(doc(db, "users", currentUser.uid), {
-                    [`workspaces.${workspaceId}`]: 'Admin',
-                    activeWorkspaceId: workspaceId
-                });
-
-                showToast('Workspace created successfully! Reloading...', 'success');
-                setTimeout(() => {
-                    window.location.hash = 'dashboard';
-                    window.location.reload();
-                }, 1500);
-
-            } catch (error) {
-                console.error("Error creating workspace:", error);
-                showToast(`Error: ${error.message}`, 'error');
-            }
-        }
-        
-        // --- EVENT LISTENER SETUP ---
-        function setupEventListeners() {
-            document.getElementById('mobile-menu-button').addEventListener('click', () => {
-                document.getElementById('mobile-menu').classList.toggle('hidden');
-            });
-
-            document.getElementById('logout-button-desktop').addEventListener('click', () => signOut(auth));
-            document.getElementById('logout-button-mobile').addEventListener('click', () => signOut(auth));
-            
-            document.body.addEventListener('click', (e) => {
-                const navLink = e.target.closest('.nav-link');
-                if (navLink && navLink.dataset.page) {
-                    e.preventDefault();
-                    window.location.hash = navLink.dataset.page;
-                }
-
-                if (e.target.closest('.close-modal-btn') || e.target.closest('#close-punch-modal-button')) {
-                    closeAllModals();
-                }
-
-                if (e.target.closest('#prev-week-btn')) { currentWeekOffset--; renderTimesheetPage(); }
-                if (e.target.closest('#next-week-btn')) { currentWeekOffset++; renderTimesheetPage(); }
-                if (e.target.closest('#enter-punch-btn')) { openPunchModal(); }
-                const editableDay = e.target.closest('.day-header.editable');
-                if (editableDay) {
-                    openPunchModal(editableDay.dataset.date);
-                }
-            });
-        }
-        
-        // --- INITIALIZATION ---
         window.addEventListener('hashchange', handleRouting);
-        document.addEventListener('DOMContentLoaded', () => {
-            setupEventListeners();
-        });
+        
+        // --- Data Fetching & Rendering ---
 
-        // --- AUTH FORMS ---
-        function renderAuthPage(showLogin = true) {
-            showPage('auth');
-            if (showLogin) {
-                authContainer.innerHTML = `
-                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Welcome Back</h3><p class="text-gray-400 mt-2">Log in to manage your workspaces.</p></div>
-                    <form id="login-form">
-                        <div class="mb-4"><label for="login-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="login-email" class="w-full p-3 form-input" required></div>
-                        <div class="mb-6"><label for="login-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="login-password" class="w-full p-3 form-input" required></div>
-                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Log In</button></div>
-                    </form>
-                    <p id="auth-error" class="text-red-500 text-center mt-4"></p>
-                    <div class="text-center mt-4 text-sm">
-                        <a href="#" id="forgot-password-link" class="text-emerald-400 hover:underline">Forgot Password?</a>
-                        <p class="text-gray-400 mt-2">Don't have an account? <a href="#" id="toggle-to-signup" class="text-emerald-400 font-semibold hover:underline">Sign Up</a></p>
-                    </div>
-                `;
-                document.getElementById('login-form').addEventListener('submit', handleLogin);
-                document.getElementById('toggle-to-signup').addEventListener('click', (e) => { e.preventDefault(); renderAuthPage(false); });
-                document.getElementById('forgot-password-link').addEventListener('click', handleForgotPassword);
+        async function loadWorkspaceData(workspaceId) {
+            if (!workspaceId) return;
+            
+            const wsDocRef = doc(db, "workspaces", workspaceId);
+            const membersColRef = collection(db, "workspaces", workspaceId, "members");
+            const projectsColRef = collection(db, "workspaces", workspaceId, "projects");
+            const tasksColRef = collection(db, "workspaces", workspaceId, "tasks");
+            const timeOffColRef = collection(db, "workspaces", workspaceId, "timeOffRequests");
+            const payStubsColRef = collection(db, "workspaces", workspaceId, "payStubs");
+            const timesheetsColRef = collection(db, "workspaces", workspaceId, "timeEntries");
+            const verificationColRef = collection(db, "workspaces", workspaceId, "verifications");
+            const schedulesColRef = collection(db, "workspaces", workspaceId, "schedules");
+
+
+            const [wsDocSnap, membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
+                getDoc(wsDocRef),
+                getDocs(query(membersColRef)),
+                getDocs(query(projectsColRef)),
+                getDocs(query(tasksColRef)),
+                getDocs(query(timeOffColRef)),
+                getDocs(query(payStubsColRef, orderBy("payDate", "desc"))),
+                getDocs(query(timesheetsColRef)),
+                getDocs(query(verificationColRef)),
+                getDocs(query(schedulesColRef))
+            ]);
+
+            if (wsDocSnap.exists()) {
+                currentWorkspaceData = { id: wsDocSnap.id, ...wsDocSnap.data() };
             } else {
-                authContainer.innerHTML = `
-                    <div class="text-center mb-8"><h3 class="text-3xl font-bold text-white">Create an Account</h3><p class="text-gray-400 mt-2">Start tracking time with NexusTime.</p></div>
-                    <form id="signup-form">
-                        <div class="mb-4"><label for="signup-name" class="block text-gray-300 mb-2">Full Name</label><input type="text" id="signup-name" class="w-full p-3 form-input" required></div>
-                        <div class="mb-4"><label for="signup-email" class="block text-gray-300 mb-2">Email</label><input type="email" id="signup-email" class="w-full p-3 form-input" required></div>
-                        <div class="mb-4"><label for="signup-password" class="block text-gray-300 mb-2">Password</label><input type="password" id="signup-password" class="w-full p-3 form-input" required minlength="6"></div>
-                        <div class="mb-6"><label for="signup-confirm-password" class="block text-gray-300 mb-2">Confirm Password</label><input type="password" id="signup-confirm-password" class="w-full p-3 form-input" required></div>
-                        <div class="text-center"><button type="submit" class="w-full cta-button px-8 py-3 rounded-lg font-semibold">Sign Up</button></div>
-                    </form>
-                    <p id="auth-error" class="text-red-500 text-center mt-4"></p>
-                    <div class="text-center mt-4 text-sm">
-                        <p class="text-gray-400">Already have an account? <a href="#" id="toggle-to-login" class="text-emerald-400 font-semibold hover:underline">Log In</a></p>
-                    </div>
-                `;
-                document.getElementById('signup-form').addEventListener('submit', handleSignup);
-                document.getElementById('toggle-to-login').addEventListener('click', (e) => { e.preventDefault(); renderAuthPage(true); });
-            }
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const errorEl = document.getElementById('auth-error');
-            errorEl.textContent = '';
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                errorEl.textContent = `Login Failed: ${error.message}`;
-            }
-        }
-
-        async function handleSignup(e) {
-            e.preventDefault();
-            const name = document.getElementById('signup-name').value;
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            const confirmPassword = document.getElementById('signup-confirm-password').value;
-            const errorEl = document.getElementById('auth-error');
-            errorEl.textContent = '';
-
-            if (password !== confirmPassword) {
-                errorEl.textContent = "Passwords do not match.";
+                console.error("Workspace not found!");
+                currentWorkspaceId = null;
+                showPage('company-selection');
                 return;
             }
 
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await updateProfile(userCredential.user, { displayName: name });
-                // onAuthStateChanged will handle the rest
-            } catch (error) {
-                errorEl.textContent = `Signup Failed: ${error.message}`;
+            employees = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            projects = projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            tasks = tasksSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            timeOffRequests = timeOffSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            payStubs = payStubsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            schedules = schedulesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            if (!activeEmployeeFilter && employees.length > 0) {
+               activeEmployeeFilter = employees[0].id;
             }
+
+            timesheets = {};
+            timesheetsSnapshot.forEach(doc => {
+                const entry = doc.data();
+                const employeeId = entry.userId;
+                const date = entry.date;
+                if (!timesheets[employeeId]) timesheets[employeeId] = {};
+                if (!timesheets[employeeId][date]) timesheets[employeeId][date] = { punches: [] };
+                timesheets[employeeId][date].punches.push({ time: entry.time, mode: entry.mode, type: entry.type });
+            });
+            
+            verificationData = {};
+            verificationSnapshot.forEach(doc => {
+                verificationData[doc.id] = doc.data();
+            });
         }
 
-        async function handleForgotPassword(e) {
-            e.preventDefault();
-            const email = prompt("Please enter your email address to receive a password reset link:");
-            if (email) {
-                try {
-                    await sendPasswordResetEmail(auth, email);
-                    showToast("Password reset email sent. Please check your inbox.", "success");
-                } catch (error) {
-                    showToast(`Error: ${error.message}`, "error");
-                }
-            }
-        }
-        
-        // --- All other render and handler functions ---
-        
         async function renderWorkspaceSelection() {
             await loadUserData(currentUser.uid);
             
@@ -930,7 +737,6 @@
                             <div>
                                 ${isActive ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                                 <h3 class="text-xl font-bold text-white mb-2">${ws.name}</h3>
-                                <p class="text-sm font-semibold text-emerald-400">${ws.plan || 'Free'} Plan</p>
                             </div>
                             <div class="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
                                 <p>${memberCount} Members</p>
@@ -942,7 +748,6 @@
                             currentWorkspaceId = ws.id;
                             await updateDoc(doc(db, "users", currentUser.uid), { activeWorkspaceId: ws.id });
                             window.location.hash = 'dashboard';
-                            window.location.reload();
                         });
                         workspaceListContainer.appendChild(card);
                     }
@@ -993,8 +798,8 @@
             `;
         }
 
-        function renderDashboard() {
-            if (!currentWorkspaceId) return;
+        async function renderDashboard() {
+            await loadWorkspaceData(currentWorkspaceId);
             dashboardTitle.textContent = `${currentWorkspaceData.name} Dashboard`;
             let totalHours = 0;
             let recentEntries = [];
@@ -1030,7 +835,8 @@
             if (projectChart) projectChart.destroy();
         }
 
-        function renderTimesheetPage() {
+        async function renderTimesheetPage() {
+            await loadWorkspaceData(currentWorkspaceId);
             renderEmployeeFilter();
             renderEmployeeDetails();
             renderSpreadsheet();
@@ -1039,24 +845,13 @@
         function renderEmployeeFilter() {
             const container = document.getElementById('timesheet-filter-container');
             if (!container) return;
-            const userRole = currentUserData.workspaces[currentWorkspaceId];
-            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
-
-            let filterHtml = `<h3 id="week-range-display" class="text-xl font-semibold text-white text-center"></h3>`;
-            if (isAdminOrManager) {
-                let options = employees.map(e => `<option value="${e.id}" ${activeEmployeeFilter === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
-                filterHtml += `<select id="employee-filter" class="form-select w-full md:w-64">${options}</select>`;
-            }
-            container.innerHTML = filterHtml;
-
-            const employeeFilterSelect = document.getElementById('employee-filter');
-            if (employeeFilterSelect) {
-                employeeFilterSelect.addEventListener('change', (e) => {
-                    activeEmployeeFilter = e.target.value;
-                    renderEmployeeDetails();
-                    renderSpreadsheet();
-                });
-            }
+            let options = employees.map(e => `<option value="${e.id}" ${activeEmployeeFilter === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
+            container.innerHTML = `<h3 id="week-range-display" class="text-xl font-semibold text-white text-center"></h3><select id="employee-filter" class="form-select w-full md:w-64">${options}</select>`;
+            document.getElementById('employee-filter').addEventListener('change', (e) => {
+                activeEmployeeFilter = e.target.value;
+                renderEmployeeDetails();
+                renderSpreadsheet();
+            });
         }
         
         function renderEmployeeDetails() {
@@ -1108,52 +903,22 @@
             tableHtml += `<td class="text-emerald-400">${weeklyTotal.toFixed(2)}</td></tr>`;
             tableHtml += '</tfoot></table>';
             spreadsheetContainer.innerHTML = tableHtml;
-            
-            if (checkPlanPermission('Starter')) {
-                renderVerificationStatus(weekStartDateString);
-            } else {
-                const verificationSection = document.getElementById('verification-section');
-                if (verificationSection) verificationSection.innerHTML = '';
-            }
+            renderVerificationStatus(weekStartDateString);
+            document.querySelectorAll('.day-header.editable').forEach(th => th.addEventListener('click', (e) => openPunchModal(e.currentTarget.dataset.date)));
         }
 
         async function renderManagePage(activeTab = 'employees') {
-            const payrollTabEl = manageTabs.querySelector('[data-tab="payroll"]');
-            if (!checkPlanPermission('Enterprise')) {
-                if(payrollTabEl) payrollTabEl.style.display = 'none';
-                if (activeTab === 'payroll') activeTab = 'employees';
-            } else {
-                if(payrollTabEl) payrollTabEl.style.display = 'inline-block';
-            }
-
+            await loadWorkspaceData(currentWorkspaceId);
             manageTabs.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
             const activeTabEl = manageTabs.querySelector(`[data-tab="${activeTab}"]`);
             if(activeTabEl) activeTabEl.classList.add('active');
             
             addNewButton.style.display = ['payroll', 'departments'].includes(activeTab) ? 'none' : 'inline-block';
-            
-            const plan = currentWorkspaceData.plan || 'Free';
-            const userLimit = PLAN_USER_LIMITS[plan];
-            const projectLimit = PLAN_PROJECT_LIMITS[plan];
-            const canAddEmployees = plan !== 'Free' || employees.length < userLimit;
-            const canAddProjects = plan !== 'Free' || projects.length < projectLimit;
-            let isLimitReached = false;
-
-            if (activeTab === 'employees') {
-                addNewButton.innerHTML = `Add New Employee`;
-                if (!canAddEmployees) isLimitReached = true;
-            } else if (activeTab === 'projects') {
-                addNewButton.innerHTML = `Add New Project`;
-                if (!canAddProjects) isLimitReached = true;
+            if (activeTab === 'employees' || activeTab === 'projects') {
+                addNewButton.textContent = `Add New ${activeTab.slice(0, -1)}`;
             }
             
-            addNewButton.disabled = isLimitReached;
-            addNewButton.title = isLimitReached ? `Upgrade your plan to add more ${activeTab}.` : '';
-            if (isLimitReached) {
-                addNewButton.innerHTML += ` <span class="text-xs font-normal">(Plan Limit Reached)</span>`;
-            }
-
-            selectedManageItem = null;
+            selectedManageItem = null; // Reset selection on tab change
             
             if (activeTab === 'employees') {
                 employeeFilterBar.style.display = 'block';
@@ -1171,9 +936,6 @@
                 employeeFilterBar.style.display = 'none';
                 renderManageDepartments();
             }
-
-            manageTabs.addEventListener('click', (e) => { if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab); });
-            addNewButton.addEventListener('click', handleAddNew);
         }
 
         function renderEmployeeFilterBar() {
@@ -1195,7 +957,7 @@
             ['name-filter', 'department-filter', 'payType-filter', 'employeeType-filter', 'status-filter'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => {
                     employeeFilters[id.replace('-filter', '')] = document.getElementById(id).value;
-                    manageCurrentPage = 1; 
+                    manageCurrentPage = 1; // Reset to first page on filter change
                     renderManageEmployees();
                 });
             });
@@ -1457,10 +1219,38 @@
             return date.toLocaleDateString('en-US', options);
         }
 
+        // --- Event Listeners & Handlers ---
+        
+        function setupEventListeners() {
+            document.getElementById('mobile-menu-button').addEventListener('click', () => {
+                const menu = document.getElementById('mobile-menu');
+                menu.classList.toggle('hidden');
+            });
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.location.hash = e.currentTarget.dataset.page;
+                });
+            });
+            manageTabs.addEventListener('click', (e) => { if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab); });
+            addNewButton.addEventListener('click', handleAddNew);
+            document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', closeAllModals));
+            addEmployeeForm.addEventListener('submit', handleAddEmployee);
+            editEmployeeForm.addEventListener('submit', handleEditEmployee);
+            projectForm.addEventListener('submit', handleProjectFormSubmit);
+            createTaskForm.addEventListener('submit', handleCreateTask);
+            requestTimeOffForm.addEventListener('submit', handleRequestTimeOff);
+            addShiftForm.addEventListener('submit', handleAddShift);
+            document.getElementById('enter-punch-btn')?.addEventListener('click', () => openPunchModal());
+            document.getElementById('prev-week-btn')?.addEventListener('click', () => { currentWeekOffset--; renderTimesheetPage(); });
+            document.getElementById('next-week-btn')?.addEventListener('click', () => { currentWeekOffset++; renderTimesheetPage(); });
+            closePunchModalButton?.addEventListener('click', closePunchModal);
+            addPunchForm?.addEventListener('submit', handleAddPunch);
+        }
+        
         // --- Modals and Forms Logic ---
         
         function openPunchModal(date = null) {
-            const addPunchForm = document.getElementById('add-punch-form');
             const employee = employees.find(e => e.id === activeEmployeeFilter);
             if (!employee) return;
             
@@ -1525,12 +1315,12 @@
                     <button type="submit" class="cta-button px-6 py-2 rounded-lg">Add Punch</button>
                 </div>
             `;
-            addPunchForm.addEventListener('submit', handleAddPunch);
+
             punchModal.style.display = 'flex';
         }
 
+        function closePunchModal() { punchModal.style.display = 'none'; }
         function closeAllModals() {
-            punchModal.style.display = 'none';
             addEmployeeModal.style.display = 'none';
             editEmployeeModal.style.display = 'none';
             projectModal.style.display = 'none';
@@ -1556,8 +1346,8 @@
                 time: form.punchTime.value,
                 mode: form.punchMode.value,
                 type: form.punchType.value,
-                department: employee.department || '',
-                job: employee.employeeType || '',
+                department: employee.department || '', // FIX: Fallback to empty string
+                job: employee.employeeType || '', // FIX: Fallback to empty string
                 task: form.punchTask.value,
                 notes: form.punchNotes.value,
                 doNotRound: form.doNotRound.checked,
@@ -1569,7 +1359,7 @@
             await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeEntries"), punchData);
             
             showToast('Punch added successfully!', 'success');
-            closeAllModals();
+            closePunchModal();
             await loadWorkspaceData(currentWorkspaceId);
             renderSpreadsheet();
         }
@@ -1586,7 +1376,7 @@
             if (!verificationSection) return;
             const verificationRecord = getWeekVerification(weekStartDateString);
             const employee = employees.find(e => e.id === activeEmployeeFilter);
-            const supervisor = employees.find(e => e.id === employee?.supervisorId) || { name: 'Supervisor' };
+            const supervisor = employees.find(e => e.id === employee.supervisorId) || { name: 'Supervisor' };
             verificationSection.innerHTML = `
                 <h3 class="text-xl font-bold mb-4">Verification</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1624,15 +1414,121 @@
             if (activeTab === 'employees') openAddEmployeeModal();
             else if (activeTab === 'projects') openProjectModal();
         }
+
+        function getEmployeeFormHtml(employee = {}) {
+            const isEditing = !!employee.id;
+            const payroll = employee.payroll || {};
+            const assignedDeductionsHtml = (payroll.deductions || []).map((ded, index) => `
+                <div class="flex items-center justify-between p-2 bg-gray-700 rounded" data-index="${index}">
+                    <span>${ded.name}: ${ded.type === 'fixed' ? '$' : ''}${ded.amount}${ded.type === 'percent' ? '%' : ''}</span>
+                    <button type="button" class="text-red-400 text-xl font-bold remove-deduction-btn">&times;</button>
+                </div>
+            `).join('');
+
+            return `
+                <div class="border-b border-gray-700 mb-4">
+                    <nav class="flex space-x-8" id="employee-modal-tabs">
+                        <button type="button" data-tab="personal" class="tab-button py-3 px-1 font-medium active">Personal</button>
+                        <button type="button" data-tab="employment" class="tab-button py-3 px-1 font-medium">Employment</button>
+                        <button type="button" data-tab="payroll" class="tab-button py-3 px-1 font-medium">Payroll</button>
+                    </nav>
+                </div>
+
+                <div id="personal-tab-pane" class="modal-tab-pane active space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label class="block text-gray-300 mb-2">First Name</label><input type="text" name="firstName" class="w-full p-3 form-input" required value="${employee.firstName || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Middle Name</label><input type="text" name="middleName" class="w-full p-3 form-input" value="${employee.middleName || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Last Name</label><input type="text" name="lastName" class="w-full p-3 form-input" required value="${employee.lastName || ''}"></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Email</label><input type="email" name="email" class="w-full p-3 form-input" required value="${employee.email || ''}" ${isEditing ? 'disabled' : ''}></div>
+                        ${!isEditing ? `<div><label class="block text-gray-300 mb-2">Temporary Password</label><input type="password" name="password" class="w-full p-3 form-input" required></div>` : ''}
+                    </div>
+                </div>
+
+                <div id="employment-tab-pane" class="modal-tab-pane space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Employee ID</label><input type="text" name="employeeId" class="w-full p-3 form-input" required value="${employee.employeeId || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Card Number</label><input type="text" name="cardNumber" class="w-full p-3 form-input" value="${employee.cardNumber || ''}"></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Hire Date</label><input type="date" name="hireDate" class="w-full p-3 form-input" required value="${employee.hireDate || ''}"></div>
+                        <div><label class="block text-gray-300 mb-2">Supervisor</label><select name="supervisor" class="w-full p-3 form-select"></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Department</label><select name="department" class="w-full p-3 form-select"></select></div>
+                        <div><label class="block text-gray-300 mb-2">Pay Type</label><select name="payType" class="w-full p-3 form-select"></select></div>
+                        <div><label class="block text-gray-300 mb-2">Employee Type</label><select name="employeeType" class="w-full p-3 form-select"></select></div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-gray-300 mb-2">Role</label>
+                            <select name="role" class="w-full p-3 form-select" required>
+                                <option value="Employee" ${employee.role === 'Employee' ? 'selected' : ''}>Employee</option>
+                                <option value="Manager" ${employee.role === 'Manager' ? 'selected' : ''}>Manager</option>
+                                <option value="Admin" ${employee.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Status</label>
+                            <select name="status" class="w-full p-3 form-select">
+                                <option value="Active" ${employee.status === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Inactive" ${employee.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="payroll-tab-pane" class="modal-tab-pane space-y-6">
+                    <h4 class="text-lg font-semibold text-white">Payroll Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div><label class="block text-gray-300 mb-2">Hourly Rate ($)</label><input type="number" name="hourlyRate" class="w-full p-3 form-input" step="0.01" value="${employee.hourlyRate || ''}"></div>
+                         <div><label class="block text-gray-300 mb-2">Filing Status</label>
+                            <select name="filingStatus" class="w-full p-3 form-select">
+                                <option value="single" ${payroll.filingStatus === 'single' ? 'selected' : ''}>Single</option>
+                                <option value="married" ${payroll.filingStatus === 'married' ? 'selected' : ''}>Married</option>
+                            </select>
+                         </div>
+                         <div><label class="block text-gray-300 mb-2">Allowances</label><input type="number" name="allowances" class="w-full p-3 form-input" value="${payroll.allowances || 0}"></div>
+                    </div>
+                    <div class="border-t border-gray-700"></div>
+                    <h4 class="text-lg font-semibold text-white">Assigned Deductions</h4>
+                    <div class="space-y-4">
+                        <div id="assigned-deductions-list" class="space-y-2 mb-4">
+                            ${assignedDeductionsHtml || '<p class="text-gray-500">No deductions assigned.</p>'}
+                        </div>
+                        <div class="flex gap-4 items-end">
+                            <div class="flex-grow">
+                                <label class="block text-gray-300 mb-1">Add Deduction</label>
+                                <select id="new-deduction-template" class="form-select w-full"></select>
+                            </div>
+                             <div class="w-1/4">
+                                <label class="block text-gray-300 mb-1">Amount/Percent</label>
+                                <input type="number" id="new-deduction-amount" class="form-input w-full" step="0.01">
+                            </div>
+                             <div class="w-1/4">
+                                <label class="block text-gray-300 mb-1">Type</label>
+                                <select id="new-deduction-type" class="form-select w-full">
+                                    <option value="fixed">Fixed ($)</option>
+                                    <option value="percent">Percent (%)</option>
+                                </select>
+                            </div>
+                            <div>
+                                 <button type="button" id="add-deduction-btn" class="secondary-button px-4 py-2 rounded-lg">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-4 pt-6 border-t border-gray-700 mt-6">
+                    <button type="button" class="secondary-button px-6 py-2 rounded-lg close-modal-btn">Cancel</button>
+                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">${isEditing ? 'Save Changes' : 'Add Employee'}</button>
+                </div>
+            `;
+        }
         
         function setupEmployeeModalTabs(modal) {
             const tabs = modal.querySelectorAll('#employee-modal-tabs .tab-button');
             const panes = modal.querySelectorAll('.modal-tab-pane');
-            const payrollTab = modal.querySelector('[data-tab="payroll"]');
-            
-            if (payrollTab && !checkPlanPermission('Enterprise')) {
-                payrollTab.style.display = 'none';
-            }
 
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -1665,11 +1561,9 @@
         }
         
         function openAddEmployeeModal() {
-            const addEmployeeForm = document.getElementById('add-employee-form');
             addEmployeeForm.innerHTML = getEmployeeFormHtml();
             populateEmployeeFormDropdowns(addEmployeeForm);
             setupEmployeeModalTabs(addEmployeeModal);
-            addEmployeeForm.addEventListener('submit', handleAddEmployee);
             addEmployeeModal.style.display = 'flex';
         }
 
@@ -1677,16 +1571,17 @@
             editingItemId = employeeId;
             const employee = employees.find(e => e.id === employeeId);
             if (!employee) return;
-            const editEmployeeForm = document.getElementById('edit-employee-form');
             editEmployeeForm.innerHTML = getEmployeeFormHtml(employee);
             setupEmployeeModalTabs(editEmployeeModal);
 
+            // Fetch and populate deduction templates
             const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
             const templatesSnap = await getDoc(templatesRef);
             const deductionTemplates = templatesSnap.exists() ? templatesSnap.data().templates : [];
             const newDeductionSelect = editEmployeeForm.querySelector('#new-deduction-template');
             if(newDeductionSelect) newDeductionSelect.innerHTML = deductionTemplates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
             
+            // Add event listener for the "Add" button
             const addDeductionBtn = editEmployeeForm.querySelector('#add-deduction-btn');
             if(addDeductionBtn) addDeductionBtn.addEventListener('click', () => {
                 const name = newDeductionSelect.value;
@@ -1713,15 +1608,16 @@
                 
                 newDeductionEl.querySelector('.remove-deduction-btn').addEventListener('click', (e) => e.target.parentElement.remove());
                 
+                // Clear inputs
                 editEmployeeForm.querySelector('#new-deduction-amount').value = '';
             });
 
+            // Add event listeners for existing "Remove" buttons
             editEmployeeForm.querySelectorAll('.remove-deduction-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => e.target.parentElement.remove());
             });
             
             populateEmployeeFormDropdowns(editEmployeeForm, employee);
-            editEmployeeForm.addEventListener('submit', handleEditEmployee);
             editEmployeeModal.style.display = 'flex';
         }
         
@@ -1731,14 +1627,17 @@
             const email = form.email.value;
             const password = form.password.value;
 
+            // 1. Create a temporary secondary Firebase app instance to create the user
             const tempAppName = `temp-app-${Date.now()}`;
             const tempApp = initializeApp(firebaseConfig, tempAppName);
             const tempAuth = getAuth(tempApp);
 
             try {
+                // 2. Create user in Firebase Auth
                 const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
                 const newUid = userCredential.user.uid;
 
+                // 3. Create the employee document in the 'members' subcollection with the new UID
                 const newEmployeeData = {
                     uid: newUid,
                     email: email,
@@ -1752,7 +1651,7 @@
                     employeeType: form.employeeType.value,
                     supervisor: form.supervisor.value,
                     cardNumber: form.cardNumber.value,
-                    hourlyRate: Number(form.hourlyRate.value) || 0,
+                    hourlyRate: form.hourlyRate.value || 0,
                     payroll: {
                         filingStatus: form.filingStatus.value,
                         allowances: Number(form.allowances.value) || 0,
@@ -1762,6 +1661,7 @@
                 };
                 await setDoc(doc(db, "workspaces", currentWorkspaceId, "members", newUid), newEmployeeData);
 
+                // 4. Create the main user document in the top-level 'users' collection
                 const userDocData = {
                     email: email,
                     name: newEmployeeData.name,
@@ -1772,17 +1672,18 @@
                 };
                 await setDoc(doc(db, "users", newUid), userDocData);
 
+                // 5. Send password reset email to force user to change temporary password
                 await sendPasswordResetEmail(auth, email);
 
                 showToast(`Employee ${newEmployeeData.name} created. A password reset email has been sent.`, 'success');
                 closeAllModals();
-                await loadWorkspaceData(currentWorkspaceId);
                 renderManagePage('employees');
 
             } catch (error) {
                 console.error("Error creating employee:", error);
                 showToast(`Error: ${error.message}`, 'error');
             } finally {
+                // 6. Clean up the temporary app
                 await deleteApp(tempApp);
             }
         }
@@ -1791,6 +1692,7 @@
             e.preventDefault();
             const form = e.target;
             
+            // Collect assigned deductions from the form
             const assignedDeductions = [];
             const deductionListItems = form.querySelectorAll('#assigned-deductions-list > div');
             deductionListItems.forEach(item => {
@@ -1798,7 +1700,7 @@
                 const [name, valueStr] = text.split(': ');
                 const type = valueStr.includes('%') ? 'percent' : 'fixed';
                 const amount = parseFloat(valueStr.replace(/[$%]/g, ''));
-                assignedDeductions.push({ name: name.trim(), amount, type });
+                assignedDeductions.push({ name, amount, type });
             });
             
             const updatedData = {
@@ -1813,7 +1715,7 @@
                 employeeType: form.employeeType.value,
                 supervisor: form.supervisor.value,
                 cardNumber: form.cardNumber.value,
-                hourlyRate: Number(form.hourlyRate.value) || 0,
+                hourlyRate: form.hourlyRate.value || 0,
                  payroll: {
                     filingStatus: form.filingStatus.value,
                     allowances: Number(form.allowances.value) || 0,
@@ -1824,6 +1726,7 @@
             };
             await updateDoc(doc(db, "workspaces", currentWorkspaceId, "members", editingItemId), updatedData);
             
+            // Also update the role in the top-level user document
             const userDocRef = doc(db, "users", editingItemId);
             await updateDoc(userDocRef, {
                 [`workspaces.${currentWorkspaceId}`]: updatedData.role
@@ -1832,35 +1735,16 @@
             showToast('Employee updated successfully.', 'success');
             closeAllModals();
             editingItemId = null;
-            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('employees');
         }
 
         async function handleRemoveEmployee(employeeId) {
-            openConfirmationModal(
-                'Remove Employee',
-                'This will remove the employee from this workspace but will not delete their NexusTime account. Are you sure?',
-                async () => {
-                    const batch = writeBatch(db);
-                    
-                    const memberRef = doc(db, "workspaces", currentWorkspaceId, "members", employeeId);
-                    batch.delete(memberRef);
-
-                    const userRef = doc(db, "users", employeeId);
-                    const userData = (await getDoc(userRef)).data();
-                    if (userData && userData.workspaces) {
-                        delete userData.workspaces[currentWorkspaceId];
-                        batch.update(userRef, { workspaces: userData.workspaces });
-                    }
-                    
-                    await batch.commit();
-
-                    showToast('Employee removed from workspace.', 'success');
-                    closeAllModals();
-                    await loadWorkspaceData(currentWorkspaceId);
-                    renderManagePage('employees');
-                }
-            );
+            // In a real app, you'd also need a Firebase Function to delete the Auth user.
+            // This client-side code only removes the Firestore records.
+            await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "members", employeeId));
+            await deleteDoc(doc(db, "users", employeeId)); // Also remove from top-level users
+            showToast('Employee removed from workspace.', 'success');
+            renderManagePage('employees');
         }
 
         async function handleSendPasswordReset(email) {
@@ -1882,7 +1766,7 @@
             let customFieldsHtml = customFields.map(field => `
                 <div>
                     <label class="block text-gray-300 mb-2">${field}</label>
-                    <input type="text" name="${field}" class="form-input w-full" value="${project[field] || ''}">
+                    <input type="text" name="${field}" class="w-full p-3 form-input" value="${project[field] || ''}">
                 </div>
             `).join('');
 
@@ -1902,10 +1786,8 @@
         function openProjectModal(projectId = null) {
             editingItemId = projectId;
             const project = projectId ? projects.find(p => p.id === projectId) : {};
-            const projectForm = document.getElementById('project-form');
             document.getElementById('project-modal-title-text').textContent = projectId ? 'Edit Project' : 'Add New Project';
             projectForm.innerHTML = getProjectFormHtml(project);
-            projectForm.addEventListener('submit', handleProjectFormSubmit);
             projectModal.style.display = 'flex';
         }
 
@@ -1924,19 +1806,17 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "projects"), projectData);
             }
 
-            showToast('Project saved.', 'success');
             closeAllModals();
             editingItemId = null;
-            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('projects');
         }
 
         async function handleRemoveProject(projectId) {
             await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "projects", projectId));
-            showToast('Project removed.', 'success');
-            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('projects');
         }
+
+        // --- Settings Page ---
 
         async function renderSettingsPage() {
             await loadWorkspaceData(currentWorkspaceId);
@@ -1963,34 +1843,51 @@
                 .map(tab => `<div id="${tab.id}-settings-tab" class="settings-tab-content"></div>`)
                 .join('');
             
+            // Activate first tab
             const firstVisibleTab = tabs.find(t => t.visible);
             if (firstVisibleTab) {
                 switchSettingsTab(firstVisibleTab.id);
             }
 
+            // Add event listeners
             settingsNav.querySelectorAll('.tab-button').forEach(button => {
                 button.addEventListener('click', () => switchSettingsTab(button.dataset.tab));
             });
         }
 
         function switchSettingsTab(tabId) {
+            // Update nav buttons
             settingsNav.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabId);
                 btn.classList.toggle('bg-gray-700', btn.dataset.tab === tabId);
             });
+            // Update content visibility
             settingsContentArea.querySelectorAll('.settings-tab-content').forEach(content => {
                 content.classList.toggle('active', content.id === `${tabId}-settings-tab`);
             });
 
+            // Render the content for the active tab
             switch (tabId) {
-                case 'profile': renderProfileSettings(); break;
-                case 'workspace': renderWorkspaceSettings(); break;
-                case 'payroll': renderPayrollSettingsTab(); break;
-                case 'billing': renderBillingSettings(); break;
-                case 'danger': renderDangerZoneSettings(); break;
+                case 'profile':
+                    renderProfileSettings();
+                    break;
+                case 'workspace':
+                    renderWorkspaceSettings();
+                    break;
+                case 'payroll':
+                    renderPayrollSettingsTab();
+                    break;
+                case 'billing':
+                    renderBillingSettings();
+                    break;
+                case 'danger':
+                    renderDangerZoneSettings();
+                    break;
             }
         }
         
+        // --- Settings Tab Renderers ---
+
         function renderProfileSettings() {
             const container = document.getElementById('profile-settings-tab');
             const prefs = currentUserData.preferences || {};
@@ -1998,6 +1895,7 @@
 
             container.innerHTML = `
                 <form id="profile-settings-form" class="space-y-12">
+                    <!-- Personal Information -->
                     <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Personal Information</h3>
                         <div class="space-y-4">
@@ -2007,6 +1905,7 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Security -->
                     <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Change Password</h3>
                          <div class="space-y-4">
@@ -2015,6 +1914,7 @@
                             <div><label class="block text-gray-400">Confirm New Password</label><input type="password" name="confirmPassword" class="form-input w-full mt-1"></div>
                         </div>
                     </div>
+                    <!-- Preferences & Notifications -->
                     <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Preferences & Notifications</h3>
                         <div class="space-y-6">
@@ -2038,7 +1938,8 @@
                            </div>
                         </div>
                     </div>
-                     <div class="card p-8">
+                     <!-- Integrations -->
+                    <div class="card p-8">
                         <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
                         <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
                             <div>
@@ -2068,12 +1969,14 @@
             
             container.innerHTML = `
                 <form id="workspace-settings-form" class="space-y-12">
+                    <!-- General Workspace Settings -->
                     <div class="card p-8">
                          <h3 class="text-xl font-semibold text-white mb-6">General</h3>
                          <div class="space-y-4">
                             <div><label class="block text-gray-400">Workspace Name</label><input type="text" name="workspaceName" class="form-input w-full mt-1" value="${ws.name || ''}"></div>
                          </div>
                     </div>
+                    <!-- Security Settings -->
                      <div class="card p-8">
                          <h3 class="text-xl font-semibold text-white mb-6">Security</h3>
                          <div class="space-y-6">
@@ -2097,6 +2000,7 @@
                             </div>
                          </div>
                     </div>
+                     <!-- Data & API -->
                      <div class="card p-8">
                          <h3 class="text-xl font-semibold text-white mb-6">Data & API</h3>
                          <div class="space-y-6">
@@ -2211,10 +2115,10 @@
             const currentPlan = currentWorkspaceData.plan || 'Free';
             
             const plans = {
-                Free: { price: 0, annual: 0, features: ["5 User Seats", "3 Active Projects", "Basic Time Tracking"] },
-                Starter: { price: 6, annual: 5, features: ["Unlimited Users", "Unlimited Projects", "Timesheet Approvals", "Team Reporting"] },
-                Pro: { price: 12, annual: 10, features: ["Everything in Starter", "Scheduling & Tasks", "Project Budgeting", "API & Integrations"] },
-                Enterprise: { price: 15, annual: 12, features: ["Everything in Pro", "Full Payroll Suite", "SAML SSO & Audit Logs", "Dedicated Support"] }
+                Free: { price: 0, features: ["1 User Seat", "3 Active Projects", "Basic Time Tracking", "Community Support"] },
+                Starter: { price: 5, features: ["Unlimited Users", "Unlimited Projects", "Team Collaboration", "Timesheet Approvals", "Email Support"] },
+                Pro: { price: 10, features: ["Everything in Starter", "Advanced Analytics", "Billing & Invoicing", "API & Integrations", "Priority Support"] },
+                Enterprise: { price: 12, features: ["Everything in Pro", "Single Sign-On (SSO)", "Audit Logs", "Dedicated Support", "Volume Discounts"] }
             };
             
             let plansHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
@@ -2224,15 +2128,15 @@
                 if (isCurrent) {
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" disabled>Current Plan</button>`;
                 } else {
-                    const actionText = (PLAN_HIERARCHY[planName] > PLAN_HIERARCHY[currentPlan]) ? 'Upgrade' : 'Downgrade';
+                    const actionText = (plans[planName].price > (plans[currentPlan]?.price || 0)) ? 'Upgrade' : 'Downgrade';
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}">${actionText} to ${planName}</button>`;
                 }
 
                 plansHtml += `
-                    <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''} relative">
+                    <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''}">
                          ${isCurrent ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
-                        <p class="text-4xl font-extrabold my-4 text-white">$<span data-price-monthly="${planDetails.price}" data-price-annual="${planDetails.annual}">${planDetails.price}</span><span class="text-base font-medium text-gray-400">/user/month</span></p>
+                        <p class="text-4xl font-extrabold my-4 text-white">$${planDetails.price}<span class="text-base font-medium text-gray-400">/user/month</span></p>
                         <ul class="space-y-2 text-gray-300 flex-grow mb-6">
                             ${planDetails.features.map(f => `
                                 <li class="flex items-center">
@@ -2277,6 +2181,8 @@
             document.getElementById('delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
         }
         
+        // --- Settings Form Handlers ---
+        
         async function handleSaveProfileSettings(e) {
             e.preventDefault();
             const form = e.target;
@@ -2284,6 +2190,7 @@
             const confirmPassword = form.confirmPassword.value;
             const currentPassword = form.currentPassword.value;
 
+            // --- Update Password Logic ---
             if (newPassword) {
                 if (!currentPassword) {
                     showToast('Please enter your current password to set a new one.', 'error');
@@ -2305,10 +2212,11 @@
                 } catch (error) {
                     console.error("Password update failed:", error);
                     showToast(`Password update failed: ${error.message}`, 'error');
-                    return;
+                    return; // Stop if password update fails
                 }
             }
 
+            // --- Update Profile and Preferences ---
             const userDocRef = doc(db, "users", currentUser.uid);
             const updatedProfile = {
                 name: form.name.value,
@@ -2324,8 +2232,8 @@
             
             try {
                 await updateDoc(userDocRef, updatedProfile);
-                await updateProfile(auth.currentUser, { displayName: form.name.value });
                 showToast('Profile settings saved successfully!', 'success');
+                // Reload user data to reflect changes immediately
                 await loadUserData(currentUser.uid);
             } catch (error) {
                 console.error("Error saving profile:", error);
@@ -2358,13 +2266,12 @@
         }
         
         async function handlePlanSelection(newPlan) {
-            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
+            const userDocRef = doc(db, "users", currentUser.uid);
             try {
-                await updateDoc(workspaceDocRef, { plan: newPlan });
+                await updateDoc(userDocRef, { plan: newPlan }); // Update plan on the user document
                 showToast(`Successfully changed plan to ${newPlan}!`, 'success');
-                await loadWorkspaceData(currentWorkspaceId); 
-                renderBillingSettings(); 
-                updateNav();
+                await loadUserData(currentUser.uid); // Reload user data to reflect plan change
+                renderBillingSettings(); // Re-render to update the UI
             } catch (error) {
                 console.error("Error changing plan:", error);
                 showToast(`Failed to change plan: ${error.message}`, 'error');
@@ -2378,6 +2285,8 @@
                 async () => {
                     const batch = writeBatch(db);
                     
+                    // Note: Deleting subcollections from the client is not recommended for production.
+                    // This should be handled by a Firebase Cloud Function. This is a simplified simulation.
                     console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
 
                     const userDocRef = doc(db, "users", currentUser.uid);
@@ -2389,14 +2298,14 @@
                         activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
                     });
                     
+                    // Mark the workspace for deletion instead of actually deleting it from client
                     batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
 
                     await batch.commit();
 
                     showToast('Workspace deletion initiated.', 'success');
-                    closeAllModals();
                     window.location.hash = 'company-selection';
-                    window.location.reload();
+                    closeAllModals();
                 }
             );
         }
@@ -2409,6 +2318,7 @@
             const confirmBtn = document.getElementById('confirmation-confirm-btn');
             const cancelBtn = document.getElementById('confirmation-cancel-btn');
             
+            // Clone and replace to remove old event listeners
             const newConfirmBtn = confirmBtn.cloneNode(true);
             confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             
@@ -2418,8 +2328,10 @@
             modal.style.display = 'flex';
         }
 
-        function renderOnboardingPage() {
+
+        async function renderOnboardingPage() {
             const userPlan = currentUserData.plan || 'Free';
+            const userLimit = PLAN_USER_LIMITS[userPlan] || 0;
             const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
             const existingWorkspaceCount = Object.keys(currentUserData.workspaces || {}).length;
 
@@ -2434,11 +2346,25 @@
                 return;
             }
             
+            let totalActiveUsers = 0;
+            const workspaceIds = Object.keys(currentUserData.workspaces || {});
+            if (workspaceIds.length > 0) {
+                const memberQueries = workspaceIds.map(id => getDocs(query(collection(db, `workspaces/${id}/members`), where("status", "==", "Active"))));
+                const memberSnapshots = await Promise.all(memberQueries);
+                totalActiveUsers = memberSnapshots.reduce((acc, snapshot) => acc + snapshot.size, 0);
+            }
+
             const industries = ["Software", "Healthcare", "Retail", "Education", "Construction", "Finance", "Legal", "Hospitality", "Transportation", "Manufacturing", "Marketing", "Non-Profit", "Real Estate", "Telecommunications", "Government"];
             const companySizes = ["1-10 employees", "11-50 employees", "51-200 employees", "201-500 employees", "500+ employees"];
             const timezones = {"(GMT-12:00) International Date Line West": "Etc/GMT+12", "(GMT-11:00) Midway Island, Samoa": "Pacific/Samoa", "(GMT-10:00) Hawaii": "Pacific/Honolulu", "(GMT-09:00) Alaska": "America/Anchorage", "(GMT-08:00) Pacific Time (US & Canada)": "America/Los_Angeles", "(GMT-07:00) Mountain Time (US & Canada)": "America/Denver", "(GMT-06:00) Central Time (US & Canada)": "America/Chicago", "(GMT-05:00) Eastern Time (US & Canada)": "America/New_York", "(GMT-04:00) Atlantic Time (Canada)": "America/Halifax", "(GMT-03:00) Buenos Aires, Georgetown": "America/Argentina/Buenos_Aires", "(GMT-02:00) Mid-Atlantic": "Atlantic/South_Georgia", "(GMT-01:00) Cape Verde Is.": "Atlantic/Cape_Verde", "(GMT+00:00) London, Lisbon": "Europe/London", "(GMT+01:00) Amsterdam, Berlin, Rome": "Europe/Berlin", "(GMT+02:00) Athens, Jerusalem": "Europe/Athens", "(GMT+03:00) Moscow, St. Petersburg": "Europe/Moscow", "(GMT+04:00) Abu Dhabi, Muscat": "Asia/Dubai", "(GMT+05:00) Islamabad, Karachi, Tashkent": "Asia/Karachi", "(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi": "Asia/Kolkata", "(GMT+06:00) Almaty, Novosibirsk": "Asia/Almaty", "(GMT+07:00) Bangkok, Hanoi, Jakarta": "Asia/Bangkok", "(GMT+08:00) Beijing, Perth, Singapore, Hong Kong": "Asia/Hong_Kong", "(GMT+09:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk": "Asia/Tokyo", "(GMT+09:30) Adelaide, Darwin": "Australia/Darwin", "(GMT+10:00) Brisbane, Canberra, Melbourne, Sydney": "Australia/Sydney", "(GMT+11:00) Magadan, Solomon Is., New Caledonia": "Pacific/Guadalcanal", "(GMT+12:00) Auckland, Wellington, Fiji": "Pacific/Auckland"};
 
             onboardingContainer.innerHTML = `
+                <div class="card p-4 mb-6">
+                    <h4 class="font-semibold text-white">${userPlan} Plan</h4>
+                    <p class="text-sm text-gray-400 mt-1">
+                        Users: ${totalActiveUsers} / ${userLimit === Infinity ? 'Unlimited' : userLimit}
+                    </p>
+                </div>
                 <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Create a New Workspace</h2>
                 <form id="onboarding-form" class="space-y-4">
                     <div><label class="block text-gray-300 mb-1">Workspace Name</label><input type="text" name="workspaceName" class="w-full p-3 form-input" required></div>
@@ -2451,13 +2377,56 @@
 
             document.getElementById('onboarding-form').addEventListener('submit', handleCreateWorkspace);
         }
-        
-        async function renderSchedulePage() {
-            if (!checkPlanPermission('Pro')) {
-                showPage('dashboard');
-                showToast('Upgrade to the Pro plan to access Scheduling.', 'error');
-                return;
+
+        async function handleCreateWorkspace(e) {
+            e.preventDefault();
+            const form = e.target;
+            const workspaceData = {
+                name: form.workspaceName.value,
+                industry: form.industry.value,
+                companySize: form.companySize.value,
+                timezone: form.timezone.value,
+                plan: 'Free', // New workspaces start on Free plan
+                ownerId: currentUser.uid,
+                createdAt: new Date(),
+                departments: ["General"],
+                payTypes: ["Hourly", "Salary"],
+                employeeTypes: ["Full-time", "Part-time"],
+                projectCustomFields: ["Client Name", "Budget"]
+            };
+
+            try {
+                const workspaceRef = await addDoc(collection(db, "workspaces"), workspaceData);
+                const workspaceId = workspaceRef.id;
+
+                // Add the creator as the first member of the new workspace
+                const memberData = {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    name: currentUserData.name || 'Admin',
+                    role: 'Admin',
+                    status: 'Active'
+                };
+                await setDoc(doc(db, "workspaces", workspaceId, "members", currentUser.uid), memberData);
+
+                // Add workspace to user's map and set as active
+                await updateDoc(doc(db, "users", currentUser.uid), {
+                    [`workspaces.${workspaceId}`]: 'Admin',
+                    activeWorkspaceId: workspaceId
+                });
+
+                showToast('Workspace created successfully!', 'success');
+                window.location.hash = 'dashboard';
+
+            } catch (error) {
+                console.error("Error creating workspace:", error);
+                showToast(`Error: ${error.message}`, 'error');
             }
+        }
+        
+        // --- Schedule Page Rendering ---
+        async function renderSchedulePage() {
+            await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('schedule-container');
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
@@ -2511,10 +2480,12 @@
             </div>
             <div class="calendar-grid gap-px bg-gray-700">`;
 
+            // Blank cells for previous month
             for (let i = 0; i < startDayOfWeek; i++) {
                 gridHtml += `<div class="calendar-day other-month"></div>`;
             }
 
+            // Cells for current month
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const shiftsForDay = monthShifts.filter(s => s.start.startsWith(dateString));
@@ -2539,7 +2510,6 @@
         }
         
         function openAddShiftModal(date = null) {
-            const addShiftForm = document.getElementById('add-shift-form');
             const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
             const today = new Date().toISOString().split('T')[0];
             
@@ -2560,7 +2530,6 @@
                     <button type="submit" class="cta-button px-6 py-2 rounded-lg">Save Shift</button>
                 </div>
             `;
-            addShiftForm.addEventListener('submit', handleAddShift);
             addShiftModal.style.display = 'flex';
         }
 
@@ -2579,7 +2548,6 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "schedules"), shiftData);
                 showToast('Shift added successfully!', 'success');
                 closeAllModals();
-                await loadWorkspaceData(currentWorkspaceId);
                 renderSchedulePage();
             } catch (error) {
                 console.error("Error adding shift:", error);
@@ -2587,6 +2555,7 @@
             }
         }
         
+        // --- Tasks Page Rendering ---
         async function renderTasksPage() {
             await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('tasks-container');
@@ -2641,7 +2610,6 @@
         }
 
         function openCreateTaskModal() {
-            const createTaskForm = document.getElementById('create-task-form');
             const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
             createTaskForm.innerHTML = `
                 <div><label class="block text-gray-300 mb-1">Task Title</label><input type="text" name="title" class="form-input w-full" required></div>
@@ -2660,7 +2628,6 @@
                     <button type="submit" class="cta-button px-6 py-2 rounded-lg">Assign Task</button>
                 </div>
             `;
-            createTaskForm.addEventListener('submit', handleCreateTask);
             createTaskModal.style.display = 'flex';
         }
 
@@ -2685,7 +2652,6 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "tasks"), taskData);
                 showToast('Task created successfully!', 'success');
                 closeAllModals();
-                await loadWorkspaceData(currentWorkspaceId);
                 renderTasksPage();
             } catch (error) {
                 console.error("Error creating task:", error);
@@ -2699,14 +2665,14 @@
             try {
                 await updateDoc(taskRef, { status: newStatus });
                 showToast(`Task marked as ${newStatus}.`, 'success');
-                await loadWorkspaceData(currentWorkspaceId);
-                renderTasksPage();
+                renderTasksPage(); // Re-render to reflect the change
             } catch (error) {
                 console.error("Error updating task status:", error);
                 showToast(`Error: ${error.message}`, 'error');
             }
         }
 
+        // --- Time Off Page ---
         async function renderTimeOffPage() {
             await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('time-off-container');
@@ -2738,6 +2704,7 @@
         function renderEmployeeTimeOffView() {
             const myRequests = timeOffRequests.filter(r => r.userId === currentUser.uid);
             
+            // Placeholder balances
             const balancesHtml = `
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div class="card p-4 text-center"><p class="text-gray-400">Vacation Balance</p><p class="text-2xl font-bold text-white">80 <span class="text-base font-normal">hours</span></p></div>
@@ -2817,7 +2784,6 @@
         }
 
         function openRequestTimeOffModal() {
-            const requestTimeOffForm = document.getElementById('request-time-off-form');
             requestTimeOffForm.innerHTML = `
                 <div>
                     <label class="block text-gray-300 mb-1">Leave Type</label>
@@ -2842,7 +2808,6 @@
                     <button type="submit" class="cta-button px-6 py-2 rounded-lg">Submit Request</button>
                 </div>
             `;
-            requestTimeOffForm.addEventListener('submit', handleRequestTimeOff);
             requestTimeOffModal.style.display = 'flex';
         }
 
@@ -2863,7 +2828,6 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeOffRequests"), requestData);
                 showToast('Time off request submitted!', 'success');
                 closeAllModals();
-                await loadWorkspaceData(currentWorkspaceId);
                 renderTimeOffPage();
             } catch (error) {
                 console.error("Error submitting request:", error);
@@ -2876,7 +2840,6 @@
             try {
                 await updateDoc(requestRef, { status: action });
                 showToast(`Request has been ${action}.`, 'success');
-                await loadWorkspaceData(currentWorkspaceId);
                 renderTimeOffPage();
             } catch (error) {
                  console.error("Error updating request:", error);
@@ -2884,12 +2847,9 @@
             }
         }
         
-        function renderPayStubsPage() {
-             if (!checkPlanPermission('Enterprise')) {
-                showPage('dashboard');
-                showToast('Upgrade to the Enterprise plan to access Pay Stubs.', 'error');
-                return;
-            }
+        // --- Pay Stubs Page ---
+        async function renderPayStubsPage() {
+            await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('pay-stubs-container');
             const myStubs = payStubs.filter(s => s.userId === currentUser.uid);
 
@@ -2933,6 +2893,7 @@
             });
         }
 
+        // --- Payroll Management ---
         function renderManagePayroll() {
             manageSidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Payroll Tools</h3>
@@ -2944,9 +2905,49 @@
             manageContent.innerHTML = '<div class="card p-6"><p class="text-gray-400">Select a tool from the sidebar to begin.</p></div>';
             
             document.getElementById('run-payroll-btn').addEventListener('click', renderRunPayroll);
-            document.getElementById('payroll-settings-btn').addEventListener('click', () => switchSettingsTab('payroll'));
+            document.getElementById('payroll-settings-btn').addEventListener('click', renderPayrollSettingsInManage);
         }
         
+        async function renderPayrollSettingsInManage() {
+            const payrollConfig = currentWorkspaceData.payrollConfig || {};
+            manageContent.innerHTML = `
+                <h3 class="text-xl font-semibold text-white mb-4">Payroll Settings</h3>
+                <form id="manage-payroll-settings-form">
+                    <div class="card p-6 space-y-6">
+                        <div>
+                            <label class="block text-gray-400 mb-1">Pay Schedule</label>
+                            <select name="paySchedule" class="form-select w-full md:w-1/2">
+                                <option value="Weekly" ${payrollConfig.paySchedule === 'Weekly' ? 'selected' : ''}>Weekly</option>
+                                <option value="Bi-Weekly" ${payrollConfig.paySchedule === 'Bi-Weekly' ? 'selected' : ''}>Bi-Weekly</option>
+                                <option value="Semi-Monthly" ${payrollConfig.paySchedule === 'Semi-Monthly' ? 'selected' : ''}>Semi-Monthly</option>
+                                <option value="Monthly" ${payrollConfig.paySchedule === 'Monthly' ? 'selected' : ''}>Monthly</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label class="block text-gray-400 mb-1">Company Tax ID (EIN)</label>
+                            <input type="text" name="taxId" class="form-input w-full md:w-1/2" value="${payrollConfig.taxId || ''}">
+                        </div>
+                        <div class="flex justify-end mt-6">
+                            <button type="submit" class="cta-button px-6 py-2 rounded-lg">Save Settings</button>
+                        </div>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('manage-payroll-settings-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const updatedConfig = {
+                    paySchedule: form.paySchedule.value,
+                    taxId: form.taxId.value
+                };
+                
+                await updateDoc(doc(db, "workspaces", currentWorkspaceId), { payrollConfig: updatedConfig });
+                showToast('Payroll settings saved!', 'success');
+                await loadWorkspaceData(currentWorkspaceId); // reload data
+            });
+        }
+
         function renderRunPayroll() {
             manageContent.innerHTML = `
                 <h3 class="text-xl font-semibold text-white mb-4">Run Payroll</h3>
@@ -3116,6 +3117,7 @@
                 finalizeBtn.textContent = 'Finalize Pay Run';
             }
         }
+
         
         function viewPayStub(stubId) {
             const stub = payStubs.find(s => s.id === stubId);
@@ -3217,6 +3219,7 @@
             document.getElementById('print-pay-stub-btn').onclick = () => window.print();
         }
 
+        // --- MANAGE DEPARTMENTS ---
         function renderManageDepartments() {
             manageSidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Add Department</h3>
@@ -3252,7 +3255,6 @@
                 departments: arrayUnion(newDept)
             });
             showToast('Department added.', 'success');
-            await loadWorkspaceData(currentWorkspaceId);
             renderManagePage('departments');
         }
 
@@ -3262,10 +3264,16 @@
                     departments: arrayRemove(deptName)
                 });
                 showToast('Department removed.', 'success');
-                await loadWorkspaceData(currentWorkspaceId);
                 renderManagePage('departments');
             }
         }
+
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+        });
+
     </script>
 </body>
 </html>

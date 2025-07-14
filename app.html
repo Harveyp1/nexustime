@@ -188,10 +188,8 @@
                             <button data-tab="payroll" class="tab-button py-4 px-1 font-medium text-lg">Payroll</button>
                         </nav>
                     </div>
-                    <div id="employee-filter-bar" class="hidden mb-8"></div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
-                        <div id="manage-content" class="md:col-span-2"></div>
+                    <div id="manage-main-content">
+                        <!-- This will hold either the list view or the detail view -->
                     </div>
                 </div>
             </section>
@@ -424,6 +422,7 @@
         let projectChart = null;
         let employeeChart = null;
         let billableChart = null;
+        let projectDetailChart = null;
         let editingItemId = null; 
         let selectedManageItem = null;
         let manageCurrentPage = 1;
@@ -432,10 +431,10 @@
         let calendarDate = new Date();
 
         const PLAN_DETAILS = {
-            Free: { name: 'Free', price: 0, userLimit: 5, wsLimit: 1, priceId: null, features: ["1 Workspace", "Up to 5 Users", "Basic Features"] },
-            Starter: { name: 'Starter', price: 29, userLimit: Infinity, wsLimit: 1, priceId: 'price_starter_plan_id', features: ["1 Workspace", "Unlimited Users", "Core Features"] },
-            Pro: { name: 'Pro', price: 79, userLimit: Infinity, wsLimit: 2, priceId: 'price_pro_plan_id', features: ["2 Workspaces", "Unlimited Users", "Pro Features & Analytics"] },
-            Enterprise: { name: 'Enterprise', price: "Custom", userLimit: Infinity, wsLimit: Infinity, priceId: 'price_enterprise_plan_id', features: ["Unlimited Workspaces", "SSO & Advanced Security", "Dedicated Support"] }
+            Free: { name: 'Free', price: 0, pricePerUser: 0, userLimit: 5, wsLimit: 1, priceId: null, features: ["1 Workspace", "Up to 5 Users", "Basic Features"] },
+            Starter: { name: 'Starter', price: 10, pricePerUser: 5, userLimit: Infinity, wsLimit: 1, priceId: 'price_starter_nexus', features: ["1 Workspace", "Unlimited Users", "Core Features"] },
+            Pro: { name: 'Pro', price: 25, pricePerUser: 8, userLimit: Infinity, wsLimit: 2, priceId: 'price_pro_nexus', features: ["2 Workspaces", "Unlimited Users", "Pro Features & Analytics"] },
+            Enterprise: { name: 'Enterprise', price: "Custom", pricePerUser: "Custom", userLimit: Infinity, wsLimit: Infinity, priceId: 'price_enterprise_nexus', features: ["Unlimited Workspaces", "SSO & Advanced Security", "Dedicated Support"] }
         };
         const PLAN_HIERARCHY = { Free: 0, Starter: 1, Pro: 2, Enterprise: 3 };
         
@@ -452,9 +451,7 @@
         const nextWeekBtn = document.getElementById('next-week-btn');
         const employeeDetailsContainer = document.getElementById('employee-details-container');
         const manageTabs = document.getElementById('manage-tabs');
-        const manageContent = document.getElementById('manage-content');
-        const manageSidebar = document.getElementById('manage-sidebar');
-        const employeeFilterBar = document.getElementById('employee-filter-bar');
+        const manageMainContent = document.getElementById('manage-main-content');
         const addNewButton = document.getElementById('add-new-button');
         const punchModal = document.getElementById('punch-modal');
         const closePunchModalButton = document.getElementById('close-punch-modal-button');
@@ -1038,25 +1035,43 @@
             
             selectedManageItem = null; // Reset selection on tab change
             
+            const employeeFilterBar = document.getElementById('employee-filter-bar');
             if (activeTab === 'employees') {
                 employeeFilterBar.style.display = 'block';
                 renderEmployeeFilterBar();
+                manageMainContent.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
+                        <div id="manage-content" class="md:col-span-2"></div>
+                    </div>`;
                 renderManageEmployees();
                 renderManageSidebar();
             } else if (activeTab === 'projects') {
                 employeeFilterBar.style.display = 'none';
                 renderManageProjects();
-                renderManageSidebar();
             } else if (activeTab === 'payroll') {
                 employeeFilterBar.style.display = 'none';
+                 manageMainContent.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
+                        <div id="manage-content" class="md:col-span-2"></div>
+                    </div>`;
                 renderManagePayroll();
             } else if (activeTab === 'departments') {
                 employeeFilterBar.style.display = 'none';
+                 manageMainContent.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
+                        <div id="manage-content" class="md:col-span-2"></div>
+                    </div>`;
                 renderManageDepartments();
             }
         }
 
         function renderEmployeeFilterBar() {
+            const employeeFilterBar = document.getElementById('employee-filter-bar');
+            if(!employeeFilterBar) return;
+
             const ws = currentWorkspaceData;
             const departmentOptions = (ws.departments || []).map(d => `<option value="${d}">${d}</option>`).join('');
             const payTypeOptions = (ws.payTypes || []).map(p => `<option value="${p}">${p}</option>`).join('');
@@ -1093,6 +1108,7 @@
         }
 
         function renderManageEmployees() {
+            const manageContent = document.getElementById('manage-content');
             const filteredEmployees = filterEmployees();
             const startIndex = (manageCurrentPage - 1) * MANAGE_ITEMS_PER_PAGE;
             const endIndex = startIndex + MANAGE_ITEMS_PER_PAGE;
@@ -1136,25 +1152,115 @@
         }
 
         function renderManageProjects() {
+             manageMainContent.innerHTML = `<div id="project-list-view" class="w-full"></div>`;
+             const container = document.getElementById('project-list-view');
+
             let listHtml = projects.map((item) => `
-                <li class="flex justify-between items-center p-3 rounded-lg manage-list-item" data-id="${item.id}" data-type="project">
-                    <span>${item.name}</span>
+                <li class="flex justify-between items-center p-4 rounded-lg manage-list-item bg-gray-800" data-id="${item.id}" data-type="project">
+                    <span class="font-semibold text-lg">${item.name}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
                 </li>`).join('');
-            manageContent.innerHTML = `<div class="card p-6"><ul class="space-y-2">${listHtml}</ul></div>`;
 
-            document.querySelectorAll('.manage-list-item').forEach(item => item.addEventListener('click', (e) => {
-                const id = e.currentTarget.dataset.id;
-                const type = e.currentTarget.dataset.type;
-                selectedManageItem = { type, data: projects.find(p => p.id === id) };
+            container.innerHTML = `<div class="card p-6"><ul class="space-y-3">${listHtml}</ul></div>`;
 
-                document.querySelectorAll('.manage-list-item').forEach(i => i.classList.remove('selected'));
-                e.currentTarget.classList.add('selected');
+            container.querySelectorAll('.manage-list-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const projectId = e.currentTarget.dataset.id;
+                    const project = projects.find(p => p.id === projectId);
+                    renderProjectDetailView(project);
+                });
+            });
+        }
+        
+        function renderProjectDetailView(project) {
+            manageMainContent.innerHTML = `
+                <div class="mb-4">
+                    <button id="back-to-projects-btn" class="flex items-center text-emerald-400 hover:text-emerald-300 font-semibold">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                        Back to All Projects
+                    </button>
+                </div>
+                <h3 class="text-3xl font-bold text-white mb-6">${project.name}</h3>
 
-                renderManageSidebar();
-            }));
+                <!-- KPIs -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="card p-6"><h4 class="text-lg font-semibold text-gray-400">Total Hours Logged</h4><p id="project-total-hours" class="text-4xl font-bold text-white mt-2">0</p></div>
+                    <div class="card p-6"><h4 class="text-lg font-semibold text-gray-400">Team Members</h4><p id="project-member-count" class="text-4xl font-bold text-white mt-2">0</p></div>
+                    <div class="card p-6"><h4 class="text-lg font-semibold text-gray-400">Budget vs Actual</h4><p class="text-4xl font-bold text-white mt-2">N/A</p></div>
+                </div>
+
+                <!-- Charts and Lists -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h4 class="text-xl font-semibold text-white mb-4">Hours by Member</h4>
+                        <canvas id="project-detail-chart"></canvas>
+                    </div>
+                     <div class="card p-6">
+                        <h4 class="text-xl font-semibold text-white mb-4">Recent Activity</h4>
+                        <ul id="project-activity-list" class="space-y-3"></ul>
+                    </div>
+                </div>
+            `;
+            
+            // Filter data for this project
+            const projectTimeEntries = [];
+            Object.values(timesheets).forEach(empSheet => {
+                Object.values(empSheet).forEach(day => {
+                    day.punches.forEach(punch => {
+                        if (punch.task === project.name) {
+                            projectTimeEntries.push(punch);
+                        }
+                    });
+                });
+            });
+            
+            // Calculate and render KPIs
+            const totalHours = projectTimeEntries.length > 0 ? calculateTotalHoursFromPairs(projectTimeEntries) : 0;
+            const memberHours = {};
+            projectTimeEntries.forEach(entry => {
+                const empName = employees.find(e => e.id === entry.userId)?.name || 'Unknown';
+                const duration = calculateTotalHoursFromPairs([entry]);
+                memberHours[empName] = (memberHours[empName] || 0) + duration;
+            });
+
+            document.getElementById('project-total-hours').textContent = totalHours.toFixed(1);
+            document.getElementById('project-member-count').textContent = Object.keys(memberHours).length;
+
+            // Render Chart
+            if (projectDetailChart) projectDetailChart.destroy();
+            const ctx = document.getElementById('project-detail-chart').getContext('2d');
+            projectDetailChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(memberHours),
+                    datasets: [{
+                        label: 'Hours',
+                        data: Object.values(memberHours),
+                        backgroundColor: ['#34D399', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'],
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'right', labels: {color: '#E5E7EB'} } } }
+            });
+
+            // Render Activity List
+            const activityList = document.getElementById('project-activity-list');
+            const recentEntries = projectTimeEntries.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+            if (recentEntries.length > 0) {
+                 activityList.innerHTML = recentEntries.map(entry => {
+                    const empName = employees.find(e => e.id === entry.userId)?.name || 'Unknown';
+                    return `<li class="text-sm"><span class="font-semibold text-emerald-400">${empName}</span> logged time on <span class="text-gray-400">${formatDate(entry.date, true)}</span></li>`;
+                 }).join('');
+            } else {
+                activityList.innerHTML = '<p class="text-gray-500">No time logged for this project yet.</p>';
+            }
+
+            document.getElementById('back-to-projects-btn').addEventListener('click', () => renderManagePage('projects'));
         }
 
         function renderManageSidebar() {
+            const manageSidebar = document.getElementById('manage-sidebar');
             if (!selectedManageItem) {
                 manageSidebar.innerHTML = '<p class="text-gray-400">Select an item from the list to see details.</p>';
                 return;
@@ -1186,32 +1292,13 @@
                 manageSidebar.querySelector('.remove-employee-btn').addEventListener('click', (e) => handleRemoveEmployee(e.target.dataset.id));
                 manageSidebar.querySelector('.send-password-reset-btn').addEventListener('click', (e) => handleSendPasswordReset(e.target.dataset.email));
 
-            } else if (selectedManageItem.type === 'project') {
-                const proj = selectedManageItem.data;
-                let customFieldsHtml = '';
-                const customFields = currentWorkspaceData.projectCustomFields || [];
-                customFields.forEach(field => {
-                    customFieldsHtml += `<p><strong class="text-gray-400">${field}:</strong> ${proj[field] || 'N/A'}</p>`;
-                });
-
-                manageSidebar.innerHTML = `
-                    <h3 class="text-xl font-bold text-white mb-4">${proj.name}</h3>
-                    <div class="space-y-2 text-sm">
-                        ${customFieldsHtml}
-                    </div>
-                    <div class="mt-6 space-x-2">
-                        <button class="secondary-button px-4 py-2 rounded-lg text-sm edit-project-btn" data-id="${proj.id}">Edit</button>
-                        <button class="danger-button px-4 py-2 rounded-lg text-sm remove-project-btn" data-id="${proj.id}">Remove</button>
-                    </div>
-                `;
-                manageSidebar.querySelector('.edit-project-btn').addEventListener('click', (e) => openProjectModal(e.target.dataset.id));
-                manageSidebar.querySelector('.remove-project-btn').addEventListener('click', (e) => handleRemoveProject(e.target.dataset.id));
-            }
+            } 
         }
 
         // --- Helper Functions (Dates, Calculations, etc.) ---
         
         function timeAgo(date) {
+            if(!date) return '';
             const seconds = Math.floor((new Date() - date) / 1000);
             let interval = seconds / 31536000;
             if (interval > 1) return Math.floor(interval) + " years ago";
@@ -2219,7 +2306,9 @@
             const planName = currentUserData.plan || 'Free';
             const plan = PLAN_DETAILS[planName];
             const nextBillingDate = currentUserData.nextBillingDate ? formatDate(currentUserData.nextBillingDate, true) : 'N/A';
-            const price = typeof plan.price === 'number' ? `$${plan.price.toFixed(2)}` : 'Custom';
+            const userCount = employees.length;
+            const userCost = userCount * (plan.pricePerUser || 0);
+            const totalCost = (plan.price || 0) + userCost;
             
             card.innerHTML = `
                 <h3 class="text-xl font-semibold text-white mb-2">Current Subscription</h3>
@@ -2229,14 +2318,14 @@
                             <p class="text-2xl font-bold text-emerald-400">${plan.name} Plan</p>
                             <p class="text-gray-400">Your plan renews on ${nextBillingDate}.</p>
                         </div>
-                        <p class="text-3xl font-bold text-white">${price}<span class="text-base font-medium text-gray-400">/month</span></p>
+                        <p class="text-3xl font-bold text-white">$${totalCost.toFixed(2)}<span class="text-base font-medium text-gray-400">/month</span></p>
                     </div>
                     <div class="border-t border-gray-700 mt-6 pt-6">
-                        <h4 class="font-semibold text-white mb-2">Summary:</h4>
+                        <h4 class="font-semibold text-white mb-2">Itemized Bill:</h4>
                         <ul class="text-gray-300 space-y-2">
-                           <li class="flex justify-between"><span>Base Plan</span><span>${price}</span></li>
-                           <!-- In a real app, user/seat count would be listed here -->
-                           <li class="flex justify-between font-bold border-t border-gray-600 mt-2 pt-2"><span>Total Next Bill</span><span>${price}</span></li>
+                           <li class="flex justify-between"><span>Base Plan</span><span>$${(plan.price || 0).toFixed(2)}</span></li>
+                           ${plan.pricePerUser > 0 ? `<li class="flex justify-between"><span>User Seats (${userCount} x $${plan.pricePerUser.toFixed(2)})</span><span>$${userCost.toFixed(2)}</span></li>` : ''}
+                           <li class="flex justify-between font-bold border-t border-gray-600 mt-2 pt-2"><span>Total Next Bill</span><span>$${totalCost.toFixed(2)}</span></li>
                         </ul>
                     </div>
                 </div>
@@ -2307,8 +2396,11 @@
             const daysInCycle = 30; // Assuming 30-day billing cycle for simplicity
             const daysRemaining = Math.max(0, Math.round((nextBillingDate - today) / (1000 * 60 * 60 * 24)));
             
-            const creditForOldPlan = (currentPlan.price / daysInCycle) * daysRemaining;
-            const costForNewPlan = (newPlan.price / daysInCycle) * daysRemaining;
+            const currentTotalMonthly = (currentPlan.price || 0) + (employees.length * (currentPlan.pricePerUser || 0));
+            const newTotalMonthly = (newPlan.price || 0) + (employees.length * (newPlan.pricePerUser || 0));
+
+            const creditForOldPlan = (currentTotalMonthly / daysInCycle) * daysRemaining;
+            const costForNewPlan = (newTotalMonthly / daysInCycle) * daysRemaining;
             const amountDueToday = costForNewPlan - creditForOldPlan;
 
             const modal = document.getElementById('confirmation-modal');
@@ -2330,7 +2422,7 @@
                         <span>$${amountDueToday.toFixed(2)}</span>
                     </div>
                 </div>
-                <p class="text-sm text-gray-500 mt-4">Your card will be charged the prorated amount. Your new plan will renew at $${newPlan.price}/month starting on ${formatDate(nextBillingDate, true)}.</p>
+                <p class="text-sm text-gray-500 mt-4">Your card will be charged the prorated amount. Your new plan will renew at $${newTotalMonthly.toFixed(2)}/month on ${formatDate(nextBillingDate, true)}.</p>
                 <div class="flex justify-center gap-4 mt-6">
                     <button id="confirmation-cancel-btn" class="secondary-button px-6 py-2 rounded-lg">Cancel</button>
                     <button id="confirmation-confirm-btn" class="cta-button px-6 py-2 rounded-lg">Confirm & Pay</button>
@@ -2347,23 +2439,6 @@
             const newPlanDetails = PLAN_DETAILS[newPlanName];
             const newPriceId = newPlanDetails.priceId;
 
-            // =================================================================
-            // == IN PRODUCTION: This section would call the backend. ==
-            // =================================================================
-            // const functions = getFunctions(app);
-            // const changePlan = httpsCallable(functions, 'changeStripeSubscription');
-            // try {
-            //   await changePlan({ newPriceId: newPriceId });
-            //   // The backend Cloud Function would then update Firestore on success.
-            //   // For our simulation, we do the update here directly.
-            // } catch (error) {
-            //   console.error("Stripe plan change failed:", error);
-            //   showToast(`Payment failed: ${error.message}`, 'error');
-            //   return; // Stop execution if payment fails
-            // }
-            // =================================================================
-            // == SIMULATION LOGIC STARTS HERE ==
-            // =================================================================
             console.log(`Simulating call to backend for user ${currentUser.uid} to change to plan ${newPlanName} with priceId: ${newPriceId}`);
             
             const userDocRef = doc(db, "users", currentUser.uid);
@@ -3141,22 +3216,26 @@
 
         // --- Payroll Management ---
         function renderManagePayroll() {
-            manageSidebar.innerHTML = `
+            const sidebar = document.getElementById('manage-sidebar');
+            const content = document.getElementById('manage-content');
+
+            sidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Payroll Tools</h3>
                 <div class="space-y-2">
                     <button id="run-payroll-btn" class="w-full secondary-button px-4 py-2 rounded-lg text-sm">Run New Pay Run</button>
                     <button id="payroll-settings-btn" class="w-full secondary-button px-4 py-2 rounded-lg text-sm">Payroll Settings</button>
                 </div>
             `;
-            manageContent.innerHTML = '<div class="card p-6"><p class="text-gray-400">Select a tool from the sidebar to begin.</p></div>';
+            content.innerHTML = '<div class="card p-6"><p class="text-gray-400">Select a tool from the sidebar to begin.</p></div>';
             
             document.getElementById('run-payroll-btn').addEventListener('click', renderRunPayroll);
             document.getElementById('payroll-settings-btn').addEventListener('click', renderPayrollSettingsInManage);
         }
         
         async function renderPayrollSettingsInManage() {
+            const content = document.getElementById('manage-content');
             const payrollConfig = currentWorkspaceData.payrollConfig || {};
-            manageContent.innerHTML = `
+            content.innerHTML = `
                 <h3 class="text-xl font-semibold text-white mb-4">Payroll Settings</h3>
                 <form id="manage-payroll-settings-form">
                     <div class="card p-6 space-y-6">
@@ -3195,7 +3274,8 @@
         }
 
         function renderRunPayroll() {
-            manageContent.innerHTML = `
+            const content = document.getElementById('manage-content');
+            content.innerHTML = `
                 <h3 class="text-xl font-semibold text-white mb-4">Run Payroll</h3>
                 <div class="card p-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -3467,7 +3547,10 @@
 
         // --- MANAGE DEPARTMENTS ---
         function renderManageDepartments() {
-            manageSidebar.innerHTML = `
+            const sidebar = document.getElementById('manage-sidebar');
+            const content = document.getElementById('manage-content');
+
+            sidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Add Department</h3>
                 <form id="add-department-form" class="space-y-4">
                     <div>
@@ -3485,10 +3568,10 @@
                 </li>
             `).join('');
             
-            manageContent.innerHTML = `<div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Existing Departments</h3><ul class="space-y-2">${listHtml}</ul></div>`;
+            content.innerHTML = `<div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Existing Departments</h3><ul class="space-y-2">${listHtml}</ul></div>`;
 
             document.getElementById('add-department-form').addEventListener('submit', handleAddDepartment);
-            manageContent.querySelectorAll('button[data-dept]').forEach(btn => {
+            content.querySelectorAll('button[data-dept]').forEach(btn => {
                 btn.addEventListener('click', () => handleRemoveDepartment(btn.dataset.dept));
             });
         }

@@ -851,7 +851,7 @@
             // Dummy calculation for billable hours
             Object.values(timesheets).forEach(employeeSheet => {
                 Object.values(employeeSheet).forEach(day => {
-                    const hours = calculateTotalHoursFromPairs(day.punches);
+                    const hours = calculateTotalHoursFromPairs(processDayPunches(null, null, day.punches).pairs);
                     totalHours += hours;
                     if (Math.random() > 0.3) billableHours += hours; // 70% of hours are billable
                 });
@@ -1658,6 +1658,12 @@
         }
         
         function openAddEmployeeModal() {
+            // Enforce user limit based on the workspace plan
+            if (currentWorkspaceData.plan === 'Free' && employees.length >= PLAN_USER_LIMITS.Free) {
+                showToast(`Free plan is limited to ${PLAN_USER_LIMITS.Free} users. Please upgrade the workspace plan.`, 'error');
+                return;
+            }
+
             addEmployeeForm.innerHTML = getEmployeeFormHtml();
             populateEmployeeFormDropdowns(addEmployeeForm);
             setupEmployeeModalTabs(addEmployeeModal);

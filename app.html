@@ -634,8 +634,19 @@
             if (!workspaceId) return;
             
             const wsDocRef = doc(db, "workspaces", workspaceId);
-            const wsDocSnap = await getDoc(wsDocRef);
             
+            const [wsDocSnap, membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
+                getDoc(wsDocRef),
+                getDocs(query(collection(db, "workspaces", workspaceId, "members"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "projects"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "tasks"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "timeOffRequests"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "payStubs"), orderBy("payDate", "desc"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "timeEntries"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "verifications"))),
+                getDocs(query(collection(db, "workspaces", workspaceId, "schedules")))
+            ]);
+
             if (wsDocSnap.exists()) {
                 currentWorkspaceData = { id: wsDocSnap.id, ...wsDocSnap.data() };
             } else {
@@ -645,27 +656,6 @@
                 window.location.reload();
                 return;
             }
-
-            const membersColRef = collection(db, "workspaces", workspaceId, "members");
-            const projectsColRef = collection(db, "workspaces", workspaceId, "projects");
-            const tasksColRef = collection(db, "workspaces", workspaceId, "tasks");
-            const timeOffColRef = collection(db, "workspaces", workspaceId, "timeOffRequests");
-            const payStubsColRef = collection(db, "workspaces", workspaceId, "payStubs");
-            const timesheetsColRef = collection(db, "workspaces", workspaceId, "timeEntries");
-            const verificationColRef = collection(db, "workspaces", workspaceId, "verifications");
-            const schedulesColRef = collection(db, "workspaces", workspaceId, "schedules");
-
-
-            const [membersSnapshot, projectsSnapshot, tasksSnapshot, timeOffSnapshot, payStubsSnapshot, timesheetsSnapshot, verificationSnapshot, schedulesSnapshot] = await Promise.all([
-                getDocs(query(membersColRef)),
-                getDocs(query(projectsColRef)),
-                getDocs(query(tasksColRef)),
-                getDocs(query(timeOffColRef)),
-                getDocs(query(payStubsColRef, orderBy("payDate", "desc"))),
-                getDocs(query(timesheetsColRef)),
-                getDocs(query(verificationColRef)),
-                getDocs(query(schedulesColRef))
-            ]);
 
             employees = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             projects = projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -886,7 +876,7 @@
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 await updateProfile(userCredential.user, { displayName: name });
-                // onAuthStateChanged will handle the rest, creating the user doc and redirecting to onboarding
+                // onAuthStateChanged will handle the rest
             } catch (error) {
                 errorEl.textContent = `Signup Failed: ${error.message}`;
             }
@@ -1182,9 +1172,7 @@
                 renderManageDepartments();
             }
 
-            manageTabs.addEventListener('click', (e) => {
-                if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab);
-            });
+            manageTabs.addEventListener('click', (e) => { if(e.target.dataset.tab) renderManagePage(e.target.dataset.tab); });
             addNewButton.addEventListener('click', handleAddNew);
         }
 
@@ -1341,19 +1329,44 @@
             }
         }
 
+        // --- Helper Functions (Dates, Calculations, etc.) ---
+        
+        /**
+         * Calculates estimated taxes based on gross pay.
+         * NOTE: This is a simplified model for demonstration purposes only.
+         * A real-world application must use a dedicated payroll tax API.
+         * @param {number} grossPay The gross pay for the period.
+         * @param {string} filingStatus 'single' or 'married'.
+         * @param {number} allowances The number of allowances claimed.
+         * @returns {object} An object containing the tax breakdown.
+         */
         function calculateTaxes(grossPay, filingStatus = 'single', allowances = 0) {
+            // FICA Taxes (Social Security & Medicare)
             const socialSecurityRate = 0.062;
             const medicareRate = 0.0145;
+            
+            // NOTE: In a real system, there's a wage base limit for Social Security. Ignored for simplicity.
             const socialSecurity = grossPay * socialSecurityRate;
             const medicare = grossPay * medicareRate;
-            const annualGross = grossPay * 26;
-            const singleBrackets = { 0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37 };
-            const marriedBrackets = { 0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37 };
+
+            // Simplified Federal Income Tax Calculation
+            // Using 2024 tax brackets and a very simplified standard deduction model.
+            // This is NOT accurate for real payroll but demonstrates the concept.
+            const annualGross = grossPay * 26; // Assuming bi-weekly pay period for annualization
+            const singleBrackets = {
+                0: 0.10, 11600: 0.12, 47150: 0.22, 100525: 0.24, 191950: 0.32, 243725: 0.35, 609350: 0.37
+            };
+            const marriedBrackets = {
+                0: 0.10, 23200: 0.12, 94300: 0.22, 201050: 0.24, 383900: 0.32, 487450: 0.35, 731100: 0.37
+            };
+            
             const brackets = (filingStatus === 'married') ? marriedBrackets : singleBrackets;
-            let taxableIncome = annualGross;
+            let taxableIncome = annualGross; // In a real system, subtract pre-tax deductions here.
             let annualFederalTax = 0;
             let remainingIncome = taxableIncome;
+            
             const sortedBrackets = Object.keys(brackets).map(Number).sort((a,b) => b-a);
+            
             for (const bracketStart of sortedBrackets) {
                 if (remainingIncome > bracketStart) {
                     const incomeInBracket = remainingIncome - bracketStart;
@@ -1361,9 +1374,17 @@
                     remainingIncome = bracketStart;
                 }
             }
-            const federal = annualFederalTax / 26;
+
+            const federal = annualFederalTax / 26; // De-annualize for the pay period
+
             const total = socialSecurity + medicare + (federal > 0 ? federal : 0);
-            return { federal: federal > 0 ? federal : 0, socialSecurity, medicare, total };
+
+            return {
+                federal: federal > 0 ? federal : 0,
+                socialSecurity,
+                medicare,
+                total
+            };
         }
         
         function processDayPunches(employeeId, day, punchesOverride = null) {
@@ -1374,18 +1395,31 @@
             const sortedPunches = [...punches].sort((a,b) => a.time.localeCompare(b.time));
             const pairs = [];
             let openIn = null;
+
             for (const punch of sortedPunches) {
                 if (punch.mode === 'in') {
-                    if (openIn) pairs.push({ in: openIn, out: '' });
+                    if (openIn) {
+                        // We have a dangling "in" punch. Close it without an "out".
+                        pairs.push({ in: openIn, out: '' });
+                    }
                     openIn = punch.time;
                 } else if (punch.mode === 'out') {
                     if (openIn) {
+                        // Found a pair
                         pairs.push({ in: openIn, out: punch.time });
                         openIn = null;
+                    } else {
+                        // This is a dangling "out" punch. We can ignore it or handle it.
+                        // For now, let's ignore it as it doesn't make sense without an "in".
                     }
                 }
             }
-            if (openIn) pairs.push({ in: openIn, out: '' });
+
+            // If the loop ends and there's still an open "in" punch
+            if (openIn) {
+                pairs.push({ in: openIn, out: '' });
+            }
+            
             const totalHours = calculateTotalHoursFromPairs(pairs);
             return { pairs, totalHours };
         }
@@ -1422,7 +1456,7 @@
             if (includeYear) options.year = 'numeric';
             return date.toLocaleDateString('en-US', options);
         }
-        
+
         // --- Modals and Forms Logic ---
         
         function openPunchModal(date = null) {
@@ -1558,7 +1592,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <label class="flex items-center"><input type="checkbox" id="employee-verify-checkbox" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500" ${verificationRecord.employeeVerified ? 'checked' : ''} ${verificationRecord.supervisorVerified ? 'disabled' : ''}><span class="ml-3">Employee Verification</span></label>
-                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.employeeVerified ? `Verified by ${employee?.name} on ${new Date(verificationRecord.employeeVerificationTimestamp?.toDate()).toLocaleString()}` : 'Pending'}</div>
+                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.employeeVerified ? `Verified by ${employee.name} on ${new Date(verificationRecord.employeeVerificationTimestamp?.toDate()).toLocaleString()}` : 'Pending'}</div>
                     </div>
                     <div>
                         <label class="flex items-center"><input type="checkbox" id="supervisor-verify-checkbox" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500" ${verificationRecord.supervisorVerified ? 'checked' : ''} ${!verificationRecord.employeeVerified ? 'disabled' : ''}><span class="ml-3">Supervisor Verification</span></label>
@@ -1589,117 +1623,6 @@
             const activeTab = manageTabs.querySelector('.active').dataset.tab;
             if (activeTab === 'employees') openAddEmployeeModal();
             else if (activeTab === 'projects') openProjectModal();
-        }
-
-        function getEmployeeFormHtml(employee = {}) {
-            const isEditing = !!employee.id;
-            const payroll = employee.payroll || {};
-            const assignedDeductionsHtml = (payroll.deductions || []).map((ded, index) => `
-                <div class="flex items-center justify-between p-2 bg-gray-700 rounded" data-index="${index}">
-                    <span>${ded.name}: ${ded.type === 'fixed' ? '$' : ''}${ded.amount}${ded.type === 'percent' ? '%' : ''}</span>
-                    <button type="button" class="text-red-400 text-xl font-bold remove-deduction-btn">&times;</button>
-                </div>
-            `).join('');
-
-            return `
-                <div class="border-b border-gray-700 mb-4">
-                    <nav class="flex space-x-8" id="employee-modal-tabs">
-                        <button type="button" data-tab="personal" class="tab-button py-3 px-1 font-medium active">Personal</button>
-                        <button type="button" data-tab="employment" class="tab-button py-3 px-1 font-medium">Employment</button>
-                        <button type="button" data-tab="payroll" class="tab-button py-3 px-1 font-medium">Payroll</button>
-                    </nav>
-                </div>
-
-                <div id="personal-tab-pane" class="modal-tab-pane active space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label class="block text-gray-300 mb-2">First Name</label><input type="text" name="firstName" class="w-full p-3 form-input" required value="${employee.firstName || ''}"></div>
-                        <div><label class="block text-gray-300 mb-2">Middle Name</label><input type="text" name="middleName" class="w-full p-3 form-input" value="${employee.middleName || ''}"></div>
-                        <div><label class="block text-gray-300 mb-2">Last Name</label><input type="text" name="lastName" class="w-full p-3 form-input" required value="${employee.lastName || ''}"></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label class="block text-gray-300 mb-2">Email</label><input type="email" name="email" class="w-full p-3 form-input" required value="${employee.email || ''}" ${isEditing ? 'disabled' : ''}></div>
-                        ${!isEditing ? `<div><label class="block text-gray-300 mb-2">Temporary Password</label><input type="password" name="password" class="w-full p-3 form-input" required></div>` : ''}
-                    </div>
-                </div>
-
-                <div id="employment-tab-pane" class="modal-tab-pane space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label class="block text-gray-300 mb-2">Employee ID</label><input type="text" name="employeeId" class="w-full p-3 form-input" required value="${employee.employeeId || ''}"></div>
-                        <div><label class="block text-gray-300 mb-2">Card Number</label><input type="text" name="cardNumber" class="w-full p-3 form-input" value="${employee.cardNumber || ''}"></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label class="block text-gray-300 mb-2">Hire Date</label><input type="date" name="hireDate" class="w-full p-3 form-input" required value="${employee.hireDate || ''}"></div>
-                        <div><label class="block text-gray-300 mb-2">Supervisor</label><select name="supervisor" class="w-full p-3 form-select"></select></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label class="block text-gray-300 mb-2">Department</label><select name="department" class="w-full p-3 form-select"></select></div>
-                        <div><label class="block text-gray-300 mb-2">Pay Type</label><select name="payType" class="w-full p-3 form-select"></select></div>
-                        <div><label class="block text-gray-300 mb-2">Employee Type</label><select name="employeeType" class="w-full p-3 form-select"></select></div>
-                    </div>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label class="block text-gray-300 mb-2">Role</label>
-                            <select name="role" class="w-full p-3 form-select" required>
-                                <option value="Employee" ${employee.role === 'Employee' ? 'selected' : ''}>Employee</option>
-                                <option value="Manager" ${employee.role === 'Manager' ? 'selected' : ''}>Manager</option>
-                                <option value="Admin" ${employee.role === 'Admin' ? 'selected' : ''}>Admin</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-300 mb-2">Status</label>
-                            <select name="status" class="w-full p-3 form-select">
-                                <option value="Active" ${employee.status === 'Active' ? 'selected' : ''}>Active</option>
-                                <option value="Inactive" ${employee.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="payroll-tab-pane" class="modal-tab-pane space-y-6">
-                    <h4 class="text-lg font-semibold text-white">Payroll Information</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <div><label class="block text-gray-300 mb-2">Hourly Rate ($)</label><input type="number" name="hourlyRate" class="w-full p-3 form-input" step="0.01" value="${employee.hourlyRate || ''}"></div>
-                         <div><label class="block text-gray-300 mb-2">Filing Status</label>
-                            <select name="filingStatus" class="w-full p-3 form-select">
-                                <option value="single" ${payroll.filingStatus === 'single' ? 'selected' : ''}>Single</option>
-                                <option value="married" ${payroll.filingStatus === 'married' ? 'selected' : ''}>Married</option>
-                            </select>
-                         </div>
-                         <div><label class="block text-gray-300 mb-2">Allowances</label><input type="number" name="allowances" class="w-full p-3 form-input" value="${payroll.allowances || 0}"></div>
-                    </div>
-                    <div class="border-t border-gray-700"></div>
-                    <h4 class="text-lg font-semibold text-white">Assigned Deductions</h4>
-                    <div class="space-y-4">
-                        <div id="assigned-deductions-list" class="space-y-2 mb-4">
-                            ${assignedDeductionsHtml || '<p class="text-gray-500">No deductions assigned.</p>'}
-                        </div>
-                        <div class="flex gap-4 items-end">
-                            <div class="flex-grow">
-                                <label class="block text-gray-300 mb-1">Add Deduction</label>
-                                <select id="new-deduction-template" class="form-select w-full"></select>
-                            </div>
-                             <div class="w-1/4">
-                                <label class="block text-gray-300 mb-1">Amount/Percent</label>
-                                <input type="number" id="new-deduction-amount" class="form-input w-full" step="0.01">
-                            </div>
-                             <div class="w-1/4">
-                                <label class="block text-gray-300 mb-1">Type</label>
-                                <select id="new-deduction-type" class="form-select w-full">
-                                    <option value="fixed">Fixed ($)</option>
-                                    <option value="percent">Percent (%)</option>
-                                </select>
-                            </div>
-                            <div>
-                                 <button type="button" id="add-deduction-btn" class="secondary-button px-4 py-2 rounded-lg">Add</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="flex justify-end gap-4 pt-6 border-t border-gray-700 mt-6">
-                    <button type="button" class="secondary-button px-6 py-2 rounded-lg close-modal-btn">Cancel</button>
-                    <button type="submit" class="cta-button px-6 py-2 rounded-lg">${isEditing ? 'Save Changes' : 'Add Employee'}</button>
-                </div>
-            `;
         }
         
         function setupEmployeeModalTabs(modal) {
@@ -1785,7 +1708,7 @@
                     <button type="button" class="text-red-400 text-xl font-bold remove-deduction-btn">&times;</button>
                 `;
                 
-                if (list.querySelector('p')) list.innerHTML = '';
+                if (list.querySelector('p')) list.innerHTML = ''; // Clear "No deductions" message
                 list.appendChild(newDeductionEl);
                 
                 newDeductionEl.querySelector('.remove-deduction-btn').addEventListener('click', (e) => e.target.parentElement.remove());
@@ -2015,23 +1938,26 @@
             renderManagePage('projects');
         }
 
-        function renderSettingsPage() {
+        async function renderSettingsPage() {
+            await loadWorkspaceData(currentWorkspaceId);
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdmin = userRole === 'Admin';
 
             const tabs = [
                 { id: 'profile', label: 'My Profile', visible: true },
                 { id: 'workspace', label: 'Workspace', visible: isAdmin },
-                { id: 'payroll', label: 'Payroll', visible: isAdmin && checkPlanPermission('Enterprise') },
+                { id: 'payroll', label: 'Payroll', visible: isAdmin },
                 { id: 'billing', label: 'Billing & Plan', visible: isAdmin },
                 { id: 'danger', label: 'Danger Zone', visible: isAdmin }
             ];
 
+            // Render Nav
             settingsNav.innerHTML = tabs
                 .filter(tab => tab.visible)
                 .map(tab => `<button class="tab-button text-left p-3 rounded-lg hover:bg-gray-700 w-full" data-tab="${tab.id}">${tab.label}</button>`)
                 .join('');
 
+            // Render Content Area
             settingsContentArea.innerHTML = tabs
                 .filter(tab => tab.visible)
                 .map(tab => `<div id="${tab.id}-settings-tab" class="settings-tab-content"></div>`)
@@ -2069,18 +1995,6 @@
             const container = document.getElementById('profile-settings-tab');
             const prefs = currentUserData.preferences || {};
             const notifications = prefs.notifications || {};
-            const integrationsHtml = checkPlanPermission('Starter') ? `
-                 <div class="card p-8">
-                    <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
-                    <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
-                        <div>
-                            <h4 class="font-bold text-white">Google Calendar</h4>
-                            <p class="text-sm text-gray-400">Sync your NexusTime schedule with Google Calendar.</p>
-                        </div>
-                        <button type="button" id="connect-calendar-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
-                    </div>
-                </div>
-            ` : '';
 
             container.innerHTML = `
                 <form id="profile-settings-form" class="space-y-12">
@@ -2105,6 +2019,16 @@
                         <h3 class="text-xl font-semibold text-white mb-6">Preferences & Notifications</h3>
                         <div class="space-y-6">
                            <div>
+                                <label class="block text-gray-400 mb-1">Default Start Page</label>
+                                <select name="startPage" class="form-select w-full md:w-1/2">
+                                    <option value="dashboard" ${prefs.startPage === 'dashboard' ? 'selected' : ''}>Dashboard</option>
+                                    <option value="timesheet" ${prefs.startPage === 'timesheet' ? 'selected' : ''}>Timesheet</option>
+                                    <option value="schedule" ${prefs.startPage === 'schedule' ? 'selected' : ''}>Schedule</option>
+                                    <option value="tasks" ${prefs.startPage === 'tasks' ? 'selected' : ''}>Tasks</option>
+                                </select>
+                           </div>
+                           <div class="border-t border-gray-700 my-2"></div>
+                           <div>
                                 <h4 class="font-medium text-white mb-2">Email Notifications</h4>
                                 <div class="space-y-2">
                                     <label class="flex items-center"><input type="checkbox" name="notificationTimesheet" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 mr-2" ${notifications.timesheetReminders !== false ? 'checked' : ''}><span class="text-gray-300">Weekly Timesheet Reminders</span></label>
@@ -2114,75 +2038,34 @@
                            </div>
                         </div>
                     </div>
-                    ${integrationsHtml}
+                     <div class="card p-8">
+                        <h3 class="text-xl font-semibold text-white mb-6">Integrations</h3>
+                        <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                            <div>
+                                <h4 class="font-bold text-white">Google Calendar</h4>
+                                <p class="text-sm text-gray-400">Sync your NexusTime schedule with Google Calendar.</p>
+                            </div>
+                            <button type="button" id="connect-calendar-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Connect</button>
+                        </div>
+                    </div>
                     <div class="flex justify-end">
                         <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Profile Settings</button>
                     </div>
                 </form>
             `;
             document.getElementById('profile-settings-form').addEventListener('submit', handleSaveProfileSettings);
-            const connectCalendarBtn = document.getElementById('connect-calendar-btn');
-            if (connectCalendarBtn) {
-                connectCalendarBtn.addEventListener('click', () => {
-                    showToast('Calendar integration coming soon!', 'success');
-                });
-            }
+            document.getElementById('connect-calendar-btn').addEventListener('click', () => {
+                showToast('Calendar integration coming soon!', 'success');
+            });
         }
 
         function renderWorkspaceSettings() {
             const container = document.getElementById('workspace-settings-tab');
             const ws = currentWorkspaceData;
+            const rules = ws.rules || {};
+            const security = ws.security || {};
+            const plan = ws.plan || 'Free';
             
-            const proFeaturesHtml = checkPlanPermission('Pro') ? `
-                 <div class="card p-8">
-                     <h3 class="text-xl font-semibold text-white mb-6">Security (Pro Feature)</h3>
-                     <div class="space-y-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h4 class="font-medium text-white">Require Two-Factor Authentication</h4>
-                                <p class="text-sm text-gray-400">Force all members to use 2FA for enhanced security.</p>
-                            </div>
-                            <label class="toggle-switch"><input type="checkbox" name="require2FA" ${ws.security?.require2FA ? 'checked' : ''}><span class="toggle-slider"></span></label>
-                        </div>
-                        <div class="border-t border-gray-700 my-2"></div>
-                         <div>
-                            <label class="block text-gray-400 mb-1">Session Timeout</label>
-                            <select name="sessionTimeout" class="form-select w-full md:w-1/2">
-                                <option value="30" ${ws.security?.sessionTimeout == 30 ? 'selected' : ''}>30 minutes</option>
-                                <option value="60" ${ws.security?.sessionTimeout == 60 ? 'selected' : ''}>1 hour</option>
-                                <option value="480" ${ws.security?.sessionTimeout == 480 ? 'selected' : ''}>8 hours</option>
-                                <option value="0" ${!ws.security?.sessionTimeout || ws.security?.sessionTimeout == 0 ? 'selected' : ''}>Never</option>
-                            </select>
-                            <p class="text-sm text-gray-400 mt-1">Automatically log out users after a period of inactivity.</p>
-                        </div>
-                     </div>
-                </div>
-                 <div class="card p-8">
-                     <h3 class="text-xl font-semibold text-white mb-6">Data & API (Pro Feature)</h3>
-                     <div class="space-y-6">
-                         <div class="flex items-center justify-between">
-                            <div>
-                                <h4 class="font-medium text-white">Export Workspace Data</h4>
-                                <p class="text-sm text-gray-400">Download all your workspace data as a CSV file.</p>
-                            </div>
-                            <button type="button" id="export-data-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
-                        </div>
-                         <div class="border-t border-gray-700 my-2"></div>
-                         <div>
-                            <h4 class="font-medium text-white">API Access</h4>
-                            <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
-                            <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
-                        </div>
-                     </div>
-                </div>
-            ` : `
-                <div class="card p-8 border border-dashed border-gray-600 text-center">
-                    <h3 class="text-lg font-semibold text-white">Unlock Advanced Settings</h3>
-                    <p class="text-gray-400 mt-2">Upgrade to the Pro plan to access advanced security, data exports, and API access.</p>
-                    <button type="button" id="upgrade-from-ws-settings-btn" class="mt-4 cta-button px-6 py-2 rounded-lg">Upgrade Plan</button>
-                </div>
-            `;
-
             container.innerHTML = `
                 <form id="workspace-settings-form" class="space-y-12">
                     <div class="card p-8">
@@ -2191,23 +2074,67 @@
                             <div><label class="block text-gray-400">Workspace Name</label><input type="text" name="workspaceName" class="form-input w-full mt-1" value="${ws.name || ''}"></div>
                          </div>
                     </div>
-                    ${proFeaturesHtml}
+                     <div class="card p-8">
+                         <h3 class="text-xl font-semibold text-white mb-6">Security</h3>
+                         <div class="space-y-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-white">Require Two-Factor Authentication</h4>
+                                    <p class="text-sm text-gray-400">Force all members to use 2FA for enhanced security.</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" name="require2FA" ${security.require2FA ? 'checked' : ''}><span class="toggle-slider"></span></label>
+                            </div>
+                            <div class="border-t border-gray-700 my-2"></div>
+                             <div>
+                                <label class="block text-gray-400 mb-1">Session Timeout</label>
+                                <select name="sessionTimeout" class="form-select w-full md:w-1/2">
+                                    <option value="30" ${security.sessionTimeout == 30 ? 'selected' : ''}>30 minutes</option>
+                                    <option value="60" ${security.sessionTimeout == 60 ? 'selected' : ''}>1 hour</option>
+                                    <option value="480" ${security.sessionTimeout == 480 ? 'selected' : ''}>8 hours</option>
+                                    <option value="0" ${!security.sessionTimeout || security.sessionTimeout == 0 ? 'selected' : ''}>Never</option>
+                                </select>
+                                <p class="text-sm text-gray-400 mt-1">Automatically log out users after a period of inactivity.</p>
+                            </div>
+                         </div>
+                    </div>
+                     <div class="card p-8">
+                         <h3 class="text-xl font-semibold text-white mb-6">Data & API</h3>
+                         <div class="space-y-6">
+                             <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-white">Export Workspace Data</h4>
+                                    <p class="text-sm text-gray-400">Download all your workspace data as a CSV file.</p>
+                                </div>
+                                <button type="button" id="export-data-btn" class="secondary-button px-4 py-2 rounded-lg font-semibold">Export Data</button>
+                            </div>
+                             <div class="border-t border-gray-700 my-2"></div>
+                             <div>
+                                <h4 class="font-medium text-white">API Access</h4>
+                                ${(plan === 'Pro' || plan === 'Enterprise') ? `
+                                    <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
+                                    <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
+                                `: `
+                                    <p class="text-sm text-gray-400">Upgrade to Pro or Enterprise to get API access.</p>
+                                `}
+                            </div>
+                         </div>
+                    </div>
                     <div class="flex justify-end">
                         <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Workspace Settings</button>
                     </div>
                 </form>
             `;
             document.getElementById('workspace-settings-form').addEventListener('submit', handleSaveWorkspaceSettings);
-            const exportBtn = document.getElementById('export-data-btn');
-            if(exportBtn) exportBtn.addEventListener('click', () => { showToast('Data export feature coming soon!', 'success'); });
-            const upgradeBtn = document.getElementById('upgrade-from-ws-settings-btn');
-            if(upgradeBtn) upgradeBtn.addEventListener('click', () => switchSettingsTab('billing'));
+            document.getElementById('export-data-btn').addEventListener('click', () => {
+                showToast('Data export feature coming soon!', 'success');
+            });
         }
 
         async function renderPayrollSettingsTab() {
             const container = document.getElementById('payroll-settings-tab');
             container.innerHTML = `<div class="loader"></div>`;
 
+            // Get deduction templates
             const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
             const templatesSnap = await getDoc(templatesRef);
             const deductionTemplates = templatesSnap.exists() ? templatesSnap.data().templates : [];
@@ -2219,7 +2146,7 @@
                         <p class="text-sm text-gray-400">Type: ${template.type}</p>
                     </div>
                     <div>
-                        <button class="text-red-400 hover:text-red-300 font-semibold remove-deduction-template-btn" data-index="${index}">Remove</button>
+                        <button class="text-red-400 hover:text-red-300 font-semibold" data-index="${index}">Remove</button>
                     </div>
                 </li>
             `).join('');
@@ -2248,7 +2175,7 @@
                 handleSaveDeductionTemplate({ name, type });
             });
             
-            container.querySelectorAll('.remove-deduction-template-btn').forEach(button => {
+            container.querySelectorAll('#deduction-templates-list button').forEach(button => {
                 button.addEventListener('click', (e) => {
                      if (confirm('Are you sure you want to remove this template?')) {
                         handleRemoveDeductionTemplate(parseInt(e.target.dataset.index));
@@ -2264,7 +2191,6 @@
             }, { merge: true });
 
             showToast('Deduction template saved!', 'success');
-            await loadWorkspaceData(currentWorkspaceId);
             renderPayrollSettingsTab();
         }
 
@@ -2276,7 +2202,6 @@
                 currentTemplates.splice(indexToRemove, 1);
                 await setDoc(templatesRef, { templates: currentTemplates });
                 showToast('Deduction template removed!', 'success');
-                await loadWorkspaceData(currentWorkspaceId);
                 renderPayrollSettingsTab();
             }
         }
@@ -2388,6 +2313,7 @@
             const updatedProfile = {
                 name: form.name.value,
                 preferences: {
+                    startPage: form.startPage.value,
                     notifications: {
                         timesheetReminders: form.notificationTimesheet.checked,
                         scheduleUpdates: form.notificationSchedule.checked,
@@ -2414,14 +2340,11 @@
             
             const updatedSettings = {
                 name: form.workspaceName.value,
-            };
-
-            if (checkPlanPermission('Pro')) {
-                updatedSettings.security = {
+                security: {
                     require2FA: form.require2FA.checked,
                     sessionTimeout: Number(form.sessionTimeout.value)
                 }
-            }
+            };
 
             try {
                 await updateDoc(workspaceDocRef, updatedSettings);
@@ -2481,7 +2404,7 @@
         function openConfirmationModal(title, message, onConfirm) {
             const modal = document.getElementById('confirmation-modal');
             document.getElementById('confirmation-modal-title').textContent = title;
-            document.getElementById('confirmation-modal-message').innerHTML = message;
+            document.getElementById('confirmation-modal-message').textContent = message;
             
             const confirmBtn = document.getElementById('confirmation-confirm-btn');
             const cancelBtn = document.getElementById('confirmation-cancel-btn');
@@ -2664,12 +2587,8 @@
             }
         }
         
-        function renderTasksPage() {
-            if (!checkPlanPermission('Pro')) {
-                showPage('dashboard');
-                showToast('Upgrade to the Pro plan to access Tasks.', 'error');
-                return;
-            }
+        async function renderTasksPage() {
+            await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('tasks-container');
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
@@ -2788,12 +2707,8 @@
             }
         }
 
-        function renderTimeOffPage() {
-            if (!checkPlanPermission('Pro')) {
-                showPage('dashboard');
-                showToast('Upgrade to the Pro plan to access Time Off management.', 'error');
-                return;
-            }
+        async function renderTimeOffPage() {
+            await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('time-off-container');
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
@@ -3215,7 +3130,7 @@
             const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
             const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
 
-            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' };
+            const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' }; // Placeholder YTD data
             
             contentEl.innerHTML = `
                 <style>

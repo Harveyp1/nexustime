@@ -52,7 +52,7 @@
         .workspace-card.active-workspace { border-color: #34D399; box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.5); }
         .plan-card { border: 2px solid #374151; transition: all 0.2s ease-in-out; display: flex; flex-direction: column; }
         .plan-card.selected { border-color: #34D399; background-color: #374151; }
-        .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
         .calendar-day { min-height: 120px; transition: background-color 0.2s; }
         .calendar-day.other-month { background-color: #1F2937; opacity: 0.5; }
         .calendar-day:not(.other-month):hover { background-color: #374151; cursor: pointer; }
@@ -163,7 +163,13 @@
 
         <!-- Dashboard Page -->
         <div id="dashboard" class="page">
-            <section class="py-12"><div class="container mx-auto px-6"><div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4"><h2 id="dashboard-title" class="text-3xl font-bold text-white"></h2></div><div id="dashboard-widgets" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-8"><div class="lg:col-span-2 card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Project</h3><canvas id="project-chart"></canvas></div><div class="lg:col-span-3 card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Employee</h3><canvas id="employee-chart"></canvas></div></div><div class="card p-0 overflow-hidden mt-8"><div class="p-6 flex justify-between items-center"><h3 class="text-xl font-semibold text-white">Recent Timesheet Entries</h3><a href="#timesheet" data-page="timesheet" class="nav-link secondary-button px-4 py-2 rounded-lg text-sm">View Full Timesheet</a></div><div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-gray-800"><tr><th class="p-4 font-semibold">Employee</th><th class="p-4 font-semibold">Date</th><th class="p-4 font-semibold">Hours</th></tr></thead><tbody id="timesheet-table-body"></tbody></table></div></div></div></section>
+            <section class="py-12">
+                <div class="container mx-auto px-6">
+                    <div id="dashboard-content">
+                        <!-- Plan-based dashboard content will be rendered here -->
+                    </div>
+                </div>
+            </section>
         </div>
         
         <!-- Manage Page -->
@@ -279,10 +285,10 @@
         </div>
 
         <!-- Pay Stub Viewer Modal -->
-        <div id="pay-stub-modal" class="fixed inset-0 z-50 modal-overlay items-center justify-center hidden" role="dialog" aria-modal="true">
+        <div id="pay-stub-modal" class="fixed inset-0 z-50 modal-overlay items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="pay-stub-modal-title">
             <div class="card rounded-lg shadow-xl m-4 max-w-4xl w-full max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-                    <h3 class="text-xl font-semibold text-white">Pay Stub</h3>
+                    <h3 id="pay-stub-modal-title" class="text-xl font-semibold text-white">Pay Stub</h3>
                     <button class="text-gray-400 hover:text-white text-3xl close-modal-btn" aria-label="Close">&times;</button>
                 </div>
                 <div id="pay-stub-content" class="p-8 overflow-y-auto bg-white text-gray-800">
@@ -296,6 +302,15 @@
     </main>
 
     <!-- Modals -->
+    <div id="schedule-day-modal" class="fixed inset-0 z-50 modal-overlay items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="schedule-day-modal-title-text">
+        <div class="card rounded-lg shadow-xl m-8 max-w-2xl w-full">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 id="schedule-day-modal-title-text" class="text-xl font-semibold text-white"></h3>
+                <button class="text-gray-400 hover:text-white text-3xl close-modal-btn" aria-label="Close">&times;</button>
+            </div>
+            <div id="schedule-day-modal-content" class="p-6"></div>
+        </div>
+    </div>
     <div id="request-time-off-modal" class="fixed inset-0 z-50 modal-overlay items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="request-time-off-modal-title-text">
         <div class="card rounded-lg shadow-xl m-8 max-w-lg w-full">
             <div class="p-6 border-b border-gray-700 flex justify-between items-center">
@@ -413,6 +428,7 @@
         let editingDayData = null;
         let projectChart = null;
         let employeeChart = null;
+        let billableChart = null;
         let editingItemId = null; // Used for both employee and project editing
         let selectedManageItem = null;
         let manageCurrentPage = 1;
@@ -429,9 +445,7 @@
         const loginError = document.getElementById('login-error');
         const workspaceListContainer = document.getElementById('workspace-list');
         const planStatCard = document.getElementById('plan-stat-card');
-        const dashboardTitle = document.getElementById('dashboard-title');
-        const dashboardWidgets = document.getElementById('dashboard-widgets');
-        const timesheetTableBody = document.getElementById('timesheet-table-body');
+        const dashboardContent = document.getElementById('dashboard-content');
         const spreadsheetContainer = document.getElementById('spreadsheet-container');
         const weekRangeDisplay = document.getElementById('week-range-display');
         const prevWeekBtn = document.getElementById('prev-week-btn');
@@ -797,33 +811,91 @@
                 </div>
             `;
         }
+        
+        // --- Redesigned Dashboard Logic ---
 
         async function renderDashboard() {
             await loadWorkspaceData(currentWorkspaceId);
-            dashboardTitle.textContent = `${currentWorkspaceData.name} Dashboard`;
-            let totalHours = 0;
-            let recentEntries = [];
-            Object.entries(timesheets).forEach(([employeeId, days]) => {
-                const employee = employees.find(e => e.id === employeeId);
-                if (!employee) return;
-                Object.entries(days).forEach(([date, dayData]) => {
-                    const hours = calculateTotalHoursFromPairs(processDayPunches(employeeId, new Date(date + 'T00:00:00')).pairs);
-                    totalHours += hours;
-                    if(hours > 0) recentEntries.push({employeeName: employee.name, date, hours});
-                });
-            });
-            dashboardWidgets.innerHTML = `<div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Employees</h3><p class="text-4xl font-bold text-white mt-2">${employees.length}</p></div><div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Projects</h3><p class="text-4xl font-bold text-white mt-2">${projects.length}</p></div><div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Hours This Period</h3><p class="text-4xl font-bold text-white mt-2">${totalHours.toFixed(1)}</p></div>`;
-            timesheetTableBody.innerHTML = '';
-             recentEntries.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5).forEach(entry => {
-                const row = document.createElement('tr');
-                row.className = 'border-b border-gray-700';
-                row.innerHTML = `<td class="p-4">${entry.employeeName}</td><td class="p-4">${formatDate(new Date(entry.date + 'T00:00:00'))}</td><td class="p-4">${entry.hours.toFixed(2)}</td>`;
-                timesheetTableBody.appendChild(row);
-            });
+            const plan = currentWorkspaceData.plan || 'Free';
+            
+            if (plan === 'Pro' || plan === 'Enterprise') {
+                renderProDashboard();
+            } else {
+                renderStarterDashboard();
+            }
+        }
+        
+        function renderStarterDashboard() {
+             dashboardContent.innerHTML = `
+                <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+                    <h2 class="text-3xl font-bold text-white">${currentWorkspaceData.name} Dashboard</h2>
+                </div>
+                <div class="card p-6 text-center">
+                    <h3 class="text-2xl font-semibold text-white">Unlock Powerful Insights</h3>
+                    <p class="text-gray-400 mt-2 max-w-2xl mx-auto">Upgrade to the Pro plan to access advanced dashboards, billable hour tracking, pending approval lists, and detailed analytics.</p>
+                    <a href="#settings" data-tab-target="billing" class="mt-6 inline-block cta-button px-8 py-3 rounded-lg font-semibold">Upgrade to Pro</a>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Project</h3><canvas id="project-chart"></canvas></div>
+                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Employee</h3><canvas id="employee-chart"></canvas></div>
+                </div>
+            `;
             renderCharts();
         }
         
-        function renderCharts() {
+        function renderProDashboard() {
+            let totalHours = 0;
+            let billableHours = 0; // Assuming a 'billable' property on projects or time entries
+            let pendingApprovals = 5; // Placeholder
+            
+            // Dummy calculation for billable hours
+            Object.values(timesheets).forEach(employeeSheet => {
+                Object.values(employeeSheet).forEach(day => {
+                    const hours = calculateTotalHoursFromPairs(day.punches);
+                    totalHours += hours;
+                    if (Math.random() > 0.3) billableHours += hours; // 70% of hours are billable
+                });
+            });
+
+            dashboardContent.innerHTML = `
+                 <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+                    <h2 class="text-3xl font-bold text-white">${currentWorkspaceData.name} Pro Dashboard</h2>
+                </div>
+                <!-- KPI Widgets -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Total Hours Tracked</h3><p class="text-4xl font-bold text-white mt-2">${totalHours.toFixed(1)}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Billable Hours</h3><p class="text-4xl font-bold text-white mt-2">${billableHours.toFixed(1)}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Billable Rate</h3><p class="text-4xl font-bold text-white mt-2">${totalHours > 0 ? ((billableHours / totalHours) * 100).toFixed(0) : 0}%</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Pending Approvals</h3><p class="text-4xl font-bold text-white mt-2">${pendingApprovals}</p></div>
+                </div>
+                <!-- Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+                    <div class="lg:col-span-2 card p-6"><h3 class="text-xl font-semibold text-white mb-4">Hours by Employee</h3><canvas id="employee-chart"></canvas></div>
+                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Billable vs Non-Billable</h3><canvas id="billable-chart"></canvas></div>
+                </div>
+                 <!-- Actionable Lists -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                     <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-white mb-4">Pending Timesheet Approvals</h3>
+                        <ul class="space-y-3">
+                            <li class="flex justify-between items-center"><p>Jane Doe - Week of Oct 23</p><button class="secondary-button px-3 py-1 text-sm rounded-md">Review</button></li>
+                            <li class="flex justify-between items-center"><p>John Smith - Week of Oct 23</p><button class="secondary-button px-3 py-1 text-sm rounded-md">Review</button></li>
+                        </ul>
+                    </div>
+                     <div class="card p-6">
+                        <h3 class="text-xl font-semibold text-white mb-4">Projects Nearing Budget</h3>
+                         <ul class="space-y-3">
+                            <li class="flex justify-between items-center"><p>Website Redesign (95% of budget)</p><span class="text-yellow-400 font-semibold">At Risk</span></li>
+                            <li class="flex justify-between items-center"><p>Mobile App Dev (85% of budget)</p><span class="text-gray-400">On Track</span></li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            renderCharts(true); // Pass true to render pro charts
+        }
+
+        function renderCharts(isPro = false) {
+            // Employee Hours Chart (All Plans)
             const employeeData = {};
             employees.forEach(emp => {
                 const empTimesheets = timesheets[emp.id] || {};
@@ -832,7 +904,31 @@
             if (employeeChart) employeeChart.destroy();
             const employeeChartCtx = document.getElementById('employee-chart');
             if(employeeChartCtx) employeeChart = new Chart(employeeChartCtx, { type: 'bar', data: { labels: Object.keys(employeeData), datasets: [{ label: 'Hours Logged', data: Object.values(employeeData), backgroundColor: '#34D399' }] }, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } }, x: { ticks: { color: '#9CA3AF' }, grid: { display: false } } }, plugins: { legend: { display: false } } } });
-            if (projectChart) projectChart.destroy();
+
+            // Project Hours Chart (Starter Plan)
+            const projectChartCtx = document.getElementById('project-chart');
+            if (projectChartCtx) {
+                if (projectChart) projectChart.destroy();
+                // This would need more complex logic to assign hours to projects
+                projectChart = new Chart(projectChartCtx, { type: 'doughnut', data: { labels: ['Website Redesign', 'Mobile App', 'Marketing'], datasets: [{ data: [120, 80, 45], backgroundColor: ['#34D399', '#3B82F6', '#F59E0B'] }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#9CA3AF' } } } } });
+            }
+
+            // Billable Chart (Pro Plan)
+            if (isPro) {
+                 const billableChartCtx = document.getElementById('billable-chart');
+                 if(billableChartCtx) {
+                    if (billableChart) billableChart.destroy();
+                    let totalHours = 0, billableHours = 0;
+                    Object.values(timesheets).forEach(employeeSheet => {
+                        Object.values(employeeSheet).forEach(day => {
+                            const hours = calculateTotalHoursFromPairs(day.punches);
+                            totalHours += hours;
+                            if (Math.random() > 0.3) billableHours += hours;
+                        });
+                    });
+                    billableChart = new Chart(billableChartCtx, { type: 'pie', data: { labels: ['Billable', 'Non-Billable'], datasets: [{ data: [billableHours, totalHours - billableHours], backgroundColor: ['#34D399', '#4B5563'] }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#9CA3AF' } } } } });
+                 }
+            }
         }
 
         async function renderTimesheetPage() {
@@ -1329,6 +1425,7 @@
             requestTimeOffModal.style.display = 'none';
             document.getElementById('confirmation-modal').style.display = 'none';
             document.getElementById('pay-stub-modal').style.display = 'none';
+            document.getElementById('schedule-day-modal').style.display = 'none';
         }
         
         async function handleAddPunch(e) {
@@ -1851,8 +1948,15 @@
 
             // Add event listeners
             settingsNav.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', () => switchSettingsTab(button.dataset.tab));
+                button.addEventListener('click', (e) => switchSettingsTab(e.currentTarget.dataset.tab));
             });
+
+            // Handle deep linking to a specific tab
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetTab = urlParams.get('tab');
+            if (targetTab && tabs.find(t => t.id === targetTab && t.visible)) {
+                switchSettingsTab(targetTab);
+            }
         }
 
         function switchSettingsTab(tabId) {
@@ -2112,31 +2216,30 @@
 
         function renderBillingSettings() {
             const container = document.getElementById('billing-settings-tab');
-            const currentPlan = currentWorkspaceData.plan || 'Free';
+            const currentUserPlan = currentUserData.plan || 'Free';
             
             const plans = {
-                Free: { price: 0, features: ["1 User Seat", "3 Active Projects", "Basic Time Tracking", "Community Support"] },
-                Starter: { price: 5, features: ["Unlimited Users", "Unlimited Projects", "Team Collaboration", "Timesheet Approvals", "Email Support"] },
-                Pro: { price: 10, features: ["Everything in Starter", "Advanced Analytics", "Billing & Invoicing", "API & Integrations", "Priority Support"] },
-                Enterprise: { price: 12, features: ["Everything in Pro", "Single Sign-On (SSO)", "Audit Logs", "Dedicated Support", "Volume Discounts"] }
+                Free: { price: 0, userLimit: PLAN_USER_LIMITS.Free, wsLimit: PLAN_WORKSPACE_LIMITS.Free, features: ["1 Workspace", "Up to 5 Users", "Basic Features"] },
+                Starter: { price: 29, userLimit: PLAN_USER_LIMITS.Starter, wsLimit: PLAN_WORKSPACE_LIMITS.Starter, features: ["1 Workspace", "Unlimited Users", "Core Features"] },
+                Pro: { price: 79, userLimit: PLAN_USER_LIMITS.Pro, wsLimit: PLAN_WORKSPACE_LIMITS.Pro, features: ["2 Workspaces", "Unlimited Users", "Pro Features & Analytics"] },
+                Enterprise: { price: "Custom", userLimit: PLAN_USER_LIMITS.Enterprise, wsLimit: PLAN_WORKSPACE_LIMITS.Enterprise, features: ["Unlimited Workspaces", "SSO & Advanced Security", "Dedicated Support"] }
             };
             
             let plansHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">';
             for (const [planName, planDetails] of Object.entries(plans)) {
-                const isCurrent = planName === currentPlan;
+                const isCurrent = planName === currentUserPlan;
                 let buttonHtml;
                 if (isCurrent) {
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" disabled>Current Plan</button>`;
                 } else {
-                    const actionText = (plans[planName].price > (plans[currentPlan]?.price || 0)) ? 'Upgrade' : 'Downgrade';
+                    const actionText = (planDetails.price > (plans[currentUserPlan]?.price || 0) || planDetails.price === "Custom") ? 'Upgrade' : 'Downgrade';
                     buttonHtml = `<button class="w-full cta-button py-3 rounded-lg font-semibold" data-plan="${planName}">${actionText} to ${planName}</button>`;
                 }
 
                 plansHtml += `
                     <div class="plan-card p-6 rounded-lg ${isCurrent ? 'selected' : ''}">
-                         ${isCurrent ? '<div class="absolute top-2 right-2 text-xs bg-emerald-500 text-white font-bold py-1 px-2 rounded-full">Active</div>' : ''}
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
-                        <p class="text-4xl font-extrabold my-4 text-white">$${planDetails.price}<span class="text-base font-medium text-gray-400">/user/month</span></p>
+                        <p class="text-4xl font-extrabold my-4 text-white">${typeof planDetails.price === 'number' ? `$${planDetails.price}` : planDetails.price}<span class="text-base font-medium text-gray-400">/month</span></p>
                         <ul class="space-y-2 text-gray-300 flex-grow mb-6">
                             ${planDetails.features.map(f => `
                                 <li class="flex items-center">
@@ -2153,8 +2256,8 @@
             plansHtml += '</div>';
 
             container.innerHTML = `
-                <h3 class="text-xl font-semibold text-white mb-2">Billing & Plan</h3>
-                <p class="text-gray-400 mb-6">Choose the plan that's right for your team.</p>
+                <h3 class="text-xl font-semibold text-white mb-2">Your Account Plan</h3>
+                <p class="text-gray-400 mb-6">Your account plan determines limits like the number of workspaces you can create. Features are managed by the plan on each individual workspace.</p>
                 ${plansHtml}
             `;
             
@@ -2268,10 +2371,11 @@
         async function handlePlanSelection(newPlan) {
             const userDocRef = doc(db, "users", currentUser.uid);
             try {
-                await updateDoc(userDocRef, { plan: newPlan }); // Update plan on the user document
-                showToast(`Successfully changed plan to ${newPlan}!`, 'success');
-                await loadUserData(currentUser.uid); // Reload user data to reflect plan change
-                renderBillingSettings(); // Re-render to update the UI
+                // This updates the USER's master plan
+                await updateDoc(userDocRef, { plan: newPlan }); 
+                showToast(`Successfully changed your account plan to ${newPlan}!`, 'success');
+                await loadUserData(currentUser.uid); // Reload user data
+                renderBillingSettings(); // Re-render the billing page
             } catch (error) {
                 console.error("Error changing plan:", error);
                 showToast(`Failed to change plan: ${error.message}`, 'error');
@@ -2331,27 +2435,18 @@
 
         async function renderOnboardingPage() {
             const userPlan = currentUserData.plan || 'Free';
-            const userLimit = PLAN_USER_LIMITS[userPlan] || 0;
             const workspaceLimit = PLAN_WORKSPACE_LIMITS[userPlan] || 1;
             const existingWorkspaceCount = Object.keys(currentUserData.workspaces || {}).length;
 
             if (existingWorkspaceCount >= workspaceLimit) {
                 onboardingContainer.innerHTML = `
-                    <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Cannot Create Workspace</h2>
-                    <p class="text-center text-gray-400">Your current plan (${userPlan}) allows for a maximum of ${workspaceLimit} workspace(s). Please upgrade your plan to create more.</p>
+                    <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Workspace Limit Reached</h2>
+                    <p class="text-center text-gray-400">Your current account plan (${userPlan}) allows for a maximum of ${workspaceLimit} workspace(s). Please upgrade your account plan to create more.</p>
                     <div class="text-center mt-6">
-                        <a href="#settings" data-page="settings" class="cta-button px-8 py-3 rounded-lg font-semibold">Go to Settings</a>
+                        <a href="#settings" data-tab-target="billing" class="cta-button px-8 py-3 rounded-lg font-semibold">Upgrade Account Plan</a>
                     </div>
                 `;
                 return;
-            }
-            
-            let totalActiveUsers = 0;
-            const workspaceIds = Object.keys(currentUserData.workspaces || {});
-            if (workspaceIds.length > 0) {
-                const memberQueries = workspaceIds.map(id => getDocs(query(collection(db, `workspaces/${id}/members`), where("status", "==", "Active"))));
-                const memberSnapshots = await Promise.all(memberQueries);
-                totalActiveUsers = memberSnapshots.reduce((acc, snapshot) => acc + snapshot.size, 0);
             }
 
             const industries = ["Software", "Healthcare", "Retail", "Education", "Construction", "Finance", "Legal", "Hospitality", "Transportation", "Manufacturing", "Marketing", "Non-Profit", "Real Estate", "Telecommunications", "Government"];
@@ -2359,12 +2454,6 @@
             const timezones = {"(GMT-12:00) International Date Line West": "Etc/GMT+12", "(GMT-11:00) Midway Island, Samoa": "Pacific/Samoa", "(GMT-10:00) Hawaii": "Pacific/Honolulu", "(GMT-09:00) Alaska": "America/Anchorage", "(GMT-08:00) Pacific Time (US & Canada)": "America/Los_Angeles", "(GMT-07:00) Mountain Time (US & Canada)": "America/Denver", "(GMT-06:00) Central Time (US & Canada)": "America/Chicago", "(GMT-05:00) Eastern Time (US & Canada)": "America/New_York", "(GMT-04:00) Atlantic Time (Canada)": "America/Halifax", "(GMT-03:00) Buenos Aires, Georgetown": "America/Argentina/Buenos_Aires", "(GMT-02:00) Mid-Atlantic": "Atlantic/South_Georgia", "(GMT-01:00) Cape Verde Is.": "Atlantic/Cape_Verde", "(GMT+00:00) London, Lisbon": "Europe/London", "(GMT+01:00) Amsterdam, Berlin, Rome": "Europe/Berlin", "(GMT+02:00) Athens, Jerusalem": "Europe/Athens", "(GMT+03:00) Moscow, St. Petersburg": "Europe/Moscow", "(GMT+04:00) Abu Dhabi, Muscat": "Asia/Dubai", "(GMT+05:00) Islamabad, Karachi, Tashkent": "Asia/Karachi", "(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi": "Asia/Kolkata", "(GMT+06:00) Almaty, Novosibirsk": "Asia/Almaty", "(GMT+07:00) Bangkok, Hanoi, Jakarta": "Asia/Bangkok", "(GMT+08:00) Beijing, Perth, Singapore, Hong Kong": "Asia/Hong_Kong", "(GMT+09:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk": "Asia/Tokyo", "(GMT+09:30) Adelaide, Darwin": "Australia/Darwin", "(GMT+10:00) Brisbane, Canberra, Melbourne, Sydney": "Australia/Sydney", "(GMT+11:00) Magadan, Solomon Is., New Caledonia": "Pacific/Guadalcanal", "(GMT+12:00) Auckland, Wellington, Fiji": "Pacific/Auckland"};
 
             onboardingContainer.innerHTML = `
-                <div class="card p-4 mb-6">
-                    <h4 class="font-semibold text-white">${userPlan} Plan</h4>
-                    <p class="text-sm text-gray-400 mt-1">
-                        Users: ${totalActiveUsers} / ${userLimit === Infinity ? 'Unlimited' : userLimit}
-                    </p>
-                </div>
                 <h2 class="text-2xl font-semibold text-emerald-400 mb-4 text-center">Create a New Workspace</h2>
                 <form id="onboarding-form" class="space-y-4">
                     <div><label class="block text-gray-300 mb-1">Workspace Name</label><input type="text" name="workspaceName" class="w-full p-3 form-input" required></div>
@@ -2424,13 +2513,11 @@
             }
         }
         
-        // --- Schedule Page Rendering ---
+        // --- Redesigned Schedule Page ---
         async function renderSchedulePage() {
             await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('schedule-container');
-            const userRole = currentUserData.workspaces[currentWorkspaceId];
-            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
-
+            
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             
             container.innerHTML = `
@@ -2442,7 +2529,7 @@
                         </h2>
                         <button id="next-month-btn" class="secondary-button p-2 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
                     </div>
-                    ${isAdminOrManager ? '<button id="add-shift-main-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Add Shift</button>' : ''}
+                    <button id="add-shift-main-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Add Shift</button>
                 </div>
                 <div id="calendar-grid-container" class="card p-4"></div>
             `;
@@ -2457,8 +2544,7 @@
                 calendarDate.setMonth(calendarDate.getMonth() + 1);
                 renderSchedulePage();
             });
-            const addShiftBtn = document.getElementById('add-shift-main-btn');
-            if(addShiftBtn) addShiftBtn.addEventListener('click', () => openAddShiftModal());
+            document.getElementById('add-shift-main-btn')?.addEventListener('click', () => openAddShiftModal());
         }
 
         function renderCalendarGrid() {
@@ -2504,11 +2590,55 @@
             gridHtml += '</div>';
             gridContainer.innerHTML = gridHtml;
 
+            // NEW: Add event listener to open day detail modal
             gridContainer.querySelectorAll('.calendar-day:not(.other-month)').forEach(dayCell => {
-                dayCell.addEventListener('click', () => openAddShiftModal(dayCell.dataset.date));
+                dayCell.addEventListener('click', () => openDayDetailModal(dayCell.dataset.date));
             });
         }
         
+        function openDayDetailModal(dateString) {
+            const modal = document.getElementById('schedule-day-modal');
+            const modalTitle = document.getElementById('schedule-day-modal-title-text');
+            const modalContent = document.getElementById('schedule-day-modal-content');
+            
+            const date = new Date(dateString + 'T00:00:00');
+            modalTitle.textContent = `Schedule for ${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`;
+            
+            const shiftsForDay = schedules.filter(s => s.start.startsWith(dateString));
+            
+            let contentHtml = '<ul class="space-y-3 mb-6">';
+            if (shiftsForDay.length > 0) {
+                 shiftsForDay.sort((a,b) => a.start.localeCompare(b.start)).forEach(shift => {
+                    const emp = employees.find(e => e.id === shift.userId);
+                    const startTime = new Date(shift.start).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+                    const endTime = new Date(shift.end).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+                    contentHtml += `
+                        <li class="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
+                            <div>
+                                <p class="font-semibold text-white">${emp?.name || 'Unknown User'}</p>
+                                <p class="text-sm text-gray-400">${shift.title}</p>
+                            </div>
+                            <p class="font-medium">${startTime} - ${endTime}</p>
+                        </li>
+                    `;
+                });
+            } else {
+                contentHtml += '<p class="text-gray-400 text-center">No shifts scheduled for this day.</p>';
+            }
+            contentHtml += '</ul>';
+            
+            contentHtml += `
+                <div class="border-t border-gray-700 pt-4 text-right">
+                    <button id="add-shift-from-day-btn" class="cta-button px-6 py-2 rounded-lg">Add New Shift</button>
+                </div>
+            `;
+            
+            modalContent.innerHTML = contentHtml;
+            modal.style.display = 'flex';
+            
+            document.getElementById('add-shift-from-day-btn').addEventListener('click', () => openAddShiftModal(dateString));
+        }
+
         function openAddShiftModal(date = null) {
             const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
             const today = new Date().toISOString().split('T')[0];
@@ -2548,7 +2678,7 @@
                 await addDoc(collection(db, "workspaces", currentWorkspaceId, "schedules"), shiftData);
                 showToast('Shift added successfully!', 'success');
                 closeAllModals();
-                renderSchedulePage();
+                renderSchedulePage(); // Re-render the main schedule page
             } catch (error) {
                 console.error("Error adding shift:", error);
                 showToast(`Error: ${error.message}`, 'error');

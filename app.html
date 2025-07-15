@@ -195,6 +195,7 @@
                             <button data-tab="payroll" class="tab-button py-4 px-1 font-medium text-lg">Payroll</button>
                         </nav>
                     </div>
+                     <div id="employee-filter-bar" class="hidden mb-8"></div>
                     <div id="manage-main-content">
                         <!-- FIXED: Static containers for manage views -->
                          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -833,13 +834,59 @@
 
         async function renderDashboard() {
             await loadWorkspaceData(currentWorkspaceId);
-            const plan = currentWorkspaceData.plan || 'Free';
+            const userRole = currentUserData?.workspaces?.[currentWorkspaceId] || 'Employee';
             
-            if (checkPlanPermission('Pro')) {
+            if (userRole === 'Employee') {
+                renderEmployeeDashboard();
+            } else if (checkPlanPermission('Pro')) {
                 renderProDashboard();
             } else {
                 renderStarterDashboard();
             }
+        }
+
+        function renderEmployeeDashboard() {
+            const myTimesheets = timesheets[currentUser.uid] || {};
+            const { week } = getWeek(0);
+            const weeklyHours = week.reduce((sum, day) => {
+                const dayData = processDayPunches(currentUser.uid, day);
+                return sum + dayData.totalHours;
+            }, 0);
+
+            const myUpcomingShifts = schedules.filter(s => s.userId === currentUser.uid && new Date(s.start) > new Date()).length;
+            const myPendingTimeOff = timeOffRequests.filter(r => r.userId === currentUser.uid && r.status === 'pending').length;
+
+            const myAssignedTasks = tasks
+                .filter(t => t.assigneeId === currentUser.uid && t.status !== 'completed')
+                .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate))
+                .slice(0, 5);
+            
+            let assignedTasksHtml = myAssignedTasks.length > 0
+                ? myAssignedTasks.map(task => `
+                    <li class="flex justify-between items-center py-2 border-b border-gray-700">
+                        <p class="text-white">${task.title}</p>
+                        <span class="text-sm text-gray-500">Due: ${task.dueDate}</span>
+                    </li>
+                `).join('')
+                : '<p class="text-gray-500 text-center py-4">You have no pending tasks.</p>';
+
+            dashboardContent.innerHTML = `
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-white">Welcome, ${currentUserData.name.split(' ')[0]}</h2>
+                    <p class="text-gray-400">Here's your personal summary for the week.</p>
+                </div>
+                <!-- KPIs -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">My Hours (This Week)</h3><p class="text-4xl font-bold text-white mt-2">${weeklyHours.toFixed(1)}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Upcoming Shifts</h3><p class="text-4xl font-bold text-white mt-2">${myUpcomingShifts}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Pending Time Off</h3><p class="text-4xl font-bold text-white mt-2">${myPendingTimeOff}</p></div>
+                </div>
+                 <!-- My Tasks -->
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-white mb-4">My Assigned Tasks</h3>
+                    <ul class="space-y-2">${assignedTasksHtml}</ul>
+                </div>
+            `;
         }
         
         function renderStarterDashboard() {
@@ -869,13 +916,11 @@
             let totalHours = 0;
             let billableHours = 0;
             
-            // Calculate total hours and billable hours
             Object.values(timesheets).forEach(employeeSheet => {
                 Object.values(employeeSheet).forEach(day => {
                     const punches = day.punches || [];
                     const hours = calculateTotalHoursFromPairs(punches);
                     totalHours += hours;
-                     // Assuming projects have an 'isBillable' property
                     const associatedProject = projects.find(p => p.name === punches[0]?.task);
                     if (associatedProject && associatedProject.isBillable) {
                          billableHours += hours;
@@ -883,10 +928,8 @@
                 });
             });
 
-            // Calculate pending time off requests
             const pendingApprovals = timeOffRequests.filter(r => r.status === 'pending').length;
 
-            // Recently Completed Tasks Logic
             const completedTasks = tasks
                 .filter(t => t.status === 'completed' && t.completedAt)
                 .sort((a, b) => b.completedAt.toDate() - a.completedAt.toDate())
@@ -1065,7 +1108,7 @@
             
             const employeeFilterBar = document.getElementById('employee-filter-bar');
             if (activeTab === 'employees') {
-                employeeFilterBar.style.display = 'block';
+                if (employeeFilterBar) employeeFilterBar.style.display = 'block';
                 renderEmployeeFilterBar();
                 manageMainContent.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -1075,10 +1118,10 @@
                 renderManageEmployees();
                 renderManageSidebar();
             } else if (activeTab === 'projects') {
-                employeeFilterBar.style.display = 'none';
+                if (employeeFilterBar) employeeFilterBar.style.display = 'none';
                 renderManageProjects();
             } else if (activeTab === 'payroll') {
-                employeeFilterBar.style.display = 'none';
+                if (employeeFilterBar) employeeFilterBar.style.display = 'none';
                  manageMainContent.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
@@ -1086,7 +1129,7 @@
                     </div>`;
                 renderManagePayroll();
             } else if (activeTab === 'departments') {
-                employeeFilterBar.style.display = 'none';
+                if (employeeFilterBar) employeeFilterBar.style.display = 'none';
                  manageMainContent.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
@@ -2349,7 +2392,7 @@
                             <p class="text-2xl font-bold text-emerald-400">${plan.name} Plan (${currentUserData.billingCycle || 'monthly'})</p>
                             <p class="text-gray-400">${planName === 'Free' ? 'The free plan is free, forever.' : `Your plan renews on ${nextBillingDate}.`}</p>
                         </div>
-                        <p class="text-3xl font-bold text-white">${displayPrice}<span class="text-base font-medium text-gray-400">/month</span></p>
+                        <p class="text-3xl font-bold text-white">${displayPrice}<span class="text-base font-medium text-gray-400">${typeof totalCost === 'number' ? '/month' : ''}</span></p>
                     </div>
                     <div class="border-t border-gray-700 mt-6 pt-6">
                         <h4 class="font-semibold text-white mb-2">Itemized Bill:</h4>

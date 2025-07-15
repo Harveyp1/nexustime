@@ -196,8 +196,13 @@
                             <button data-tab="payroll" class="tab-button py-4 px-1 font-medium text-lg">Payroll</button>
                         </nav>
                     </div>
+                     <div id="employee-filter-bar" class="hidden mb-8"></div>
                     <div id="manage-main-content">
-                        <!-- FIXED: This container will now be correctly populated by the renderManagePage function -->
+                        <!-- FIXED: Static containers for manage views -->
+                         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
+                            <div id="manage-content" class="md:col-span-2"></div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -866,6 +871,7 @@
                     const punches = day.punches || [];
                     const hours = calculateTotalHoursFromPairs(punches);
                     totalHours += hours;
+                     // Assuming projects have an 'isBillable' property
                     const associatedProject = projects.find(p => p.name === punches[0]?.task);
                     if (associatedProject && associatedProject.isBillable) {
                          billableHours += hours;
@@ -1127,6 +1133,7 @@
 
         function renderManageEmployees() {
             const manageContent = document.getElementById('manage-content');
+            if (!manageContent) return;
             const filteredEmployees = filterEmployees();
             const startIndex = (manageCurrentPage - 1) * MANAGE_ITEMS_PER_PAGE;
             const endIndex = startIndex + MANAGE_ITEMS_PER_PAGE;
@@ -1279,8 +1286,8 @@
 
         function renderManageSidebar() {
             const manageSidebar = document.getElementById('manage-sidebar');
-            if (!selectedManageItem) {
-                manageSidebar.innerHTML = '<p class="text-gray-400">Select an item from the list to see details.</p>';
+            if (!manageSidebar || !selectedManageItem) {
+                if (manageSidebar) manageSidebar.innerHTML = '<p class="text-gray-400">Select an item from the list to see details.</p>';
                 return;
             }
 

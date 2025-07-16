@@ -117,6 +117,13 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        
+        const PLAN_DETAILS = {
+            Free: { name: 'Free', price: 0, pricePerUser: 0, userLimit: 5, wsLimit: 1, priceId_monthly: null, priceId_annual: null, features: ["1 Workspace", "Up to 5 Users", "Basic Features"] },
+            Starter: { name: 'Starter', price_monthly: 29, price_annual: 290, pricePerUser: 5, userLimit: Infinity, wsLimit: 1, priceId_monthly: 'price_starter_monthly', priceId_annual: 'price_starter_annual', features: ["1 Workspace", "Unlimited Users", "Core Features"] },
+            Pro: { name: 'Pro', price_monthly: 79, price_annual: 790, pricePerUser: 8, userLimit: Infinity, wsLimit: 2, priceId_monthly: 'price_pro_monthly', priceId_annual: 'price_pro_annual', features: ["2 Workspaces", "Unlimited Users", "Pro Features & Analytics"] },
+            Enterprise: { name: 'Enterprise', price: "Custom", pricePerUser: "Custom", userLimit: Infinity, wsLimit: Infinity, priceId_monthly: null, priceId_annual: null, features: ["Unlimited Workspaces", "SSO & Advanced Security", "Dedicated Support"] }
+        };
 
         // Global State
         let allUsers = [];
@@ -254,7 +261,7 @@
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">New Users & Workspaces (Last 30 Days)</h3><canvas id="dashboard-chart"></canvas></div>
-                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">User Plan Distribution</h3><canvas id="plan-chart"></canvas></div>
+                    <div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Customer Plan Distribution</h3><canvas id="plan-chart"></canvas></div>
                 </div>
             `;
             if(charts.dashboard) charts.dashboard.destroy();
@@ -269,7 +276,7 @@
                 <h1 class="text-3xl font-bold text-white mb-8">Financial Dashboard</h1>
                 <p class="text-gray-400 mb-6 -mt-6">This is a simulated dashboard. No real payment data is processed.</p>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Monthly Recurring Revenue (MRR)</h3><p class="text-4xl font-bold text-emerald-400 mt-2">$${financialData.mrr.toLocaleString()}</p></div>
+                    <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Monthly Recurring Revenue (MRR)</h3><p class="text-4xl font-bold text-emerald-400 mt-2">$${financialData.mrr.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p></div>
                     <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Active Subscriptions</h3><p class="text-4xl font-bold text-white mt-2">${financialData.subscriptions}</p></div>
                     <div class="card p-6"><h3 class="text-lg font-semibold text-gray-400">Churn Rate (30d)</h3><p class="text-4xl font-bold text-red-400 mt-2">${financialData.churn}%</p></div>
                 </div>
@@ -299,15 +306,39 @@
         }
 
         function simulateFinancialData() {
-            const PLAN_PRICES = { Free: 0, Starter: 5, Pro: 10, Enterprise: 12 };
             let mrr = 0, subscriptions = 0, transactions = [];
-            allUsers.forEach(user => {
-                const plan = user.plan || 'Free';
-                const price = PLAN_PRICES[plan] || 0;
-                if (price > 0) {
-                    mrr += price;
+            const ownerIds = new Set(allWorkspaces.map(ws => ws.ownerId));
+            const customers = allUsers.filter(u => ownerIds.has(u.id));
+
+            customers.forEach(customer => {
+                const planName = customer.plan || 'Free';
+                const planDetails = PLAN_DETAILS[planName];
+
+                if (planDetails && (planDetails.price_monthly > 0 || planDetails.pricePerUser > 0)) {
                     subscriptions++;
-                    transactions.push({ id: `txn_${Math.random().toString(36).substr(2, 9)}`, userEmail: user.email, plan, amount: price, date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'succeeded' });
+                    let monthlyCost = planDetails.price_monthly || 0;
+                    
+                    const ownedWorkspaces = allWorkspaces.filter(ws => ws.ownerId === customer.id);
+                    const allMemberIds = new Set();
+                    ownedWorkspaces.forEach(ws => {
+                        allUsers.forEach(u => {
+                            if (u.workspaces && u.workspaces[ws.id]) {
+                                allMemberIds.add(u.id);
+                            }
+                        });
+                    });
+                    
+                    monthlyCost += allMemberIds.size * (planDetails.pricePerUser || 0);
+                    
+                    mrr += monthlyCost;
+                    transactions.push({ 
+                        id: `txn_${Math.random().toString(36).substr(2, 9)}`, 
+                        userEmail: customer.email, 
+                        plan: planName, 
+                        amount: monthlyCost, 
+                        date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
+                        status: 'succeeded' 
+                    });
                 }
             });
             financialData = { mrr, subscriptions, churn: (Math.random() * 5).toFixed(2), transactions: transactions.sort((a, b) => new Date(b.date) - new Date(a.date)) };
@@ -382,7 +413,7 @@
             if (!selectedItemId) { sidebar.innerHTML = '<p class="text-gray-500 text-center">Select a customer to see details.</p>'; return; }
             const customer = allUsers.find(c => c.id === selectedItemId);
             const customerWorkspaces = allWorkspaces.filter(ws => ws.ownerId === customer.id);
-            sidebar.innerHTML = `<h3 class="text-xl font-bold text-white mb-4">${customer.name}</h3><div class="space-y-3 text-sm"><p><strong class="text-gray-400">Email:</strong> ${customer.email}</p><p><strong class="text-gray-400">User ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${customer.id}</code></p><p><strong class="text-gray-400">Current Plan:</strong> ${customer.plan || 'Free'}</p><p><strong class="text-gray-400">Owned Workspaces:</strong> ${customerWorkspaces.length}</p><ul class="pl-4 text-gray-400 list-disc">${customerWorkspaces.map(ws => `<li>${ws.name} (${ws.plan || 'Free'})</li>`).join('') || '<li>No workspaces owned.</li>'}</ul></div><div class="mt-6 space-y-2 border-t border-gray-700 pt-4"><button data-id="${customer.id}" class="w-full cta-button edit-user-btn">Edit Customer</button><button data-id="${customer.id}" class="w-full danger-button delete-customer-btn">Delete Customer</button></div>`;
+            sidebar.innerHTML = `<h3 class="text-xl font-bold text-white mb-4">${customer.name}</h3><div class="space-y-3 text-sm"><p><strong class="text-gray-400">Email:</strong> ${customer.email}</p><p><strong class="text-gray-400">User ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${customer.id}</code></p><p><strong class="text-gray-400">Current Plan:</strong> ${customer.plan || 'Free'}</p><p><strong class="text-gray-400">Owned Workspaces:</strong> ${customerWorkspaces.length}</p><ul class="pl-4 text-gray-400 list-disc">${customerWorkspaces.map(ws => `<li>${ws.name}</li>`).join('') || '<li>No workspaces owned.</li>'}</ul></div><div class="mt-6 space-y-2 border-t border-gray-700 pt-4"><button data-id="${customer.id}" class="w-full cta-button edit-user-btn">Edit Customer</button><button data-id="${customer.id}" class="w-full danger-button delete-customer-btn">Delete Customer</button></div>`;
             sidebar.querySelector('.edit-user-btn').addEventListener('click', openEditUserModal);
             sidebar.querySelector('.delete-customer-btn').addEventListener('click', handleDeleteCustomer);
         }
@@ -397,15 +428,15 @@
         }
 
         function renderWorkspaceFilters() {
-             document.getElementById('workspace-filter-bar').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4"><input type="text" id="workspace-name-filter" class="form-input" placeholder="Filter by name or owner email..." value="${workspaceFilters.name || ''}"><select id="workspace-plan-filter" class="form-select"><option value="">All Plans</option><option value="Free" ${workspaceFilters.plan === 'Free' ? 'selected' : ''}>Free</option><option value="Starter" ${workspaceFilters.plan === 'Starter' ? 'selected' : ''}>Starter</option><option value="Pro" ${workspaceFilters.plan === 'Pro' ? 'selected' : ''}>Pro</option><option value="Enterprise" ${workspaceFilters.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option></select></div>`;
+             document.getElementById('workspace-filter-bar').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="workspace-name-filter" class="form-input" placeholder="Filter by name or owner email..." value="${workspaceFilters.name || ''}"><input type="text" id="workspace-owner-filter" class="form-input" placeholder="Filter by owner email..." value="${workspaceFilters.owner || ''}"></div>`;
             document.getElementById('workspace-name-filter').addEventListener('input', (e) => { workspaceFilters.name = e.target.value.toLowerCase(); renderWorkspaceList(); });
-            document.getElementById('workspace-plan-filter').addEventListener('change', (e) => { workspaceFilters.plan = e.target.value; renderWorkspaceList(); });
+            document.getElementById('workspace-owner-filter').addEventListener('input', (e) => { workspaceFilters.owner = e.target.value.toLowerCase(); renderWorkspaceList(); });
         }
 
         function renderWorkspaceList() {
             let filteredWorkspaces = allWorkspaces;
-            if (workspaceFilters.name) filteredWorkspaces = filteredWorkspaces.filter(ws => { const owner = allUsers.find(u => u.id === ws.ownerId); return ws.name.toLowerCase().includes(workspaceFilters.name) || (owner && owner.email.toLowerCase().includes(workspaceFilters.name)); });
-            if (workspaceFilters.plan) filteredWorkspaces = filteredWorkspaces.filter(ws => (ws.plan || 'Free') === workspaceFilters.plan);
+            if (workspaceFilters.name) filteredWorkspaces = filteredWorkspaces.filter(ws => ws.name.toLowerCase().includes(workspaceFilters.name));
+            if (workspaceFilters.owner) filteredWorkspaces = filteredWorkspaces.filter(ws => { const owner = allUsers.find(u => u.id === ws.ownerId); return owner && owner.email.toLowerCase().includes(workspaceFilters.owner); });
             
             const listHtml = filteredWorkspaces.map(ws => {
                 const memberCount = allUsers.filter(u => u.workspaces && u.workspaces[ws.id]).length;
@@ -424,7 +455,7 @@
             sidebar.innerHTML = `<div class="loader"></div>`;
             const membersSnapshot = await getDocs(collection(db, `workspaces/${workspace.id}/members`));
 
-            sidebar.innerHTML = `<h3 class="text-xl font-bold text-white mb-4">${workspace.name}</h3><div class="space-y-3 text-sm"><p><strong class="text-gray-400">Workspace ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${workspace.id}</code></p><p><strong class="text-gray-400">Owner:</strong> ${owner?.name || 'N/A'} (${owner?.email || 'N/A'})</p><p><strong class="text-gray-400">Plan:</strong> ${workspace.plan || 'Free'}</p><p><strong class="text-gray-400">Members:</strong> ${membersSnapshot.size}</p><p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt?.toDate().toLocaleString() || 'N/A'}</p></div><div class="mt-6 space-y-2 border-t border-gray-700 pt-4"><button data-id="${workspace.id}" class="w-full cta-button edit-workspace-btn">Edit Workspace</button><button data-id="${workspace.id}" class="w-full secondary-button clone-workspace-btn">Clone/Backup Workspace</button><button data-id="${workspace.id}" class="w-full danger-button delete-workspace-btn">Delete Workspace</button></div>`;
+            sidebar.innerHTML = `<h3 class="text-xl font-bold text-white mb-4">${workspace.name}</h3><div class="space-y-3 text-sm"><p><strong class="text-gray-400">Workspace ID:</strong> <code class="text-xs bg-gray-800 p-1 rounded">${workspace.id}</code></p><p><strong class="text-gray-400">Owner:</strong> ${owner?.name || 'N/A'} (${owner?.email || 'N/A'})</p><p><strong class="text-gray-400">Owner's Plan:</strong> ${owner?.plan || 'Free'}</p><p><strong class="text-gray-400">Members:</strong> ${membersSnapshot.size}</p><p><strong class="text-gray-400">Created At:</strong> ${workspace.createdAt?.toDate().toLocaleString() || 'N/A'}</p></div><div class="mt-6 space-y-2 border-t border-gray-700 pt-4"><button data-id="${workspace.id}" class="w-full cta-button edit-workspace-btn">Edit Workspace</button><button data-id="${workspace.id}" class="w-full secondary-button clone-workspace-btn">Clone/Backup Workspace</button><button data-id="${workspace.id}" class="w-full danger-button delete-workspace-btn">Delete Workspace</button></div>`;
             sidebar.querySelector('.edit-workspace-btn').addEventListener('click', openEditWorkspaceModal);
             sidebar.querySelector('.clone-workspace-btn').addEventListener('click', handleCloneWorkspace);
             sidebar.querySelector('.delete-workspace-btn').addEventListener('click', handleDeleteWorkspace);
@@ -455,7 +486,7 @@
                         <div>
                             <h4 class="text-lg font-semibold text-white mb-2">Workspace Memberships</h4>
                             <div id="user-workspaces-list" class="space-y-2">
-                                ${userWorkspaces.map(ws => `<div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}"><span class="flex-grow">${ws.name}</span><select class="form-select text-sm py-1 role-selector"><option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option><option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option><option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button></div>`).join('') || '<p class="text-gray-500">No current memberships.</p>'}
+                                ${userWorkspaces.map(ws => `<div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg" data-ws-id="${ws.id}"><span class="flex-grow">${ws.name}</span><select class="form-select text-sm py-1 role-selector"><option value="Admin" ${ws.role === 'Admin' ? 'selected': ''}>Admin</option><option value="Manager" ${ws.role === 'Manager' ? 'selected': ''}>Manager</option><option value="Employee" ${ws.role === 'Employee' ? 'selected': ''}>Employee</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">×</button></div>`).join('') || '<p class="text-gray-500">No current memberships.</p>'}
                             </div>
                         </div>
                         <div>
@@ -513,7 +544,7 @@
             }
             for (const wsId in newWorkspacesMap) {
                  const ownerData = allUsers.find(u => u.id === userId);
-                 batch.set(doc(db, `workspaces/${wsId}/members/${userId}`), { uid: userId, email: ownerData.email, name: ownerData.name, role: newWorkspacesMap[wsId] }, { merge: true });
+                 batch.set(doc(db, `workspaces/${wsId}/members/${userId}`), { uid: userId, email: ownerData.email, name: ownerData.name, role: newWorkspacesMap[wsId], status: 'Active' }, { merge: true });
             }
 
             try {
@@ -549,7 +580,7 @@
             const newEntry = document.createElement('div');
             newEntry.className = 'flex items-center gap-2 bg-gray-800 p-2 rounded-lg';
             newEntry.dataset.wsId = wsId;
-            newEntry.innerHTML = `<span class="flex-grow">${wsName}</span><select class="form-select text-sm py-1 role-selector"><option value="Employee" selected>Employee</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">&times;</button>`;
+            newEntry.innerHTML = `<span class="flex-grow">${wsName}</span><select class="form-select text-sm py-1 role-selector"><option value="Employee" selected>Employee</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><button type="button" class="text-red-400 hover:text-red-300 remove-ws-btn">×</button>`;
             list.appendChild(newEntry);
             newEntry.querySelector('.remove-ws-btn').addEventListener('click', (e) => e.target.closest('.flex').remove());
             addSelect.remove(addSelect.selectedIndex);
@@ -604,7 +635,6 @@
                     <div class="p-6 space-y-4">
                         <div><label class="block mb-1">Workspace Name</label><input type="text" name="name" class="form-input w-full" required></div>
                         <div><label class="block mb-1">Owner</label><select name="ownerId" class="form-select w-full" required>${userOptions}</select></div>
-                        <div><label class="block mb-1">Plan</label><select name="plan" class="form-select w-full" required><option value="Free">Free</option><option value="Starter">Starter</option><option value="Pro">Pro</option><option value="Enterprise">Enterprise</option></select></div>
                     </div>
                     <div class="p-4 bg-gray-800 flex justify-end gap-4">
                         <button type="button" class="secondary-button close-modal-btn">Cancel</button>
@@ -630,7 +660,7 @@
 
             const batch = writeBatch(db);
             const newWorkspaceRef = doc(collection(db, 'workspaces'));
-            batch.set(newWorkspaceRef, { name: form.name.value, plan: form.plan.value, ownerId: ownerId, createdAt: Timestamp.now(), departments: ["General"], payTypes: ["Hourly", "Salary"], employeeTypes: ["Full-time", "Part-time"], projectCustomFields: ["Client Name", "Budget"] });
+            batch.set(newWorkspaceRef, { name: form.name.value, ownerId: ownerId, createdAt: Timestamp.now(), departments: ["General"], payTypes: ["Hourly", "Salary"], employeeTypes: ["Full-time", "Part-time"], projectCustomFields: ["Client Name", "Budget"] });
             batch.set(doc(db, 'workspaces', newWorkspaceRef.id, 'members', ownerId), { uid: ownerId, email: ownerData.email, name: ownerData.name, role: 'Admin', status: 'Active' });
             batch.update(doc(db, 'users', ownerId), { [`workspaces.${newWorkspaceRef.id}`]: 'Admin' });
 
@@ -661,7 +691,6 @@
                     <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-semibold">Edit Workspace: ${workspace.name}</h3></div>
                     <div class="p-6 space-y-4">
                         <div><label class="block mb-1 text-gray-400">Workspace Name</label><input type="text" name="name" class="form-input w-full" value="${workspace.name}"></div>
-                        <div><label class="block mb-1 text-gray-400">Plan</label><select name="plan" class="form-select w-full"><option value="Free" ${!workspace.plan || workspace.plan === 'Free' ? 'selected' : ''}>Free</option><option value="Starter" ${workspace.plan === 'Starter' ? 'selected' : ''}>Starter</option><option value="Pro" ${workspace.plan === 'Pro' ? 'selected' : ''}>Pro</option><option value="Enterprise" ${workspace.plan === 'Enterprise' ? 'selected' : ''}>Enterprise</option></select></div>
                         <div><label class="block mb-1 text-gray-400">Owner</label><select name="ownerId" class="form-select w-full">${ownerOptions}</select></div>
                     </div>
                     <div class="p-4 bg-gray-800 flex justify-end gap-4">
@@ -683,7 +712,7 @@
             button.textContent = 'Saving...';
             
             const workspaceId = form.dataset.id;
-            const updatedData = { name: form.name.value, plan: form.plan.value, ownerId: form.ownerId.value };
+            const updatedData = { name: form.name.value, ownerId: form.ownerId.value };
             try {
                 await updateDoc(doc(db, 'workspaces', workspaceId), updatedData);
                 showToast('Workspace updated successfully!', 'success');
@@ -740,7 +769,7 @@
 
             try {
                 const sourceWsDoc = await getDoc(doc(db, "workspaces", workspaceId));
-                const subcollectionNames = ["members", "projects", "timeEntries", "schedules", "tasks"];
+                const subcollectionNames = ["members", "projects", "timeEntries", "schedules", "tasks", "payrollSettings", "payRuns", "payStubs"];
                 
                 const subcollectionSnapshots = await Promise.all(
                     subcollectionNames.map(name => getDocs(collection(db, `workspaces/${workspaceId}/${name}`)))
@@ -810,15 +839,91 @@
         
         function renderDataExplorer() {
             const container = document.getElementById('dev-explorer');
-            container.innerHTML = `<h1 class="text-3xl font-bold text-white mb-8">Raw Data Explorer</h1><div class="card p-6"><div class="mb-4"><label class="block mb-1">Select Collection:</label><select id="collection-selector" class="form-select w-full md:w-1/2"><option value="">--Select--</option><option value="users">users</option><option value="workspaces">workspaces</option><option value="couponCodes">couponCodes</option><option value="configuration">configuration</option></select></div><div id="data-output"><pre><code>Select a collection to view data.</code></pre></div></div>`;
-            document.getElementById('collection-selector').addEventListener('change', async (e) => {
-                const collectionName = e.target.value;
+            const wsOptions = allWorkspaces.map(ws => `<option value="${ws.id}">${ws.name}</option>`).join('');
+
+            container.innerHTML = `<h1 class="text-3xl font-bold text-white mb-8">Raw Data Explorer</h1>
+                <div class="card p-6">
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block mb-1">Select Type:</label>
+                            <select id="collection-type-selector" class="form-select w-full">
+                                <option value="">--Select--</option>
+                                <option value="top-level">Top-Level Collection</option>
+                                <option value="subcollection">Workspace Subcollection</option>
+                            </select>
+                        </div>
+                        <div id="top-level-selector-container" class="hidden">
+                            <label class="block mb-1">Collection:</label>
+                            <select id="top-level-selector" class="form-select w-full">
+                                <option value="users">users</option>
+                                <option value="workspaces">workspaces</option>
+                                <option value="couponCodes">couponCodes</option>
+                            </select>
+                        </div>
+                        <div id="subcollection-selectors-container" class="hidden grid md:grid-cols-2 gap-4 col-span-2">
+                             <div>
+                                <label class="block mb-1">Workspace:</label>
+                                <select id="sub-ws-selector" class="form-select w-full">${wsOptions}</select>
+                             </div>
+                             <div>
+                                <label class="block mb-1">Subcollection:</label>
+                                <select id="sub-collection-selector" class="form-select w-full">
+                                    <option value="members">members</option>
+                                    <option value="projects">projects</option>
+                                    <option value="tasks">tasks</option>
+                                    <option value="schedules">schedules</option>
+                                    <option value="timeOffRequests">timeOffRequests</option>
+                                    <option value="timeEntries">timeEntries</option>
+                                    <option value="payrollSettings">payrollSettings</option>
+                                    <option value="payRuns">payRuns</option>
+                                    <option value="payStubs">payStubs</option>
+                                </select>
+                             </div>
+                        </div>
+                    </div>
+                    <button id="fetch-data-btn" class="cta-button mt-4 hidden">Fetch Data</button>
+                    <div id="data-output" class="mt-6"><pre><code>Select a data source to begin.</code></pre></div>
+                </div>`;
+            
+            const typeSelector = document.getElementById('collection-type-selector');
+            const topLevelContainer = document.getElementById('top-level-selector-container');
+            const subcollectionContainer = document.getElementById('subcollection-selectors-container');
+            const fetchBtn = document.getElementById('fetch-data-btn');
+
+            typeSelector.addEventListener('change', (e) => {
+                const type = e.target.value;
+                topLevelContainer.classList.toggle('hidden', type !== 'top-level');
+                subcollectionContainer.classList.toggle('hidden', type !== 'subcollection');
+                fetchBtn.classList.toggle('hidden', !type);
+            });
+
+            fetchBtn.addEventListener('click', async () => {
                 const output = document.getElementById('data-output');
-                if (!collectionName) { output.innerHTML = `<pre><code>Select a collection to view data.</code></pre>`; return; }
                 output.innerHTML = '<div class="loader"></div>';
-                const snapshot = await getDocs(collection(db, collectionName));
-                const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                output.innerHTML = `<pre><code>${JSON.stringify(data, (key, value) => (value && value.toDate) ? value.toDate().toISOString() : value, 2)}</code></pre>`;
+                let path = '';
+                const type = typeSelector.value;
+                
+                if (type === 'top-level') {
+                    path = document.getElementById('top-level-selector').value;
+                } else if (type === 'subcollection') {
+                    const wsId = document.getElementById('sub-ws-selector').value;
+                    const subName = document.getElementById('sub-collection-selector').value;
+                    path = `workspaces/${wsId}/${subName}`;
+                }
+
+                if (!path) {
+                    output.innerHTML = `<pre><code>Invalid selection.</code></pre>`;
+                    return;
+                }
+
+                try {
+                    const snapshot = await getDocs(collection(db, path));
+                    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    output.innerHTML = `<pre><code>${JSON.stringify(data, (key, value) => (value && value.toDate) ? value.toDate().toISOString() : value, 2)}</code></pre>`;
+                } catch (error) {
+                    output.innerHTML = `<pre><code>Error fetching data from '${path}':\n${error}</code></pre>`;
+                    console.error("Data explorer error:", error);
+                }
             });
         }
         

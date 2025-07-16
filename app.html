@@ -614,6 +614,7 @@
                     workspaces: {},
                     activeWorkspaceId: null,
                     plan: 'Free',
+                    billingCycle: 'monthly',
                     nextBillingDate: nextBilling.toISOString()
                 };
                 await setDoc(doc(db, "users", uid), newUserDoc);
@@ -642,7 +643,7 @@
                 showPage('login');
                 return;
             }
-            if (!currentWorkspaceId && !['company-selection', 'onboarding'].includes(hash)) {
+            if (!currentWorkspaceId && !['company-selection', 'onboarding', 'settings'].includes(hash)) {
                 showPage('company-selection');
                 renderWorkspaceSelection();
                 return;
@@ -742,7 +743,7 @@
             await renderPlanStatCard();
 
             if (!currentUserData || !currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
-                workspaceListContainer.innerHTML = '<p class="text-center text-gray-400">You are not a member of any workspaces.</p>';
+                workspaceListContainer.innerHTML = '<p class="text-center text-gray-400">You are not a member of any workspaces. Create one to get started!</p>';
             } else {
                 workspaceListContainer.innerHTML = '<div class="loader"></div>';
                 const workspaceIds = Object.keys(currentUserData.workspaces);
@@ -810,22 +811,18 @@
             const userLimit = PLAN_DETAILS[userPlan].userLimit;
             
             let totalActiveUsers = 0;
-            const workspaceIds = Object.keys(currentUserData.workspaces || {});
-            
-            if (workspaceIds.length > 0) {
-                const memberQueries = workspaceIds.map(id => getDocs(query(collection(db, `workspaces/${id}/members`), where("status", "==", "Active"))));
-                const memberSnapshots = await Promise.all(memberQueries);
-                totalActiveUsers = memberSnapshots.reduce((acc, snapshot) => acc + snapshot.size, 0);
+            if (currentWorkspaceId) { // Only count users for the active workspace for this card
+                 const membersSnapshot = await getDocs(query(collection(db, `workspaces/${currentWorkspaceId}/members`), where("status", "==", "Active")));
+                 totalActiveUsers = membersSnapshot.size;
             }
 
             planStatCard.innerHTML = `
                 <h4 class="font-semibold text-white">${userPlan} Plan</h4>
                 <p class="text-sm text-gray-400 mt-1">
-                    Users: ${totalActiveUsers} / ${userLimit === Infinity ? 'Unlimited' : userLimit}
+                    Users in this Workspace: ${totalActiveUsers} / ${userLimit === Infinity ? 'Unlimited' : userLimit}
                 </p>
                 <div class="mt-4 space-y-2">
-                    <a href="#manage" data-page="manage" class="block w-full text-center cta-button px-4 py-2 rounded-lg text-sm">Add Users</a>
-                    <a href="#settings" data-page="settings" class="block w-full text-center secondary-button px-4 py-2 rounded-lg text-sm">Upgrade Plan</a>
+                    <a href="#settings" onclick="window.location.hash='#settings'; switchSettingsTab('billing');" class="block w-full text-center secondary-button px-4 py-2 rounded-lg text-sm">Manage Plan</a>
                 </div>
             `;
         }
@@ -834,7 +831,6 @@
 
         async function renderDashboard() {
             await loadWorkspaceData(currentWorkspaceId);
-            const plan = currentWorkspaceData.plan || 'Free';
             
             if (checkPlanPermission('Pro')) {
                 renderProDashboard();
@@ -1060,11 +1056,22 @@
             }
             
             await loadWorkspaceData(currentWorkspaceId);
+            
+            // Show/Hide Payroll tab based on plan and role
+            const payrollTab = manageTabs.querySelector('[data-tab="payroll"]');
+            if (checkPlanPermission('Enterprise') && checkRolePermission('Admin')) {
+                payrollTab.style.display = 'inline-block';
+            } else {
+                payrollTab.style.display = 'none';
+                if (activeTab === 'payroll') activeTab = 'employees'; // Default to employees if payroll is hidden
+            }
+
             manageTabs.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
             const activeTabEl = manageTabs.querySelector(`[data-tab="${activeTab}"]`);
             if(activeTabEl) activeTabEl.classList.add('active');
             
-            addNewButton.style.display = ['payroll', 'departments'].includes(activeTab) ? 'none' : 'inline-block';
+            const isManager = userRole === 'Manager';
+            addNewButton.style.display = ['payroll', 'departments'].includes(activeTab) || isManager ? 'none' : 'inline-block';
             if (activeTab === 'employees' || activeTab === 'projects') {
                 addNewButton.textContent = `Add New ${activeTab.slice(0, -1)}`;
             }
@@ -1087,11 +1094,6 @@
                 renderManageProjects();
             } else if (activeTab === 'payroll') {
                 if (employeeFilterBar) employeeFilterBar.style.display = 'none';
-                 manageMainContent.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
-                        <div id="manage-content" class="md:col-span-2"></div>
-                    </div>`;
                 renderManagePayroll();
             } else if (activeTab === 'departments') {
                 if (employeeFilterBar) employeeFilterBar.style.display = 'none';
@@ -1191,6 +1193,7 @@
         function renderManageProjects() {
              manageMainContent.innerHTML = `<div id="project-list-view" class="w-full"></div>`;
              const container = document.getElementById('project-list-view');
+             const isManager = checkRolePermission('Manager') && !checkRolePermission('Admin');
 
             let listHtml = projects.map((item, index) => `
                 <li class="flex justify-between items-center p-4 rounded-lg manage-list-item bg-gray-800" data-id="${item.id}" data-type="project" style="animation-delay: ${index * 50}ms;">
@@ -1303,6 +1306,8 @@
                 return;
             }
 
+            const isManager = !checkRolePermission('Admin');
+
             if (selectedManageItem.type === 'employee') {
                 const emp = selectedManageItem.data;
                 manageSidebar.innerHTML = `
@@ -1320,9 +1325,9 @@
                         <p><strong class="text-gray-400">Hire Date:</strong> ${emp.hireDate || 'N/A'}</p>
                     </div>
                     <div class="mt-6 space-y-2">
-                        <button class="w-full secondary-button px-4 py-2 rounded-lg text-sm edit-employee-btn" data-id="${emp.id}">Edit</button>
-                        <button class="w-full secondary-button px-4 py-2 rounded-lg text-sm send-password-reset-btn" data-email="${emp.email}">Send Password Reset</button>
-                        <button class="w-full danger-button mt-4 px-4 py-2 rounded-lg text-sm remove-employee-btn" data-id="${emp.id}">Remove</button>
+                        <button class="w-full secondary-button px-4 py-2 rounded-lg text-sm edit-employee-btn" data-id="${emp.id}" ${isManager ? 'disabled' : ''}>Edit</button>
+                        <button class="w-full secondary-button px-4 py-2 rounded-lg text-sm send-password-reset-btn" data-email="${emp.email}" ${isManager ? 'disabled' : ''}>Send Password Reset</button>
+                        <button class="w-full danger-button mt-4 px-4 py-2 rounded-lg text-sm remove-employee-btn" data-id="${emp.id}" ${isManager ? 'disabled' : ''}>Remove</button>
                     </div>
                 `;
                 manageSidebar.querySelector('.edit-employee-btn').addEventListener('click', (e) => openEditEmployeeModal(e.target.dataset.id));
@@ -1553,12 +1558,16 @@
                 createdAt: new Date()
             };
             
-            await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeEntries"), punchData);
-            
-            showToast('Punch added successfully!', 'success');
-            closePunchModal();
-            await loadWorkspaceData(currentWorkspaceId);
-            renderSpreadsheet();
+            try {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeEntries"), punchData);
+                showToast('Punch added successfully!', 'success');
+                closePunchModal();
+                await loadWorkspaceData(currentWorkspaceId);
+                renderSpreadsheet();
+            } catch(error) {
+                showToast(`Error adding punch: ${error.message}`, 'error');
+                console.error("Error adding punch:", error);
+            }
         }
 
         function getWeekVerification(weekStartDateString) {
@@ -1601,12 +1610,23 @@
                 updateData.supervisorVerified = isChecked;
                 updateData.supervisorVerificationTimestamp = isChecked ? new Date() : null;
             }
-            await setDoc(verificationRef, updateData, { merge: true });
-            await loadWorkspaceData(currentWorkspaceId);
-            renderSpreadsheet();
+
+            try {
+                await setDoc(verificationRef, updateData, { merge: true });
+                await loadWorkspaceData(currentWorkspaceId);
+                renderSpreadsheet();
+                showToast('Verification status updated.', 'success');
+            } catch (error) {
+                showToast(`Error updating verification: ${error.message}`, 'error');
+                console.error("Verification error:", error);
+            }
         }
         
         function handleAddNew() {
+            if (!checkRolePermission('Admin')) {
+                showToast('You do not have permission to perform this action.', 'error');
+                return;
+            }
             const activeTab = manageTabs.querySelector('.active').dataset.tab;
             if (activeTab === 'employees') openAddEmployeeModal();
             else if (activeTab === 'projects') openProjectModal();
@@ -1758,9 +1778,12 @@
         }
         
         function openAddEmployeeModal() {
-            // Enforce user limit based on the workspace plan
-            if (currentWorkspaceData.plan === 'Free' && employees.length >= PLAN_DETAILS.Free.userLimit) {
-                showToast(`Free plan is limited to ${PLAN_DETAILS.Free.userLimit} users. Please upgrade the workspace plan.`, 'error');
+            if (!checkRolePermission('Admin')) return;
+            // Enforce user limit based on the ACCOUNT plan
+            const plan = PLAN_DETAILS[currentUserData.plan];
+            const activeUsersInWorkspace = employees.filter(e => e.status === 'Active').length;
+            if (activeUsersInWorkspace >= plan.userLimit) {
+                showToast(`Your plan is limited to ${plan.userLimit} users. Please upgrade your account plan.`, 'error');
                 return;
             }
 
@@ -1771,6 +1794,10 @@
         }
 
         async function openEditEmployeeModal(employeeId) {
+            if (!checkRolePermission('Admin')) {
+                 showToast('You do not have permission to edit employees.', 'error');
+                return;
+            }
             editingItemId = employeeId;
             const employee = employees.find(e => e.id === employeeId);
             if (!employee) return;
@@ -1826,6 +1853,7 @@
         
         async function handleAddEmployee(e) {
             e.preventDefault();
+            if (!checkRolePermission('Admin')) return;
             const form = e.target;
             const email = form.email.value;
             const password = form.password.value;
@@ -1854,10 +1882,11 @@
                     employeeType: form.employeeType.value,
                     supervisor: form.supervisor.value,
                     cardNumber: form.cardNumber.value,
-                    hourlyRate: form.hourlyRate.value || 0,
+                    hourlyRate: Number(form.hourlyRate.value) || 0,
                     payroll: {
                         filingStatus: form.filingStatus.value,
                         allowances: Number(form.allowances.value) || 0,
+                        deductions: []
                     },
                     role: form.role.value,
                     status: 'Active'
@@ -1887,12 +1916,15 @@
                 showToast(`Error: ${error.message}`, 'error');
             } finally {
                 // 6. Clean up the temporary app
-                await deleteApp(tempApp);
+                try {
+                    await deleteApp(tempApp);
+                } catch(e) { console.error("Could not delete temp app", e)}
             }
         }
 
         async function handleEditEmployee(e) {
             e.preventDefault();
+            if (!checkRolePermission('Admin')) return;
             const form = e.target;
             
             // Collect assigned deductions from the form
@@ -1918,7 +1950,7 @@
                 employeeType: form.employeeType.value,
                 supervisor: form.supervisor.value,
                 cardNumber: form.cardNumber.value,
-                hourlyRate: form.hourlyRate.value || 0,
+                hourlyRate: Number(form.hourlyRate.value) || 0,
                  payroll: {
                     filingStatus: form.filingStatus.value,
                     allowances: Number(form.allowances.value) || 0,
@@ -1927,30 +1959,48 @@
                 role: form.role.value,
                 status: form.status.value
             };
-            await updateDoc(doc(db, "workspaces", currentWorkspaceId, "members", editingItemId), updatedData);
-            
-            // Also update the role in the top-level user document
-            const userDocRef = doc(db, "users", editingItemId);
-            await updateDoc(userDocRef, {
-                [`workspaces.${currentWorkspaceId}`]: updatedData.role
-            });
 
-            showToast('Employee updated successfully.', 'success');
-            closeAllModals();
-            editingItemId = null;
-            renderManagePage('employees');
+            try {
+                const batch = writeBatch(db);
+                // Update workspace member document
+                batch.update(doc(db, "workspaces", currentWorkspaceId, "members", editingItemId), updatedData);
+                // Update top-level user document
+                batch.update(doc(db, "users", editingItemId), {
+                    [`workspaces.${currentWorkspaceId}`]: updatedData.role,
+                    name: updatedData.name
+                });
+                await batch.commit();
+
+                showToast('Employee updated successfully.', 'success');
+                closeAllModals();
+                editingItemId = null;
+                renderManagePage('employees');
+            } catch(error) {
+                showToast(`Error updating employee: ${error.message}`, 'error');
+                console.error("Error updating employee:", error);
+            }
         }
 
         async function handleRemoveEmployee(employeeId) {
-            // In a real app, you'd also need a Firebase Function to delete the Auth user.
-            // This client-side code only removes the Firestore records.
-            await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "members", employeeId));
-            await deleteDoc(doc(db, "users", employeeId)); // Also remove from top-level users
-            showToast('Employee removed from workspace.', 'success');
-            renderManagePage('employees');
+            if (!checkRolePermission('Admin')) return;
+            try {
+                // In a real app, you'd also need a Firebase Function to delete the Auth user.
+                // This client-side code only removes the Firestore records.
+                const batch = writeBatch(db);
+                batch.delete(doc(db, "workspaces", currentWorkspaceId, "members", employeeId));
+                batch.delete(doc(db, "users", employeeId));
+                await batch.commit();
+                
+                showToast('Employee removed from workspace.', 'success');
+                renderManagePage('employees');
+            } catch(error) {
+                showToast(`Error removing employee: ${error.message}`, 'error');
+                console.error("Error removing employee:", error);
+            }
         }
 
         async function handleSendPasswordReset(email) {
+            if (!checkRolePermission('Admin')) return;
             if (!email) {
                 showToast('No email on file for this user.', 'error');
                 return;
@@ -1987,6 +2037,7 @@
         }
 
         function openProjectModal(projectId = null) {
+            if (!checkRolePermission('Admin')) return;
             editingItemId = projectId;
             const project = projectId ? projects.find(p => p.id === projectId) : {};
             document.getElementById('project-modal-title-text').textContent = projectId ? 'Edit Project' : 'Add New Project';
@@ -1996,6 +2047,7 @@
 
         async function handleProjectFormSubmit(e) {
             e.preventDefault();
+            if (!checkRolePermission('Admin')) return;
             const form = e.target;
             const formData = new FormData(form);
             const projectData = {};
@@ -2003,20 +2055,33 @@
                 projectData[key] = value;
             }
 
-            if (editingItemId) {
-                await updateDoc(doc(db, "workspaces", currentWorkspaceId, "projects", editingItemId), projectData);
-            } else {
-                await addDoc(collection(db, "workspaces", currentWorkspaceId, "projects"), projectData);
+            try {
+                if (editingItemId) {
+                    await updateDoc(doc(db, "workspaces", currentWorkspaceId, "projects", editingItemId), projectData);
+                    showToast('Project updated.', 'success');
+                } else {
+                    await addDoc(collection(db, "workspaces", currentWorkspaceId, "projects"), projectData);
+                    showToast('Project added.', 'success');
+                }
+                closeAllModals();
+                editingItemId = null;
+                renderManagePage('projects');
+            } catch(error) {
+                 showToast(`Error saving project: ${error.message}`, 'error');
+                console.error("Error saving project:", error);
             }
-
-            closeAllModals();
-            editingItemId = null;
-            renderManagePage('projects');
         }
 
         async function handleRemoveProject(projectId) {
-            await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "projects", projectId));
-            renderManagePage('projects');
+            if (!checkRolePermission('Admin')) return;
+            try {
+                await deleteDoc(doc(db, "workspaces", currentWorkspaceId, "projects", projectId));
+                renderManagePage('projects');
+                showToast('Project removed.', 'success');
+            } catch (error) {
+                showToast(`Error removing project: ${error.message}`, 'error');
+                console.error("Error removing project:", error);
+            }
         }
 
         // --- Settings Page ---
@@ -2175,7 +2240,7 @@
             const ws = currentWorkspaceData;
             const rules = ws.rules || {};
             const security = ws.security || {};
-            const plan = ws.plan || 'Free';
+            const plan = currentUserData.plan || 'Free';
             
             container.innerHTML = `
                 <form id="workspace-settings-form" class="space-y-12">
@@ -2224,7 +2289,7 @@
                              <div class="border-t border-gray-700 my-2"></div>
                              <div>
                                 <h4 class="font-medium text-white">API Access</h4>
-                                ${(plan === 'Pro' || plan === 'Enterprise') ? `
+                                ${(checkPlanPermission('Pro')) ? `
                                     <p class="text-sm text-gray-400 mb-2">Use the NexusTime API to build custom integrations.</p>
                                     <input type="text" class="form-input w-full" value="nt_api_${currentWorkspaceId.substring(0, 16)}..." readonly>
                                 `: `
@@ -2299,24 +2364,33 @@
         }
         
         async function handleSaveDeductionTemplate(newTemplate) {
-            const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
-            await setDoc(templatesRef, {
-                templates: arrayUnion(newTemplate)
-            }, { merge: true });
-
-            showToast('Deduction template saved!', 'success');
-            renderPayrollSettingsTab();
+             try {
+                const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
+                await setDoc(templatesRef, {
+                    templates: arrayUnion(newTemplate)
+                }, { merge: true });
+                showToast('Deduction template saved!', 'success');
+                renderPayrollSettingsTab();
+            } catch (error) {
+                showToast(`Error saving template: ${error.message}`, 'error');
+                console.error("Error saving template:", error);
+            }
         }
 
         async function handleRemoveDeductionTemplate(indexToRemove) {
             const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
-            const templatesSnap = await getDoc(templatesRef);
-            if (templatesSnap.exists()) {
-                const currentTemplates = templatesSnap.data().templates;
-                currentTemplates.splice(indexToRemove, 1);
-                await setDoc(templatesRef, { templates: currentTemplates });
-                showToast('Deduction template removed!', 'success');
-                renderPayrollSettingsTab();
+            try {
+                const templatesSnap = await getDoc(templatesRef);
+                if (templatesSnap.exists()) {
+                    const currentTemplates = templatesSnap.data().templates;
+                    currentTemplates.splice(indexToRemove, 1);
+                    await setDoc(templatesRef, { templates: currentTemplates });
+                    showToast('Deduction template removed!', 'success');
+                    renderPayrollSettingsTab();
+                }
+            } catch(error) {
+                 showToast(`Error removing template: ${error.message}`, 'error');
+                console.error("Error removing template:", error);
             }
         }
 
@@ -2403,7 +2477,7 @@
                 const totalCost = planDetails.price_monthly + (employees.length * (planDetails.pricePerUser || 0));
 
                 plansHtml += `
-                    <div class="plan-card p-8 rounded-lg ${isCurrent ? 'selected' : ''}">
+                    <div class="plan-card card p-8 rounded-lg ${isCurrent ? 'selected' : ''}">
                         <h3 class="text-2xl font-bold text-emerald-400">${planName}</h3>
                         <p class="text-4xl font-extrabold my-4 text-white">$${totalCost.toFixed(2)}<span class="text-base font-medium text-gray-400">/month</span></p>
                         <ul class="space-y-2 text-gray-300 flex-grow mb-6">
@@ -2489,26 +2563,17 @@
         }
 
         async function initiatePlanChange(newPlanName) {
-            const newPlanDetails = PLAN_DETAILS[newPlanName];
-            const newPriceId = newPlanDetails.priceId;
-
-            console.log(`Simulating call to backend for user ${currentUser.uid} to change to plan ${newPlanName} with priceId: ${newPriceId}`);
-            
             const userDocRef = doc(db, "users", currentUser.uid);
-            const workspaceDocRef = doc(db, "workspaces", currentWorkspaceId);
-
             const now = new Date();
             const newNextBillingDate = new Date(now.setMonth(now.getMonth() + 1)).toISOString();
 
-            const batch = writeBatch(db);
-            batch.update(userDocRef, { 
+            const updateData = { 
                 plan: newPlanName,
                 nextBillingDate: newNextBillingDate
-            });
-            batch.update(workspaceDocRef, { plan: newPlanName });
+            };
             
             try {
-                await batch.commit();
+                await updateDoc(userDocRef, updateData);
                 showToast(`Successfully changed plan to ${newPlanName}!`, 'success');
 
                 await loadUserData(currentUser.uid);
@@ -2625,6 +2690,7 @@
         }
         
         function handleDeleteWorkspace() {
+            if (!checkRolePermission('Admin')) return;
             const modalContent = document.getElementById('confirmation-modal-content');
             modalContent.innerHTML = `
                 <h3 id="confirmation-modal-title" class="text-xl font-semibold text-white mb-2">Delete Workspace</h3>
@@ -2636,38 +2702,55 @@
             `;
 
             const onConfirm = async () => {
-                const batch = writeBatch(db);
-                
-                console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
+                try {
+                    const batch = writeBatch(db);
+                    
+                    console.log(`Simulating deletion for workspace ${currentWorkspaceId}`);
 
-                const userDocRef = doc(db, "users", currentUser.uid);
-                const newWorkspaces = { ...currentUserData.workspaces };
-                delete newWorkspaces[currentWorkspaceId];
-                
-                batch.update(userDocRef, {
-                    workspaces: newWorkspaces,
-                    activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
-                });
-                
-                batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
+                    const userDocRef = doc(db, "users", currentUser.uid);
+                    const newWorkspaces = { ...currentUserData.workspaces };
+                    delete newWorkspaces[currentWorkspaceId];
+                    
+                    batch.update(userDocRef, {
+                        workspaces: newWorkspaces,
+                        activeWorkspaceId: Object.keys(newWorkspaces)[0] || null
+                    });
+                    
+                    // Note: Deleting subcollections client-side is complex. This just marks the workspace as deleted.
+                    // A Firebase Function would be required for a full cleanup.
+                    batch.update(doc(db, "workspaces", currentWorkspaceId), { status: 'deleted' });
 
-                await batch.commit();
+                    await batch.commit();
 
-                showToast('Workspace deletion initiated.', 'success');
-                window.location.hash = 'company-selection';
-                closeAllModals();
+                    showToast('Workspace deletion initiated.', 'success');
+                    window.location.hash = 'company-selection';
+                    closeAllModals();
+                } catch(error) {
+                    showToast(`Error deleting workspace: ${error.message}`, 'error');
+                    console.error("Error deleting workspace:", error);
+                }
             };
             
             document.getElementById('confirmation-modal').classList.add('active');
             document.getElementById('confirmation-confirm-btn').onclick = onConfirm;
             document.getElementById('confirmation-cancel-btn').onclick = closeAllModals;
         }
-
+        
+        // --- Permission Checking ---
         const checkPlanPermission = (requiredPlan) => {
-            if (!currentWorkspaceData || !currentWorkspaceData.plan) return false;
-            const currentPlanLevel = PLAN_HIERARCHY[currentWorkspaceData.plan] ?? -1;
+            if (!currentUserData || !currentUserData.plan) return false;
+            const currentPlanLevel = PLAN_HIERARCHY[currentUserData.plan] ?? -1;
             const requiredPlanLevel = PLAN_HIERARCHY[requiredPlan] ?? 99;
             return currentPlanLevel >= requiredPlanLevel;
+        };
+
+        const checkRolePermission = (requiredRole) => {
+            if (!currentUserData || !currentWorkspaceId) return false;
+            const userRole = currentUserData.workspaces?.[currentWorkspaceId];
+            if (!userRole) return false;
+            if (requiredRole === 'Admin') return userRole === 'Admin';
+            if (requiredRole === 'Manager') return userRole === 'Admin' || userRole === 'Manager';
+            return true; // Default to allow if no specific role is required
         };
 
 
@@ -2713,7 +2796,6 @@
                 industry: form.industry.value,
                 companySize: form.companySize.value,
                 timezone: form.timezone.value,
-                plan: 'Free', // New workspaces start on Free plan
                 ownerId: currentUser.uid,
                 createdAt: new Date(),
                 departments: ["General"],
@@ -2726,6 +2808,8 @@
                 const workspaceRef = await addDoc(collection(db, "workspaces"), workspaceData);
                 const workspaceId = workspaceRef.id;
 
+                const batch = writeBatch(db);
+
                 // Add the creator as the first member of the new workspace
                 const memberData = {
                     uid: currentUser.uid,
@@ -2734,13 +2818,17 @@
                     role: 'Admin',
                     status: 'Active'
                 };
-                await setDoc(doc(db, "workspaces", workspaceId, "members", currentUser.uid), memberData);
+                const memberRef = doc(db, "workspaces", workspaceId, "members", currentUser.uid);
+                batch.set(memberRef, memberData);
 
                 // Add workspace to user's map and set as active
-                await updateDoc(doc(db, "users", currentUser.uid), {
+                const userRef = doc(db, "users", currentUser.uid);
+                batch.update(userRef, {
                     [`workspaces.${workspaceId}`]: 'Admin',
                     activeWorkspaceId: workspaceId
                 });
+                
+                await batch.commit();
 
                 showToast('Workspace created successfully!', 'success');
                 window.location.hash = 'dashboard';
@@ -2757,7 +2845,8 @@
             const container = document.getElementById('schedule-container');
             
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            
+            const canEditSchedule = checkRolePermission('Manager');
+
             container.innerHTML = `
                 <div class="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                     <div class="flex items-center gap-4">
@@ -2767,7 +2856,7 @@
                         </h2>
                         <button id="next-month-btn" class="secondary-button p-2 rounded-full"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
                     </div>
-                    <button id="add-shift-main-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Add Shift</button>
+                    ${canEditSchedule ? `<button id="add-shift-main-btn" class="cta-button px-4 py-2 rounded-lg font-semibold">Add Shift</button>` : ''}
                 </div>
                 <div id="calendar-grid-container" class="card p-4"></div>
             `;
@@ -2843,7 +2932,8 @@
             modalTitle.textContent = `Schedule for ${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`;
             
             const shiftsForDay = schedules.filter(s => s.start.startsWith(dateString));
-            
+            const canEditSchedule = checkRolePermission('Manager');
+
             let contentHtml = '<ul class="space-y-3 mb-6">';
             if (shiftsForDay.length > 0) {
                  shiftsForDay.sort((a,b) => a.start.localeCompare(b.start)).forEach(shift => {
@@ -2865,19 +2955,22 @@
             }
             contentHtml += '</ul>';
             
-            contentHtml += `
-                <div class="border-t border-gray-700 pt-4 text-right">
-                    <button id="add-shift-from-day-btn" class="cta-button px-6 py-2 rounded-lg">Add New Shift</button>
-                </div>
-            `;
+            if (canEditSchedule) {
+                contentHtml += `
+                    <div class="border-t border-gray-700 pt-4 text-right">
+                        <button id="add-shift-from-day-btn" class="cta-button px-6 py-2 rounded-lg">Add New Shift</button>
+                    </div>
+                `;
+            }
             
             modalContent.innerHTML = contentHtml;
             modal.classList.add('active');
             
-            document.getElementById('add-shift-from-day-btn').addEventListener('click', () => openAddShiftModal(dateString));
+            document.getElementById('add-shift-from-day-btn')?.addEventListener('click', () => openAddShiftModal(dateString));
         }
 
         function openAddShiftModal(date = null) {
+            if (!checkRolePermission('Manager')) return;
             const employeeOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
             const today = new Date().toISOString().split('T')[0];
             
@@ -2903,6 +2996,8 @@
 
         async function handleAddShift(e) {
             e.preventDefault();
+            if (!checkRolePermission('Manager')) return;
+
             const form = e.target;
             const shiftData = {
                 userId: form.userId.value,
@@ -3052,8 +3147,7 @@
         async function renderTimeOffPage() {
             await loadWorkspaceData(currentWorkspaceId);
             const container = document.getElementById('time-off-container');
-            const userRole = currentUserData.workspaces[currentWorkspaceId];
-            const isAdminOrManager = userRole === 'Admin' || userRole === 'Manager';
+            const isAdminOrManager = checkRolePermission('Manager');
 
             let headerHtml = `
                 <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
@@ -3212,6 +3306,7 @@
         }
 
         async function handleTimeOffApproval(requestId, action) {
+            if (!checkRolePermission('Manager')) return;
             const requestRef = doc(db, "workspaces", currentWorkspaceId, "timeOffRequests", requestId);
             try {
                 await updateDoc(requestRef, { status: action });
@@ -3271,72 +3366,19 @@
 
         // --- Payroll Management ---
         function renderManagePayroll() {
-            const manageMainContent = document.getElementById('manage-main-content');
-            manageMainContent.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div id="manage-sidebar" class="md:col-span-1 card p-6"></div>
-                    <div id="manage-content" class="md:col-span-2"></div>
+            if (!checkRolePermission('Admin')) return;
+            const content = document.getElementById('manage-main-content');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 gap-8">
+                     <div id="payroll-content" class="w-full"></div>
                 </div>
             `;
-            const sidebar = document.getElementById('manage-sidebar');
-            const content = document.getElementById('manage-content');
-
-            sidebar.innerHTML = `
-                <h3 class="text-xl font-bold text-white mb-4">Payroll Tools</h3>
-                <div class="space-y-2">
-                    <button id="run-payroll-btn" class="w-full secondary-button px-4 py-2 rounded-lg text-sm">Run New Pay Run</button>
-                    <button id="payroll-settings-btn" class="w-full secondary-button px-4 py-2 rounded-lg text-sm">Payroll Settings</button>
-                </div>
-            `;
-            content.innerHTML = '<div class="card p-6"><p class="text-gray-400">Select a tool from the sidebar to begin.</p></div>';
-            
-            document.getElementById('run-payroll-btn').addEventListener('click', renderRunPayroll);
-            document.getElementById('payroll-settings-btn').addEventListener('click', renderPayrollSettingsInManage);
+            renderRunPayroll();
         }
         
-        async function renderPayrollSettingsInManage() {
-            const content = document.getElementById('manage-content');
-            const payrollConfig = currentWorkspaceData.payrollConfig || {};
-            content.innerHTML = `
-                <h3 class="text-xl font-semibold text-white mb-4">Payroll Settings</h3>
-                <form id="manage-payroll-settings-form">
-                    <div class="card p-6 space-y-6">
-                        <div>
-                            <label class="block text-gray-400 mb-1">Pay Schedule</label>
-                            <select name="paySchedule" class="form-select w-full md:w-1/2">
-                                <option value="Weekly" ${payrollConfig.paySchedule === 'Weekly' ? 'selected' : ''}>Weekly</option>
-                                <option value="Bi-Weekly" ${payrollConfig.paySchedule === 'Bi-Weekly' ? 'selected' : ''}>Bi-Weekly</option>
-                                <option value="Semi-Monthly" ${payrollConfig.paySchedule === 'Semi-Monthly' ? 'selected' : ''}>Semi-Monthly</option>
-                                <option value="Monthly" ${payrollConfig.paySchedule === 'Monthly' ? 'selected' : ''}>Monthly</option>
-                            </select>
-                        </div>
-                         <div>
-                            <label class="block text-gray-400 mb-1">Company Tax ID (EIN)</label>
-                            <input type="text" name="taxId" class="form-input w-full md:w-1/2" value="${payrollConfig.taxId || ''}">
-                        </div>
-                        <div class="flex justify-end mt-6">
-                            <button type="submit" class="cta-button px-6 py-2 rounded-lg">Save Settings</button>
-                        </div>
-                    </div>
-                </form>
-            `;
-            
-            document.getElementById('manage-payroll-settings-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const updatedConfig = {
-                    paySchedule: form.paySchedule.value,
-                    taxId: form.taxId.value
-                };
-                
-                await updateDoc(doc(db, "workspaces", currentWorkspaceId), { payrollConfig: updatedConfig });
-                showToast('Payroll settings saved!', 'success');
-                await loadWorkspaceData(currentWorkspaceId); // reload data
-            });
-        }
-
         function renderRunPayroll() {
-            const content = document.getElementById('manage-content');
+            if (!checkRolePermission('Admin')) return;
+            const content = document.getElementById('payroll-content');
             content.innerHTML = `
                 <h3 class="text-xl font-semibold text-white mb-4">Run Payroll</h3>
                 <div class="card p-6">
@@ -3361,7 +3403,10 @@
         }
 
         function renderPayrollPreview() {
+            if (!checkRolePermission('Admin')) return;
             const container = document.getElementById('payroll-preview-container');
+            container.innerHTML = '<div class="loader"></div>';
+
             let reportHtml = `
                 <h3 class="text-xl font-semibold text-white mb-4">Payroll Preview</h3>
                  <div class="card p-0 overflow-hidden">
@@ -3427,6 +3472,8 @@
         }
 
         async function handleFinalizePayRun() {
+            if (!checkRolePermission('Admin')) return;
+
             const startDate = document.getElementById('payroll-start-date').value;
             const endDate = document.getElementById('payroll-end-date').value;
 
@@ -3440,9 +3487,12 @@
             finalizeBtn.textContent = 'Finalizing...';
 
             try {
+                const batch = writeBatch(db);
                 const payStubsCollectionRef = collection(db, `workspaces/${currentWorkspaceId}/payStubs`);
 
                 for (const emp of employees) {
+                     if(emp.status !== 'Active') continue; // Skip inactive employees
+
                     const empTimesheets = timesheets[emp.id] || {};
                     const overtimeRules = currentWorkspaceData.rules?.overtime || { enabled: false, weekly: 40 };
                     
@@ -3473,7 +3523,7 @@
                             amount = grossPay * (ded.amount / 100);
                         }
                         totalDeductions += amount;
-                        calculatedDeductions.push({ name: ded.name, amount });
+                        calculatedDeductions.push({ name: ded.name, amount: Number(amount.toFixed(2)) });
                     });
 
                     const netPay = grossPay - taxes.total - totalDeductions;
@@ -3483,8 +3533,8 @@
                         periodStart: startDate,
                         periodEnd: endDate,
                         payDate: new Date().toISOString().split('T')[0],
-                        grossPay,
-                        netPay,
+                        grossPay: Number(grossPay.toFixed(2)),
+                        netPay: Number(netPay.toFixed(2)),
                         taxes,
                         deductions: calculatedDeductions,
                         hourlyRate: emp.hourlyRate || 0,
@@ -3494,10 +3544,14 @@
                         createdAt: new Date()
                     };
                     
-                    await addDoc(payStubsCollectionRef, payStubData);
+                    const newStubRef = doc(payStubsCollectionRef); // Create a new doc with a random ID
+                    batch.set(newStubRef, payStubData);
                 }
+
+                await batch.commit();
+
                 showToast('Pay run finalized and all pay stubs have been generated!', 'success');
-                manageContent.innerHTML = '<div class="card p-6"><p>Pay run successfully finalized. Employees can now view their new pay stubs.</p></div>';
+                document.getElementById('payroll-content').innerHTML = '<div class="card p-6"><p>Pay run successfully finalized. Employees can now view their new pay stubs.</p></div>';
             } catch (error) {
                 console.error("Error finalizing pay run:", error);
                 showToast(`Error: ${error.message}`, 'error');
@@ -3517,8 +3571,8 @@
             const stubDeductions = stub.deductions || [];
             const totalDeductions = stubDeductions.reduce((acc, d) => acc + d.amount, 0);
             
-            const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0 };
-            const totalTaxes = (stubTaxes.federal || 0) + (stubTaxes.socialSecurity || 0) + (stubTaxes.medicare || 0);
+            const stubTaxes = stub.taxes || { federal: 0, socialSecurity: 0, medicare: 0, total: 0 };
+            const totalTaxes = stubTaxes.total || 0;
 
             const YTD = { gross: '12,345.67', taxes: '1,234.56', deductions: '567.89', net: '10,543.22' }; // Placeholder YTD data
             
@@ -3611,51 +3665,65 @@
         function renderManageDepartments() {
             const sidebar = document.getElementById('manage-sidebar');
             const content = document.getElementById('manage-content');
+            const canEdit = checkRolePermission('Admin');
 
             sidebar.innerHTML = `
                 <h3 class="text-xl font-bold text-white mb-4">Add Department</h3>
                 <form id="add-department-form" class="space-y-4">
                     <div>
                         <label for="new-department-name" class="block text-sm font-medium text-gray-300">Department Name</label>
-                        <input type="text" id="new-department-name" class="form-input w-full mt-1" required>
+                        <input type="text" id="new-department-name" class="form-input w-full mt-1" required ${!canEdit ? 'disabled' : ''}>
                     </div>
-                    <button type="submit" class="w-full cta-button px-4 py-2 rounded-lg">Add Department</button>
+                    <button type="submit" class="w-full cta-button px-4 py-2 rounded-lg" ${!canEdit ? 'disabled' : ''}>Add Department</button>
                 </form>
             `;
             const departments = currentWorkspaceData.departments || [];
             let listHtml = departments.map(dept => `
                 <li class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-800">
                     <span>${dept}</span>
-                    <button class="text-red-400 hover:text-red-300 font-semibold" data-dept="${dept}">Remove</button>
+                    ${canEdit ? `<button class="text-red-400 hover:text-red-300 font-semibold" data-dept="${dept}">Remove</button>` : ''}
                 </li>
             `).join('');
             
             content.innerHTML = `<div class="card p-6"><h3 class="text-xl font-semibold text-white mb-4">Existing Departments</h3><ul class="space-y-2">${listHtml}</ul></div>`;
-
-            document.getElementById('add-department-form').addEventListener('submit', handleAddDepartment);
-            content.querySelectorAll('button[data-dept]').forEach(btn => {
-                btn.addEventListener('click', () => handleRemoveDepartment(btn.dataset.dept));
-            });
+            
+            if(canEdit) {
+                document.getElementById('add-department-form').addEventListener('submit', handleAddDepartment);
+                content.querySelectorAll('button[data-dept]').forEach(btn => {
+                    btn.addEventListener('click', () => handleRemoveDepartment(btn.dataset.dept));
+                });
+            }
         }
 
         async function handleAddDepartment(e) {
             e.preventDefault();
+            if (!checkRolePermission('Admin')) return;
             const newDept = document.getElementById('new-department-name').value;
             if (!newDept) return;
-            await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
-                departments: arrayUnion(newDept)
-            });
-            showToast('Department added.', 'success');
-            renderManagePage('departments');
+
+            try {
+                await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
+                    departments: arrayUnion(newDept)
+                });
+                showToast('Department added.', 'success');
+                renderManagePage('departments');
+            } catch(error) {
+                showToast(`Error adding department: ${error.message}`, 'error');
+            }
         }
 
         async function handleRemoveDepartment(deptName) {
+            if (!checkRolePermission('Admin')) return;
             if (confirm(`Are you sure you want to remove the "${deptName}" department?`)) {
-                await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
-                    departments: arrayRemove(deptName)
-                });
-                showToast('Department removed.', 'success');
-                renderManagePage('departments');
+                try {
+                    await updateDoc(doc(db, "workspaces", currentWorkspaceId), {
+                        departments: arrayRemove(deptName)
+                    });
+                    showToast('Department removed.', 'success');
+                    renderManagePage('departments');
+                } catch(error) {
+                    showToast(`Error removing department: ${error.message}`, 'error');
+                }
             }
         }
 

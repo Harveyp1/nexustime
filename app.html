@@ -27,6 +27,8 @@
         .modal-overlay.active > div { transform: scale(1); }
         .tab-button { border-bottom: 2px solid transparent; transition: all 0.2s ease-in-out; }
         .tab-button.active { color: #34D399; border-bottom-color: #34D399; }
+        .modal-tab-pane { display: none; }
+        .modal-tab-pane.active { display: block; }
         .status-badge { padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
         .status-active, .status-approved, .status-completed { background-color: #10B981; color: white; }
         .status-inactive { background-color: #6B7280; color: white; }
@@ -168,6 +170,204 @@
     <div id="project-modal" class="modal-overlay" role="dialog" aria-modal="true"><div class="card rounded-lg shadow-xl m-8 max-w-lg w-full"><div class="p-6 border-b border-gray-700 flex justify-between items-center"><h3 id="project-modal-title-text" class="text-xl font-semibold text-white"></h3><button class="text-gray-400 hover:text-white text-3xl close-modal-btn">&times;</button></div><form id="project-form" class="p-6 space-y-4"></form></div></div>
     <div id="toast-container"></div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module">
+        import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch, Timestamp, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKy_SqRUTKkoeuTzrksN2_TQ41v8Zs9Ls",
+            authDomain: "nexustime-e8b91.firebaseapp.com",
+            projectId: "nexustime-e8b91",
+            storageBucket: "nexustime-e8b91.appspot.com",
+            messagingSenderId: "516976739338",
+            appId: "1:516976739338:web:537ae732707a2a1aab4bf3",
+            measurementId: "G-QRSD6TYH86"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Global State & Constants ---
+        let currentUser = null;
+        let currentUserData = null;
+        let currentWorkspaceId = null;
+        let currentWorkspaceData = null;
+        let employees = [];
+        let projects = [];
+        let tasks = [];
+        let timeOffRequests = [];
+        let payStubs = [];
+        let projectChart = null;
+        let employeeChart = null;
+        let billableChart = null;
+        let projectDetailChart = null;
+        let editingItemId = null; 
+        let selectedManageItem = null;
+
+        const PLAN_DETAILS = {
+            Free: { name: 'Free', price_monthly: 0, pricePerUser: 0, userLimit: 5, wsLimit: 1 },
+            Starter: { name: 'Starter', price_monthly: 29, pricePerUser: 5, userLimit: Infinity, wsLimit: 1 },
+            Pro: { name: 'Pro', price_monthly: 79, pricePerUser: 8, userLimit: Infinity, wsLimit: 2 },
+            Enterprise: { name: 'Enterprise', price: "Custom", pricePerUser: "Custom", userLimit: Infinity, wsLimit: Infinity }
+        };
+        const PLAN_HIERARCHY = { Free: 0, Starter: 1, Pro: 2, Enterprise: 3 };
+
+        // --- DOM Elements ---
+        const pages = document.querySelectorAll('.page');
+        const toastContainer = document.getElementById('toast-container');
+        
+        // --- Core App Logic ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                await loadInitialData();
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        async function loadInitialData() {
+            try {
+                await loadUserData(currentUser.uid);
+                updateNav();
+                setupEventListeners();
+
+                if (!currentUserData.workspaces || Object.keys(currentUserData.workspaces).length === 0) {
+                    window.location.hash = 'onboarding';
+                }
+                
+                handleRouting();
+                document.getElementById('loading').classList.remove('active');
+
+            } catch (error) {
+                console.error("Critical error on initial load:", error);
+                document.getElementById('loading').innerHTML = `<p class="text-center text-red-400">Could not load application data. Please refresh.</p>`;
+            }
+        }
+
+        const showPage = (pageId) => {
+            pages.forEach(page => page.classList.remove('active'));
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                if(pageId !== 'company-selection' && pageId !== 'onboarding') {
+                    window.location.hash = pageId;
+                }
+                updateNavActiveState(pageId);
+            }
+        };
+
+        const showToast = (message, type = 'success') => {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 4000);
+        };
+        
+        function updateNavActiveState(activePageId) {
+             document.querySelectorAll('.nav-link').forEach(link => {
+                const linkPageId = new URL(link.href).hash.substring(1) || new URL(link.href).pathname.split('/').pop().replace('.html', '');
+                link.classList.toggle('active', linkPageId === activePageId);
+            });
+        }
+
+        // --- Routing ---
+        function handleRouting() {
+            const hash = window.location.hash.substring(1) || 'dashboard';
+            
+            if (!currentWorkspaceId && !['company-selection', 'onboarding'].includes(hash)) {
+                showPage('company-selection');
+                renderWorkspaceSelection();
+                return;
+            }
+            
+            const pageRenderMap = {
+                'dashboard': renderDashboard,
+                'manage': () => renderManagePage('employees'),
+                'time-off': renderTimeOffPage,
+                'pay-stubs': renderPayStubsPage,
+                'tasks': renderTasksPage,
+                'company-selection': renderWorkspaceSelection,
+                'onboarding': renderOnboardingPage,
+            };
+
+            const renderFunction = pageRenderMap[hash];
+            if (renderFunction) {
+                showPage(hash);
+                renderFunction();
+            } else {
+                showPage('dashboard');
+                renderDashboard();
+            }
+        }
+        window.addEventListener('hashchange', handleRouting);
+        
+        // --- Data Loading ---
+        async function loadUserData(uid) { /* ... same as before ... */ }
+        async function loadWorkspaceData(workspaceId) { /* ... same as before ... */ }
+        
+        // --- Navigation ---
+        function updateNav() { /* ... same as before ... */ }
+        
+        // --- Page Renderers ---
+        async function renderDashboard() { /* ... same as before ... */ }
+        function renderStarterDashboard() { /* ... same as before ... */ }
+        function renderProDashboard() { /* ... same as before ... */ }
+        function renderCharts(isPro = false) { /* ... same as before ... */ }
+        async function renderWorkspaceSelection() { /* ... same as before ... */ }
+        async function renderPlanStatCard() { /* ... same as before ... */ }
+        async function renderOnboardingPage() { /* ... same as before ... */ }
+        async function renderManagePage(activeTab = 'employees') { /* ... same as before ... */ }
+        function renderManageEmployees() { /* ... same as before ... */ }
+        function renderManageProjects() { /* ... same as before ... */ }
+        function renderProjectDetailView(project) { /* ... same as before ... */ }
+        function renderManageSidebar() { /* ... same as before ... */ }
+        async function renderTimeOffPage() { /* ... same as before ... */ }
+        function renderEmployeeTimeOffView() { /* ... same as before ... */ }
+        function renderManagerTimeOffView() { /* ... same as before ... */ }
+        async function renderTasksPage() { /* ... same as before ... */ }
+        async function renderPayStubsPage() { /* ... same as before ... */ }
+        function viewPayStub(stubId) { /* ... same as before ... */ }
+
+        // --- Event Handlers & Modal Logic ---
+        function setupEventListeners() { /* ... same as before ... */ }
+        function handleAddNew() { /* ... same as before ... */ }
+        // ... ALL other handlers for modals, forms, etc.
+        function openAddEmployeeModal() { /* ... */ }
+        async function handleAddEmployee(e) { /* ... */ }
+        async function openEditEmployeeModal(employeeId) { /* ... */ }
+        async function handleEditEmployee(e) { /* ... */ }
+        async function handleRemoveEmployee(employeeId) { /* ... */ }
+        async function handleSendPasswordReset(email) { /* ... */ }
+        function openProjectModal(projectId = null) { /* ... */ }
+        async function handleProjectFormSubmit(e) { /* ... */ }
+        async function handleRemoveProject(projectId) { /* ... */ }
+        function openCreateTaskModal() { /* ... */ }
+        async function handleCreateTask(e) { /* ... */ }
+        async function handleTaskStatusChange(taskId, isCompleted) { /* ... */ }
+        function openRequestTimeOffModal() { /* ... */ }
+        async function handleRequestTimeOff(e) { /* ... */ }
+        async function handleTimeOffApproval(requestId, action) { /* ... */ }
+        async function handleCreateWorkspace(e) { /* ... */ }
+        
+        // Helper Functions
+        function getEmployeeFormHtml(employee = {}) { /* ... */ }
+        function setupEmployeeModalTabs(modal) { /* ... */ }
+        function populateDropdown(select, optionsArray, selectedValue = null) { /* ... */ }
+        function populateEmployeeFormDropdowns(formElement, employee = {}) { /* ... */ }
+        function getProjectFormHtml(project = {}) { /* ... */ }
+        function timeAgo(date) { /* ... */ }
+        const checkPlanPermission = (requiredPlan) => { /* ... */ };
+        const checkRolePermission = (requiredRole) => { /* ... */ };
+
+    </script>
 </body>
 </html>

@@ -37,7 +37,10 @@
         input:checked + .toggle-slider:before { transform: translateX(22px); }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #34D399; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .modal-overlay { position: fixed; inset: 0; display: flex; align-items-center; justify-content: center; background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 500; }
+        .modal-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); z-index: 500; }
+        .nav-link { display: flex; align-items: center; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.2s; }
+        .nav-link:hover, .nav-link.active { background-color: #374151; color: #34D399; }
+        .nav-link svg { margin-right: 0.75rem; }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -50,8 +53,31 @@
                         <img src="https://raw.githubusercontent.com/Harveyp1/nexustime/main/nexustimelogo.png" alt="NexusTime Logo" class="h-10" onerror="this.onerror=null; this.src='https://placehold.co/160x40/111827/34D399?text=NexusTime';">
                     </a>
                 </div>
+                <div class="hidden md:block">
+                    <nav id="app-nav-desktop" class="ml-10 flex items-baseline space-x-4">
+                        <!-- Desktop Nav Links will be injected here -->
+                    </nav>
+                </div>
                  <div class="hidden md:block">
-                    <a href="app.html" class="cta-button px-4 py-2 rounded-lg text-sm font-medium">Back to App</a>
+                    <button id="logout-button-desktop" class="secondary-button px-4 py-2 rounded-lg text-sm font-medium">Log Out</button>
+                </div>
+                <div class="-mr-2 flex md:hidden">
+                    <button id="mobile-menu-button" type="button" class="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu, show/hide based on menu state. -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <nav id="app-nav-mobile" class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                 <!-- Mobile Nav Links will be injected here -->
+            </nav>
+            <div class="pt-4 pb-3 border-t border-gray-700">
+                <div class="px-2">
+                    <button id="logout-button-mobile" class="w-full text-left secondary-button px-4 py-2 rounded-lg text-sm font-medium">Log Out</button>
                 </div>
             </div>
         </div>
@@ -92,7 +118,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, getDocs, updateDoc, writeBatch, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Firebase Configuration
@@ -161,6 +187,7 @@
                             employees = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                         }
                     }
+                    updateNav();
                     renderSettingsPage();
                 } else {
                     throw new Error("User data not found.");
@@ -188,8 +215,43 @@
             document.getElementById('confirmation-modal').classList.add('hidden');
         }
 
+        function updateNav() {
+            const navContainerDesktop = document.getElementById('app-nav-desktop');
+            const navContainerMobile = document.getElementById('app-nav-mobile');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const logoutButtonDesktop = document.getElementById('logout-button-desktop');
+            const logoutButtonMobile = document.getElementById('logout-button-mobile');
+            
+            if (currentUser) {
+                mobileMenuButton.style.display = 'inline-flex';
+                logoutButtonDesktop.style.display = 'inline-flex';
+
+                let navLinks = [
+                    { href: 'app.html', label: 'Dashboard', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>' },
+                    { href: 'timesheet.html', label: 'Timesheets', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
+                    { href: 'schedule.html', label: 'Schedule', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>' },
+                    { href: 'app.html#manage', label: 'Manage', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>' },
+                    { href: 'settings.html', label: 'Settings', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>' },
+                ];
+                
+                const linksHtml = navLinks.map(link => {
+                    const isActive = window.location.pathname.endsWith(link.href);
+                    return `<a href="${link.href}" class="nav-link text-gray-300 hover:text-white ${isActive ? 'active' : ''}">
+                        ${link.icon}<span>${link.label}</span>
+                    </a>`;
+                }).join('');
+
+                navContainerDesktop.innerHTML = linksHtml;
+                navContainerMobile.innerHTML = linksHtml;
+
+                logoutButtonDesktop.addEventListener('click', () => signOut(auth));
+                logoutButtonMobile.addEventListener('click', () => signOut(auth));
+                mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+            }
+        }
+
         // --- Settings Page Logic ---
-        
         async function renderSettingsPage() {
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             const isAdmin = userRole === 'Admin';
@@ -210,7 +272,7 @@
 
             settingsContentArea.innerHTML = tabs
                 .filter(tab => tab.visible)
-                .map(tab => `<div id="${tab.id}-settings-tab" class="settings-tab-content card p-8"></div>`)
+                .map(tab => `<div id="${tab.id}-settings-tab" class="settings-tab-content"></div>`) // Removed card class from here
                 .join('');
             
             const firstVisibleTab = tabs.find(t => t.visible);
@@ -242,7 +304,7 @@
 
         function renderProfileSettings() {
             const container = document.getElementById('profile-settings-tab');
-            container.innerHTML = `
+            container.innerHTML = `<div class="card p-8">
                 <form id="profile-settings-form" class="space-y-12">
                      <div>
                         <h3 class="text-xl font-semibold text-white mb-6">Personal Information</h3>
@@ -265,7 +327,7 @@
                         <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Profile Settings</button>
                     </div>
                 </form>
-            `;
+            </div>`;
             document.getElementById('profile-settings-form').addEventListener('submit', handleSaveProfileSettings);
         }
 
@@ -273,7 +335,7 @@
             const container = document.getElementById('workspace-settings-tab');
             const ws = currentWorkspaceData;
             const security = ws.security || {};
-            container.innerHTML = `
+            container.innerHTML = `<div class="card p-8">
                 <form id="workspace-settings-form" class="space-y-12">
                     <div>
                          <h3 class="text-xl font-semibold text-white mb-6">General</h3>
@@ -297,13 +359,13 @@
                         <button type="submit" class="cta-button px-8 py-3 rounded-lg font-semibold">Save Workspace Settings</button>
                     </div>
                 </form>
-            `;
+            </div>`;
             document.getElementById('workspace-settings-form').addEventListener('submit', handleSaveWorkspaceSettings);
         }
 
         async function renderPayrollSettingsTab() {
             const container = document.getElementById('payroll-settings-tab');
-            container.innerHTML = `<div class="loader"></div>`;
+            container.innerHTML = `<div class="card p-8"><div class="loader"></div></div>`;
 
             const templatesRef = doc(db, "workspaces", currentWorkspaceId, "payrollSettings", "deductionTemplates");
             const templatesSnap = await getDoc(templatesRef);
@@ -315,7 +377,7 @@
                 </li>
             `).join('');
 
-            container.innerHTML = `
+            container.innerHTML = `<div class="card p-8">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-semibold text-white">Deduction & Benefit Templates</h3>
                     <button id="add-deduction-template-btn" class="cta-button px-4 py-2 rounded-lg text-sm">Add Template</button>
@@ -324,7 +386,7 @@
                 <ul id="deduction-templates-list" class="space-y-3">
                     ${templatesHtml || '<p class="text-gray-500">No deduction templates created yet.</p>'}
                 </ul>
-            `;
+            </div>`;
             document.getElementById('add-deduction-template-btn').addEventListener('click', () => {
                 const name = prompt("Enter template name:");
                 if (!name) return;
@@ -359,12 +421,25 @@
             const userPrice = plan.pricePerUser || 0;
             const totalCost = basePrice + (userCount * userPrice);
 
+            let userCostDisplay = '';
+            if (plan.pricePerUser > 0) {
+                 userCostDisplay = `<li class="flex justify-between"><span>User Seats (${userCount} x $${userPrice.toFixed(2)})</span><span>$${(userCount * userPrice).toFixed(2)}</span></li>`;
+            }
+
             cardContainer.innerHTML = `
                 <h3 class="text-xl font-semibold text-white mb-2">Current Subscription</h3>
                 <div class="card p-8">
                     <div class="flex justify-between items-start">
                         <div><p class="text-2xl font-bold text-emerald-400">${plan.name} Plan</p><p class="text-gray-400">Renews on ${nextBillingDate}</p></div>
                         <p class="text-3xl font-bold text-white">$${totalCost.toFixed(2)}<span class="text-base font-medium text-gray-400">/month</span></p>
+                    </div>
+                    <div class="border-t border-gray-700 mt-6 pt-6">
+                        <h4 class="font-semibold text-white mb-2">Itemized Bill (Current Workspace):</h4>
+                        <ul class="text-gray-300 space-y-2">
+                           <li class="flex justify-between"><span>Base Plan</span><span>$${(basePrice).toFixed(2)}</span></li>
+                           ${userCostDisplay}
+                           <li class="flex justify-between font-bold border-t border-gray-600 mt-2 pt-2"><span>Estimated Total</span><span>$${totalCost.toFixed(2)}</span></li>
+                        </ul>
                     </div>
                 </div>`;
         }
@@ -404,13 +479,12 @@
         }
 
         // --- Settings Form Handlers ---
-        
-        async function handleSaveProfileSettings(e) { e.preventDefault(); /* ... Logic ... */ }
-        async function handleSaveWorkspaceSettings(e) { e.preventDefault(); /* ... Logic ... */ }
-        async function handleSaveDeductionTemplate(newTemplate) { /* ... Logic ... */ }
-        async function handleRemoveDeductionTemplate(indexToRemove) { /* ... Logic ... */ }
-        async function initiatePlanChange(newPlanName) { /* ... Logic ... */ }
-        function handleDeleteWorkspace() { /* ... Logic ... */ }
+        async function handleSaveProfileSettings(e) { e.preventDefault(); /* ... */ }
+        async function handleSaveWorkspaceSettings(e) { e.preventDefault(); /* ... */ }
+        async function handleSaveDeductionTemplate(newTemplate) { /* ... */ }
+        async function handleRemoveDeductionTemplate(indexToRemove) { /* ... */ }
+        async function initiatePlanChange(newPlanName) { /* ... */ }
+        function handleDeleteWorkspace() { /* ... */ }
     
     </script>
 </body>

@@ -182,7 +182,7 @@
                 currentWorkspaceId = currentUserData.activeWorkspaceId;
                 if (!currentWorkspaceId) {
                     showToast("No active workspace found. Please select one in the main app.", "error");
-                    mainContent.innerHTML = `<p class="text-center text-red-400">No active workspace selected.</p>`;
+                    mainContent.innerHTML = `<p class="text-center text-red-400">No active workspace selected. Please return to the <a href="app.html" class="underline text-emerald-400">main application</a> to select one.</p>`;
                     return;
                 }
 
@@ -215,7 +215,6 @@
             employees = membersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             projects = projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             
-            // Set the active employee filter. If user is admin/manager, default to first employee. Otherwise, lock to current user.
             const userRole = currentUserData.workspaces[currentWorkspaceId];
             if (userRole === 'Admin' || userRole === 'Manager') {
                 if (!activeEmployeeFilter && employees.length > 0) activeEmployeeFilter = employees[0].id;
@@ -237,8 +236,17 @@
             });
         }
         
-        // --- UI & Rendering ---
-        const showToast = (message, type = 'success') => { /* ... same as before ... */ };
+        const showToast = (message, type = 'success') => {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 4000);
+        };
 
         function updateNav() {
             const navContainerDesktop = document.getElementById('app-nav-desktop');
@@ -284,21 +292,192 @@
             }
         }
         
-        function renderEmployeeDetails() { /* ... same as before ... */ }
-        function renderSpreadsheet() { /* ... same as before ... */ }
-        function openPunchModal(date = null) { /* ... same as before ... */ }
-        async function handleAddPunch(e) { /* ... same as before ... */ }
-        function getWeekVerification(weekStartDateString) { /* ... same as before ... */ }
-        function renderVerificationStatus(weekStartDateString) { /* ... same as before ... */ }
-        async function handleVerification(type, isChecked, weekStartDateString) { /* ... same as before ... */ }
+        function renderEmployeeDetails() {
+            const employeeDetailsContainer = document.getElementById('employee-details-container');
+            if (!employeeDetailsContainer) return;
+            const employee = employees.find(e => e.id === activeEmployeeFilter);
+            if (!employee) {
+                employeeDetailsContainer.innerHTML = '<p>Select an employee to view details.</p>';
+                return;
+            };
+            employeeDetailsContainer.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-2 text-sm">
+                    <div><p class="text-2xl font-bold text-emerald-400">${employee.name}</p><p class="text-gray-400">Employee Id: ${employee.employeeId || 'N/A'} Status: <span class="text-white">${employee.status}</span></p></div>
+                    <div><p><span class="text-gray-400">Hire Date:</span> ${employee.hireDate}</p><p><span class="text-gray-400">Card Number:</span> ${employee.cardNumber || 'N/A'}</p></div>
+                    <div><p><span class="text-gray-400">Department:</span> ${employee.department}</p><p><span class="text-gray-400">Supervisor:</span> ${employee.supervisor || 'N/A'}</p></div>
+                    <div><p><span class="text-gray-400">Pay Type:</span> ${employee.payType}</p><p><span class="text-gray-400">Employee Type:</span> ${employee.employeeType}</p></div>
+                </div>`;
+        }
+        
+        function renderSpreadsheet() {
+            const spreadsheetContainer = document.getElementById('spreadsheet-container');
+            if (!spreadsheetContainer || !activeEmployeeFilter) return;
+            const { week, start: weekStart } = getWeek(currentWeekOffset);
+            document.getElementById('week-range-display').textContent = `Monday ${formatDate(week[0])} to Sunday ${formatDate(week[6])}`;
+            const weekData = week.map(day => processDayPunches(activeEmployeeFilter, day));
+            const maxRows = Math.max(1, ...weekData.map(d => d.pairs.length));
+            let dailyTotals = weekData.map(d => d.totalHours);
+            let weeklyTotal = dailyTotals.reduce((a, b) => a + b, 0);
+            const weekStartDateString = weekStart.toISOString().split('T')[0];
+            const verificationRecord = getWeekVerification(weekStartDateString);
+            const isWeekLocked = verificationRecord.isLocked;
+            let tableHtml = '<table class="w-full timesheet-table"><thead><tr><th class="row-header w-24">Date</th>';
+            week.forEach((day) => {
+                const dateString = day.toISOString().split('T')[0];
+                tableHtml += `<th class="day-header ${!isWeekLocked ? 'editable' : 'locked-day'}" data-date="${dateString}" data-locked="${isWeekLocked}">
+                                ${isWeekLocked ? '<span class="text-yellow-400 text-xs">Locked</span><br>' : ''}
+                                ${day.toLocaleDateString('en-US', { weekday: 'short' })} ${day.getDate()}
+                              </th>`;
+            });
+            tableHtml += '<th class="row-header">Total</th></tr></thead><tbody>';
+            for(let i = 0; i < maxRows; i++) {
+                tableHtml += '<tr><td class="row-header">In</td>';
+                weekData.forEach(day => { tableHtml += `<td>${day.pairs[i]?.in || ''}</td>`; });
+                tableHtml += '<td></td></tr>';
+                tableHtml += '<tr><td class="row-header">Out</td>';
+                weekData.forEach(day => { tableHtml += `<td>${day.pairs[i]?.out || ''}</td>`; });
+                tableHtml += '<td></td></tr>';
+            }
+            tableHtml += '</tbody><tfoot><tr class="bg-gray-800 font-bold"><td class="row-header">Total Hours</td>';
+            dailyTotals.forEach(total => { tableHtml += `<td>${total > 0 ? total.toFixed(2) : ''}</td>`; });
+            tableHtml += `<td class="text-emerald-400">${weeklyTotal.toFixed(2)}</td></tr>`;
+            tableHtml += '</tfoot></table>';
+            spreadsheetContainer.innerHTML = tableHtml;
+            renderVerificationStatus(weekStartDateString);
+            spreadsheetContainer.querySelectorAll('.day-header.editable').forEach(th => th.addEventListener('click', (e) => openPunchModal(e.currentTarget.dataset.date)));
+        }
 
-        // --- Helper Functions ---
-        function processDayPunches(employeeId, day) { /* ... same as before ... */ }
-        function calculateTotalHoursFromPairs(pairs) { /* ... same as before ... */ }
-        function getWeek(offset = 0) { /* ... same as before ... */ }
-        function formatDate(date, includeYear = false) { /* ... same as before ... */ }
+        function openPunchModal(date = null) {
+            const employee = employees.find(e => e.id === activeEmployeeFilter);
+            if (!employee) return;
+            
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const currentTime = now.toTimeString().slice(0,5);
+            const taskOptions = projects.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            const addPunchForm = document.getElementById('add-punch-form');
 
-        // --- Event Listeners ---
+            addPunchForm.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-gray-300 mb-2">Date</label><input type="date" name="punchDate" class="w-full p-3 form-input" value="${date || today}" required></div>
+                    <div><label class="block text-gray-300 mb-2">Time</label><input type="time" name="punchTime" class="w-full p-3 form-input" value="${currentTime}" required></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-gray-300 mb-2">Mode</label><select name="punchMode" class="w-full p-3 form-select" required><option value="in">Clock In</option><option value="out">Clock Out</option></select></div>
+                    <div><label class="block text-gray-300 mb-2">Type</label><select name="punchType" class="w-full p-3 form-select" required><option value="Normal">Normal</option><option value="Break">Break</option><option value="Lunch">Lunch</option></select></div>
+                </div>
+                <div><label class="block text-gray-300 mb-2">Task</label><select name="punchTask" class="w-full p-3 form-select">${taskOptions}</select></div>
+                <div class="text-right pt-4"><button type="submit" class="cta-button px-6 py-2 rounded-lg">Add Punch</button></div>
+            `;
+            punchModal.classList.add('active');
+        }
+
+        async function handleAddPunch(e) {
+            e.preventDefault();
+            const form = e.target;
+            const punchData = {
+                userId: activeEmployeeFilter,
+                date: form.punchDate.value,
+                time: form.punchTime.value,
+                mode: form.punchMode.value,
+                type: form.punchType.value,
+                task: form.punchTask.value,
+                createdAt: new Date()
+            };
+            
+            try {
+                await addDoc(collection(db, "workspaces", currentWorkspaceId, "timeEntries"), punchData);
+                showToast('Punch added successfully!', 'success');
+                punchModal.classList.remove('active');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderSpreadsheet();
+            } catch(error) {
+                showToast(`Error adding punch: ${error.message}`, 'error');
+            }
+        }
+
+        function getWeekVerification(weekStartDateString) {
+            const docId = `${activeEmployeeFilter}_${weekStartDateString}`;
+            const data = verificationData[docId] || { employeeVerified: false, supervisorVerified: false };
+            data.isLocked = data.employeeVerified && data.supervisorVerified;
+            return data;
+        }
+
+        function renderVerificationStatus(weekStartDateString) {
+            const verificationSection = document.getElementById('verification-section');
+            const verificationRecord = getWeekVerification(weekStartDateString);
+            const employee = employees.find(e => e.id === activeEmployeeFilter);
+            const supervisor = { name: 'Supervisor' }; // Simplified for now
+            verificationSection.innerHTML = `
+                <h3 class="text-xl font-bold mb-4">Verification</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="flex items-center"><input type="checkbox" id="employee-verify-checkbox" class="h-5 w-5 rounded" ${verificationRecord.employeeVerified ? 'checked' : ''} ${verificationRecord.supervisorVerified ? 'disabled' : ''}><span class="ml-3">Employee Verification</span></label>
+                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.employeeVerified ? `Verified by ${employee.name}` : 'Pending'}</div>
+                    </div>
+                    <div>
+                        <label class="flex items-center"><input type="checkbox" id="supervisor-verify-checkbox" class="h-5 w-5 rounded" ${verificationRecord.supervisorVerified ? 'checked' : ''} ${!verificationRecord.employeeVerified ? 'disabled' : ''}><span class="ml-3">Supervisor Verification</span></label>
+                        <div class="text-sm text-gray-400 pl-8">${verificationRecord.supervisorVerified ? `Verified by ${supervisor.name}` : 'Pending'}</div>
+                    </div>
+                </div>`;
+            document.getElementById('employee-verify-checkbox').addEventListener('change', (e) => handleVerification('employee', e.target.checked, weekStartDateString));
+            document.getElementById('supervisor-verify-checkbox').addEventListener('change', (e) => handleVerification('supervisor', e.target.checked, weekStartDateString));
+        }
+
+        async function handleVerification(type, isChecked, weekStartDateString) {
+            const docId = `${activeEmployeeFilter}_${weekStartDateString}`;
+            const verificationRef = doc(db, "workspaces", currentWorkspaceId, "verifications", docId);
+            const updateData = {};
+            if (type === 'employee') updateData.employeeVerified = isChecked;
+            if (type === 'supervisor') updateData.supervisorVerified = isChecked;
+            
+            try {
+                await setDoc(verificationRef, updateData, { merge: true });
+                showToast('Verification updated.', 'success');
+                await loadWorkspaceData(currentWorkspaceId);
+                renderSpreadsheet();
+            } catch(error) {
+                showToast('Error updating verification.', 'error');
+            }
+        }
+
+        function processDayPunches(employeeId, day) {
+            const dateString = day.toISOString().split('T')[0];
+            const punches = timesheets[employeeId]?.[dateString]?.punches || [];
+            if (punches.length === 0) return { pairs: [], totalHours: 0 };
+            const sortedPunches = [...punches].sort((a,b) => a.time.localeCompare(b.time));
+            const pairs = [];
+            for (let i = 0; i < sortedPunches.length; i += 2) {
+                if (sortedPunches[i]?.mode === 'in' && sortedPunches[i+1]?.mode === 'out') {
+                    pairs.push({ in: sortedPunches[i].time, out: sortedPunches[i+1].time });
+                }
+            }
+            return { pairs, totalHours: calculateTotalHoursFromPairs(pairs) };
+        }
+
+        function calculateTotalHoursFromPairs(pairs) {
+            let totalMinutes = 0;
+            pairs.forEach(pair => {
+                const [inH, inM] = pair.in.split(':').map(Number);
+                const [outH, outM] = pair.out.split(':').map(Number);
+                totalMinutes += (outH * 60 + outM) - (inH * 60 + inM);
+            });
+            return totalMinutes / 60;
+        }
+
+        function getWeek(offset = 0) {
+            const now = new Date();
+            now.setDate(now.getDate() + (offset * 7));
+            const dayOfWeek = now.getDay();
+            const startDate = new Date(now);
+            startDate.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            return { week: Array.from({length: 7}, (_, i) => new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i)), start: startDate };
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
         function setupEventListeners() {
             document.getElementById('mobile-menu-button').addEventListener('click', () => document.getElementById('mobile-menu').classList.toggle('hidden'));
             document.getElementById('logout-button-desktop').addEventListener('click', () => signOut(auth));
@@ -309,7 +488,6 @@
             document.getElementById('close-punch-modal-button').addEventListener('click', () => punchModal.classList.remove('active'));
             document.getElementById('add-punch-form').addEventListener('submit', handleAddPunch);
         }
-
     </script>
 </body>
 </html>
